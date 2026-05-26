@@ -78,7 +78,7 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   JsonObject device = data["device"].to<JsonObject>();
   device["name"] = config.deviceName;
   device["board"] = ARDUINO_BOARD;
-  device["version"] = "0.1.2";
+  device["version"] = "0.1.3";
   device["build"] = __DATE__ " " __TIME__;
 
   JsonObject console = data["console"].to<JsonObject>();

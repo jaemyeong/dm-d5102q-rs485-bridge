@@ -22,13 +22,15 @@
 | Macro | AtomS3-Lite | Atom-Lite | Status |
 |---|---|---|---|
 | `RS485_UART_NUM` | 2 | 2 | Configured value |
-| `RS485_RX_PIN` | G2 | G26 | Reads Tail485 TX |
-| `RS485_TX_PIN` | G1 | G32 | Drives Tail485 RX |
+| `RS485_RX_PIN` | G1 | G32 | MCU UART RX |
+| `RS485_TX_PIN` | G2 | G26 | MCU UART TX |
 | `RS485_DE_PIN` | -1 | -1 | Tail485 handles direction |
 | `STATUS_LED_PIN` | G35 | G27 | Built-in RGB |
 | `FACTORY_RESET_BTN_PIN` | G41 | G39 | BtnA |
 
 ## Termination Resistor
+
+Tail485 `TX/RX` labels can be confused between module labels and Arduino UART arguments. Firmware macros are defined from the MCU UART perspective used by `Serial2.begin(baud, mode, rxPin, txPin)`.
 
 - Check the existing wall pad RS485 bus termination first.
 - When attaching this diagnostics device in parallel, duplicate termination can reduce signal quality.

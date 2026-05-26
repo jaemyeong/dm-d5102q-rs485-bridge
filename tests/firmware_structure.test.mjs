@@ -88,7 +88,7 @@ for (const symbol of [
   "beginResponse_P",
   "Content-Encoding",
   "gzip",
-  "0.1.2",
+  "0.1.3",
   "uint32_t baud = 3840",
   "Preferences",
   "Update",
@@ -118,9 +118,9 @@ const atomS3LiteBoard = readFileSync(join(root, "firmware/atoms3-lite/board_conf
 assert.doesNotMatch(webServer, /LittleFS\.begin|serveStatic/, "web UI must be embedded in firmware, not served from LittleFS");
 assert.doesNotMatch(otaManager, /U_LITTLEFS|LittleFS/, "OTA must flash a single firmware image only");
 assert.match(rs485Driver, /RS485_DE_PIN\s*>=\s*0/, "RS485 DE pin must be optional for Tail485");
-assert.match(atomLiteBoard, /#define RS485_RX_PIN 26/, "Atom Lite Tail485 RX must read Tail485 TX on GPIO26");
-assert.match(atomLiteBoard, /#define RS485_TX_PIN 32/, "Atom Lite Tail485 TX must drive Tail485 RX on GPIO32");
+assert.match(atomLiteBoard, /#define RS485_RX_PIN 32/, "Atom Lite UART RX must use GPIO32 with Tail485");
+assert.match(atomLiteBoard, /#define RS485_TX_PIN 26/, "Atom Lite UART TX must use GPIO26 with Tail485");
 assert.match(atomLiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin");
-assert.match(atomS3LiteBoard, /#define RS485_RX_PIN 2/, "AtomS3 Lite Tail485 RX must read Tail485 TX on PORT.CUSTOM GPIO2");
-assert.match(atomS3LiteBoard, /#define RS485_TX_PIN 1/, "AtomS3 Lite Tail485 TX must drive Tail485 RX on PORT.CUSTOM GPIO1");
+assert.match(atomS3LiteBoard, /#define RS485_RX_PIN 1/, "AtomS3 Lite UART RX must use PORT.CUSTOM GPIO1 with Tail485");
+assert.match(atomS3LiteBoard, /#define RS485_TX_PIN 2/, "AtomS3 Lite UART TX must use PORT.CUSTOM GPIO2 with Tail485");
 assert.match(atomS3LiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin on AtomS3 Lite");

@@ -22,13 +22,15 @@
 | 매크로 | AtomS3-Lite | Atom-Lite | 상태 |
 |---|---|---|---|
 | `RS485_UART_NUM` | 2 | 2 | 설정값 |
-| `RS485_RX_PIN` | G2 | G26 | Tail485 TX 수신 |
-| `RS485_TX_PIN` | G1 | G32 | Tail485 RX 구동 |
+| `RS485_RX_PIN` | G1 | G32 | MCU UART RX |
+| `RS485_TX_PIN` | G2 | G26 | MCU UART TX |
 | `RS485_DE_PIN` | -1 | -1 | Tail485 자체 제어 |
 | `STATUS_LED_PIN` | G35 | G27 | 내장 RGB |
 | `FACTORY_RESET_BTN_PIN` | G41 | G39 | BtnA |
 
 ## 종단저항
+
+Tail485 문서의 `TX/RX` 표기는 모듈 라벨 기준과 Arduino UART 인자 기준이 혼동되기 쉽습니다. 펌웨어 매크로는 `Serial2.begin(baud, mode, rxPin, txPin)`의 MCU UART 기준으로 정의합니다.
 
 - 기존 월패드 RS485 버스의 종단 상태를 먼저 확인합니다.
 - 디버깅 장비를 병렬로 붙이는 경우 중복 종단저항이 통신 품질을 낮출 수 있습니다.
