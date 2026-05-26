@@ -1,0 +1,68 @@
+# Arduino / ESP32 build outputs
+build/
+*.elf
+*.map
+*.bin
+*.hex
+*.uf2
+*.o
+*.a
+*.d
+*.lst
+*.su
+*.stackdump
+
+# LittleFS / filesystem images
+*.littlefs.bin
+littlefs.bin
+spiffs.bin
+*.spiffs.bin
+*.img
+
+# Local firmware secrets and generated board files
+secrets.h
+firmware/*/secrets.h
+firmware/*/data/*.bin
+firmware/*/build/
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Capture binaries and raw protocol logs
+captures/*
+!captures/.gitkeep
+!captures/README.md
+!captures/README.en.md
+*.pcap
+*.pcapng
+*.logicdata
+*.sal
+
+# IDE and editor metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+
+# macOS and OS junk
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+
+# Agent and local tool state
+.antigravitycli/
+.serena/cache/
+.serena/logs/
+.serena/project.local.yml

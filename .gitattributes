@@ -1,0 +1,35 @@
+* text=auto eol=lf
+
+*.ino text eol=lf linguist-language=C++
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.c text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.csv text eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.bin binary
+*.elf binary
+*.uf2 binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+
+captures/* -text
+captures/.gitkeep text eol=lf
+captures/*.md text eol=lf
