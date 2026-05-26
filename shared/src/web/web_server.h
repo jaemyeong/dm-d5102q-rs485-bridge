@@ -26,12 +26,10 @@ class WebServer {
   void broadcastPacket(const Packet& packet);
   OtaManager& ota();
 
- public:
-  void updateCredentials(const SecurityConfig& security);
-
  private:
   using BodyHandler = void (*)(WebServer*, AsyncWebServerRequest*, const String&);
 
+  void updateCredentials(const SecurityConfig& security);
   void sendJson(AsyncWebServerRequest* request, JsonDocument& doc, int status = 200);
   void sendError(AsyncWebServerRequest* request, int status, const char* code);
   void registerRoutes();
@@ -43,6 +41,7 @@ class WebServer {
   void handleWsText(AsyncWebSocketClient* client, const String& text);
   static void collectBody(WebServer* self, AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total, BodyHandler handler);
 
+  AsyncAuthenticationMiddleware authMiddleware_;
   AsyncWebServer server_{80};
   AsyncWebSocket ws_{"/ws/console"};
   DeviceConfig* config_ = nullptr;
@@ -56,7 +55,6 @@ class WebServer {
   FactoryResetHandler resetHandler_ = nullptr;
   void* resetCtx_ = nullptr;
   OtaManager ota_;
-  AsyncAuthenticationMiddleware authMiddleware_;
 };
 
 }  // namespace dm
