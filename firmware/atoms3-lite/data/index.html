@@ -1,0 +1,2027 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DM-D5102Q RS485 TCP Bridge</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #101112;
+      --surface: #191b1d;
+      --surface-2: #202326;
+      --surface-3: #282c30;
+      --border: #30343a;
+      --border-2: #454b54;
+      --fg: #f4f7fb;
+      --fg-muted: #c5ced8;
+      --fg-dim: #8b96a3;
+      --fg-faint: #5d6875;
+      --rx: #22c55e;
+      --tx: #3b82f6;
+      --err: #ef4444;
+      --warn: #f59e0b;
+      --sys: #9ca3af;
+      --cyan: #22b8cf;
+      --purple: #a855f7;
+      --rx-soft: rgba(34, 197, 94, 0.12);
+      --tx-soft: rgba(59, 130, 246, 0.14);
+      --err-soft: rgba(239, 68, 68, 0.14);
+      --warn-soft: rgba(245, 158, 11, 0.14);
+      --radius: 6px;
+      --radius-sm: 4px;
+      --nav-h: 46px;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+      --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      --focus: 0 0 0 2px rgba(59, 130, 246, 0.36);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--ui);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled,
+    input:disabled,
+    select:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: var(--nav-h);
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(25, 27, 29, 0.96);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 8px;
+      height: 8px;
+      background: var(--rx);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.7);
+    }
+
+    .nav-tabs {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+    }
+
+    .nav-tabs button {
+      appearance: none;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--fg-dim);
+      padding: 0 13px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .nav-tabs button:hover,
+    .nav-tabs button.active {
+      color: var(--fg);
+    }
+
+    .nav-tabs button.active {
+      border-bottom-color: var(--tx);
+    }
+
+    .top-state {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border);
+      color: var(--fg-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .led {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--rx);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .led i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .led.warn { color: var(--warn); }
+    .led.err { color: var(--err); }
+    .led.tx { color: var(--tx); }
+    .led.cyan { color: var(--cyan); }
+    .led.pulse i { animation: pulse 1s steps(2, end) infinite; }
+
+    @keyframes pulse {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0.28; }
+    }
+
+    .page {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .page[hidden] {
+      display: none;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .page-head h1 {
+      font-size: 22px;
+      line-height: 1.1;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      color: var(--fg-faint);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card,
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .eyebrow {
+      color: var(--fg-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .card-body {
+      padding: 12px;
+    }
+
+    .metric {
+      min-height: 98px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 7px;
+    }
+
+    .metric .label {
+      color: var(--fg-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .metric .value {
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    .metric .unit {
+      color: var(--fg-dim);
+      font-size: 11px;
+      font-weight: 500;
+      margin-left: 4px;
+    }
+
+    .metric .hint {
+      color: var(--fg-faint);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .good { color: var(--rx) !important; }
+    .warn { color: var(--warn) !important; }
+    .bad { color: var(--err) !important; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 22px;
+      padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--fg-dim);
+      background: transparent;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .pill.ok { color: var(--rx); background: var(--rx-soft); border-color: rgba(34, 197, 94, 0.35); }
+    .pill.info { color: var(--tx); background: var(--tx-soft); border-color: rgba(59, 130, 246, 0.35); }
+    .pill.warn { color: var(--warn); background: var(--warn-soft); border-color: rgba(245, 158, 11, 0.35); }
+    .pill.err { color: var(--err); background: var(--err-soft); border-color: rgba(239, 68, 68, 0.35); }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 112px 1fr;
+      gap: 5px 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .kv .k { color: var(--fg-dim); }
+    .kv .v { color: var(--fg); min-width: 0; overflow-wrap: anywhere; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .toolbar .grow {
+      flex: 1;
+    }
+
+    .chip,
+    .icon-btn,
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--fg-dim);
+      transition: background 90ms ease, border-color 90ms ease, color 90ms ease;
+    }
+
+    .chip {
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .chip:hover,
+    .chip.active,
+    .icon-btn:hover,
+    .btn:hover {
+      color: var(--fg);
+      background: var(--surface-2);
+      border-color: var(--border-2);
+    }
+
+    .chip.rx.active { color: var(--rx); border-color: rgba(34, 197, 94, 0.5); }
+    .chip.tx.active { color: var(--tx); border-color: rgba(59, 130, 246, 0.55); }
+    .chip.err.active { color: var(--err); border-color: rgba(239, 68, 68, 0.5); }
+    .chip.sys.active { color: var(--sys); }
+
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      display: inline-grid;
+      place-items: center;
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .btn {
+      min-height: 34px;
+      padding: 0 12px;
+      color: var(--fg);
+      font-weight: 700;
+    }
+
+    .btn.primary {
+      color: #fff;
+      background: var(--tx);
+      border-color: var(--tx);
+    }
+
+    .btn.danger {
+      color: var(--err);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .btn.ghost {
+      color: var(--fg-dim);
+      border-color: transparent;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .field label,
+    .field .label {
+      color: var(--fg-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      color: var(--fg);
+      outline: none;
+      padding: 7px 9px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--border-2);
+      box-shadow: var(--focus);
+    }
+
+    input.invalid {
+      border-color: var(--err);
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+    }
+
+    .hint {
+      color: var(--fg-faint);
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .form-grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .note {
+      color: var(--fg-faint);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.03em;
+    }
+
+    .console-wrap {
+      display: grid;
+      grid-template-rows: auto minmax(280px, 1fr) auto;
+      gap: 10px;
+      height: calc(100vh - var(--nav-h) - 92px);
+      min-height: 500px;
+    }
+
+    .console {
+      overflow: auto;
+      padding: 7px 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .console-line {
+      display: grid;
+      grid-template-columns: 116px 58px 1fr;
+      gap: 10px;
+      align-items: baseline;
+      padding: 2px 12px;
+      white-space: nowrap;
+    }
+
+    .console-line:hover {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .console-line .ts {
+      color: var(--fg-faint);
+    }
+
+    .console-line .tag {
+      color: var(--sys);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .console-line.rx .tag { color: var(--rx); }
+    .console-line.tx .tag { color: var(--tx); }
+    .console-line.err .tag { color: var(--err); }
+
+    .console-line.err .body {
+      color: var(--err);
+    }
+
+    .console-line .body {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    mark {
+      background: rgba(245, 158, 11, 0.38);
+      color: var(--fg);
+      padding: 0 2px;
+    }
+
+    .tx-panel {
+      display: grid;
+      grid-template-columns: 54px 1fr auto auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .tx-panel .prefix {
+      color: var(--tx);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+    }
+
+    .scanner-table {
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .scanner-row,
+    .scanner-head {
+      display: grid;
+      grid-template-columns: 56px 110px minmax(160px, 1fr) 82px 90px 86px;
+      align-items: center;
+      min-width: 650px;
+      padding: 7px 12px;
+      gap: 8px;
+    }
+
+    .scanner-head {
+      color: var(--fg-dim);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .scanner-row {
+      border-top: 1px solid rgba(255, 255, 255, 0.035);
+    }
+
+    .bar {
+      height: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: var(--bg);
+    }
+
+    .bar i {
+      display: block;
+      height: 100%;
+      background: var(--tx);
+    }
+
+    .progress {
+      height: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: var(--bg);
+    }
+
+    .progress i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--tx);
+      transition: width 140ms ease;
+    }
+
+    .ap-shell {
+      min-height: calc(100vh - var(--nav-h));
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .provision-card {
+      width: 100%;
+      max-width: 430px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .ssid-list {
+      max-height: 176px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+    }
+
+    .ssid-row {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+      color: var(--fg-muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .ssid-row:last-child {
+      border-bottom: 0;
+    }
+
+    .ssid-row:hover,
+    .ssid-row.selected {
+      background: var(--tx-soft);
+      color: var(--fg);
+    }
+
+    .drop {
+      display: grid;
+      place-items: center;
+      gap: 6px;
+      min-height: 170px;
+      padding: 24px;
+      border: 1px dashed var(--border-2);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--fg-dim);
+      text-align: center;
+      font-family: var(--mono);
+    }
+
+    .drop.drag {
+      border-color: var(--tx);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .drop strong {
+      color: var(--fg);
+      font-size: 14px;
+    }
+
+    .toast-stack {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 50;
+      display: grid;
+      gap: 8px;
+      width: min(360px, calc(100vw - 24px));
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--tx);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+      color: var(--fg);
+    }
+
+    .toast::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      background: var(--tx);
+    }
+
+    .toast.ok { border-left-color: var(--rx); }
+    .toast.ok::before { background: var(--rx); }
+    .toast.warn { border-left-color: var(--warn); }
+    .toast.warn::before { background: var(--warn); }
+    .toast.err { border-left-color: var(--err); }
+    .toast.err::before { background: var(--err); }
+
+    .about-device {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .device-chip {
+      height: 96px;
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius-sm);
+      background: linear-gradient(180deg, #2d3238, #181b1f);
+      display: grid;
+      grid-template-rows: 1fr auto;
+      padding: 9px;
+      font-family: var(--mono);
+    }
+
+    .device-chip i {
+      width: 7px;
+      height: 7px;
+      background: var(--rx);
+      box-shadow: 0 0 7px var(--rx);
+    }
+
+    .device-chip span {
+      color: var(--fg-dim);
+      text-align: center;
+      font-size: 9px;
+      line-height: 1.25;
+    }
+
+    @media (max-width: 880px) {
+      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .top-state .hide-md { display: none; }
+    }
+
+    @media (max-width: 680px) {
+      .topbar {
+        gap: 6px;
+        padding: 0 8px;
+      }
+
+      .brand {
+        padding-right: 8px;
+      }
+
+      .brand span:last-child {
+        display: none;
+      }
+
+      .top-state {
+        display: none;
+      }
+
+      .page {
+        padding: 12px;
+      }
+
+      .page-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .grid-2,
+      .grid-3,
+      .grid-4,
+      .form-grid,
+      .form-grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      .console-wrap {
+        height: calc(100vh - var(--nav-h) - 80px);
+        min-height: 420px;
+      }
+
+      .console-line {
+        grid-template-columns: 108px 50px 1fr;
+        gap: 7px;
+        padding: 2px 8px;
+      }
+
+      .tx-panel {
+        grid-template-columns: 1fr auto;
+      }
+
+      .tx-panel .prefix,
+      .tx-panel label {
+        display: none;
+      }
+
+      .kv {
+        grid-template-columns: 94px 1fr;
+      }
+
+      .about-device {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span>DM-D5102Q</span>
+      </div>
+      <nav class="nav-tabs" aria-label="Primary">
+        <button type="button" data-route="dashboard" class="active">Dashboard</button>
+        <button type="button" data-route="console">Console</button>
+        <button type="button" data-route="scanner">Scanner</button>
+        <button type="button" data-route="settings">Settings</button>
+        <button type="button" data-route="provisioning">Provisioning</button>
+        <button type="button" data-route="ota">OTA</button>
+        <button type="button" data-route="about">About</button>
+      </nav>
+      <div class="top-state">
+        <span id="ledState" class="led cyan"><i></i><span>TCP</span></span>
+        <span id="navIp">192.168.4.18</span>
+        <span id="navRssi" class="hide-md">-54 dBm</span>
+        <span id="navUptime" class="hide-md">00:00:00</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="page" id="page-dashboard" data-route="dashboard">
+        <div class="page-head">
+          <h1>Status Dashboard</h1>
+          <span class="sub">Device state - live</span>
+        </div>
+
+        <div class="grid-4">
+          <article class="metric">
+            <div class="label">Wi-Fi RSSI</div>
+            <div class="value"><span data-metric="rssi">-54</span><span class="unit">dBm</span></div>
+            <div class="hint good" data-metric="rssi_quality">strong</div>
+          </article>
+          <article class="metric">
+            <div class="label">Uptime</div>
+            <div class="value" data-metric="uptime">00:00:00</div>
+            <div class="hint">since boot</div>
+          </article>
+          <article class="metric">
+            <div class="label">Heap</div>
+            <div class="value"><span data-metric="heap_free_kb">188</span><span class="unit">KiB</span></div>
+            <div class="hint" data-metric="heap_hint">free RAM</div>
+          </article>
+          <article class="metric">
+            <div class="label">TCP Clients</div>
+            <div class="value"><span data-metric="tcp_clients">1</span><span class="unit">/ <span data-metric="max_clients">2</span></span></div>
+            <div class="hint">bridge sessions</div>
+          </article>
+        </div>
+
+        <div class="grid-3">
+          <article class="metric">
+            <div class="label">RX Packets</div>
+            <div class="value" data-metric="rx_packets">4,218</div>
+            <div class="hint good"><span data-metric="rx_rate">12</span>/s</div>
+          </article>
+          <article class="metric">
+            <div class="label">TX Packets</div>
+            <div class="value" data-metric="tx_packets">1,027</div>
+            <div class="hint"><span data-metric="tx_rate">3</span>/s</div>
+          </article>
+          <article class="metric">
+            <div class="label">Queue Usage</div>
+            <div class="value"><span data-metric="queue_usage">18</span><span class="unit">%</span></div>
+            <div class="hint" data-metric="queue_hint">RX queue ok</div>
+          </article>
+        </div>
+
+        <div class="grid-3">
+          <article class="metric">
+            <div class="label">UART Overflow</div>
+            <div class="value" data-metric="uart_overflow">0</div>
+            <div class="hint good">hardware FIFO</div>
+          </article>
+          <article class="metric">
+            <div class="label">Queue Overflow</div>
+            <div class="value" data-metric="queue_overflow">0</div>
+            <div class="hint good">software queue</div>
+          </article>
+          <article class="metric">
+            <div class="label">Dropped Packets</div>
+            <div class="value" data-metric="dropped_packets">0</div>
+            <div class="hint good">Overflow monitor clean</div>
+          </article>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-head">
+              <span class="eyebrow">Wi-Fi</span>
+              <span class="pill ok" data-status="wifi">Connected</span>
+            </div>
+            <div class="card-body kv">
+              <span class="k">SSID</span><span class="v" data-field="ssid">atom-lab-5g</span>
+              <span class="k">IP Address</span><span class="v" data-field="ip">192.168.4.18</span>
+              <span class="k">RSSI</span><span class="v"><span data-field="rssi">-54</span> dBm</span>
+              <span class="k">MAC</span><span class="v" data-field="mac">8C:4F:00:1A:B2:C0</span>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <span class="eyebrow">RS485</span>
+              <span class="pill info" data-field="baud_pill">115200 bps</span>
+            </div>
+            <div class="card-body kv">
+              <span class="k">Baud</span><span class="v" data-field="baud">115200</span>
+              <span class="k">Format</span><span class="v" data-field="uart_format">8N1</span>
+              <span class="k">Framing</span><span class="v" data-field="framing">inter-byte, 20 ms</span>
+              <span class="k">Half Duplex</span><span class="v">TX enable, flush wait, RX restore</span>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <span class="eyebrow">TCP Bridge</span>
+              <span class="pill ok" data-field="tcp_state">Listening</span>
+            </div>
+            <div class="card-body kv">
+              <span class="k">Mode</span><span class="v" data-field="tcp_mode">server</span>
+              <span class="k">Host</span><span class="v" data-field="tcp_host">0.0.0.0</span>
+              <span class="k">Port</span><span class="v" data-field="tcp_port">502</span>
+              <span class="k">Policy</span><span class="v">broadcast RX, queued TX writer</span>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <span class="eyebrow">System</span>
+              <span class="pill" data-field="version">0.1.0</span>
+            </div>
+            <div class="card-body kv">
+              <span class="k">Device</span><span class="v" data-field="device_name">bridge</span>
+              <span class="k">Board</span><span class="v" data-field="board">M5Stack AtomS3 Lite</span>
+              <span class="k">Build</span><span class="v" data-field="build">local</span>
+              <span class="k">Auth</span><span class="v">Basic Auth capable</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-console" data-route="console" hidden>
+        <div class="page-head">
+          <h1>RS485 Console</h1>
+          <span class="sub"><span id="visibleLineCount">0</span>/<span id="lineCount">0</span> lines - max 300</span>
+        </div>
+
+        <div class="console-wrap">
+          <div class="toolbar">
+            <button class="chip rx active" type="button" data-filter="rx">RX</button>
+            <button class="chip tx active" type="button" data-filter="tx">TX</button>
+            <button class="chip err active" type="button" data-filter="err">ERROR</button>
+            <button class="chip sys active" type="button" data-filter="system">SYSTEM</button>
+            <input id="consoleSearch" aria-label="HEX contains filter" placeholder="HEX contains... AA 55">
+            <label class="note"><input id="autoScroll" type="checkbox" checked> auto scroll</label>
+            <span class="grow"></span>
+            <button id="pauseConsole" class="icon-btn" type="button" title="Pause">||</button>
+            <button id="copyConsole" class="icon-btn" type="button" title="Copy visible">C</button>
+            <button id="clearConsole" class="icon-btn" type="button" title="Clear">X</button>
+          </div>
+
+          <div class="console" id="consoleOutput" aria-live="polite"></div>
+
+          <form class="tx-panel" id="txForm">
+            <span class="prefix">HEX TX</span>
+            <input id="txHex" autocomplete="off" spellcheck="false" value="AA 55 01 03 00 FF" aria-label="HEX TX input">
+            <label class="note"><input id="txConfirm" type="checkbox"> confirm</label>
+            <button id="txSend" class="btn primary" type="submit">Send</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="page" id="page-scanner" data-route="scanner" hidden>
+        <div class="page-head">
+          <h1>Baud Scanner</h1>
+          <span class="sub">RS485 sampling - bridge pause recommended</span>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-head">
+              <span class="eyebrow">Parameters</span>
+              <span class="pill" id="scannerPhase">Idle</span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="field"><label for="scanStart">Start Baud</label><input id="scanStart" type="number" min="300" max="921600" value="9600"></div>
+                <div class="field"><label for="scanEnd">End Baud</label><input id="scanEnd" type="number" min="300" max="921600" value="115200"></div>
+                <div class="field"><label for="scanStep">Step</label><input id="scanStep" type="number" min="1" value="9600"></div>
+                <div class="field"><label for="scanSample">Sample ms</label><input id="scanSample" type="number" min="50" value="500"></div>
+              </div>
+              <div class="actions">
+                <span class="note">TCP bridge pauses while scanner owns UART.</span>
+                <button id="stopScan" class="btn danger" type="button" disabled>Stop</button>
+                <button id="startScan" class="btn primary" type="button">Start scan</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <span class="eyebrow">Progress</span>
+              <span class="pill info" id="scanProgressLabel">0%</span>
+            </div>
+            <div class="card-body">
+              <div class="progress" aria-label="Scanner progress"><i id="scanProgress"></i></div>
+              <div class="kv" style="margin-top: 12px;">
+                <span class="k">Cursor</span><span class="v" id="scanCursor">-</span>
+                <span class="k">Top Candidate</span><span class="v" id="scanTop">-</span>
+                <span class="k">Samples</span><span class="v" id="scanSamples">0</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-head">
+            <span class="eyebrow">Top candidates</span>
+            <span class="pill" id="candidateCount">0 rows</span>
+          </div>
+          <div class="scanner-table">
+            <div class="scanner-head">
+              <span>Rank</span><span>Baud</span><span>Distribution</span><span>Score</span><span>RX Bytes</span><span>Apply</span>
+            </div>
+            <div id="scannerRows"></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="page" id="page-settings" data-route="settings" hidden>
+        <div class="page-head">
+          <h1>Settings</h1>
+          <span class="sub">NVS save - reboot required</span>
+        </div>
+
+        <form id="settingsForm">
+          <div class="grid-2">
+            <article class="card">
+              <div class="card-head"><span class="eyebrow">Wi-Fi</span><span class="pill info">STA</span></div>
+              <div class="card-body form-grid">
+                <div class="field"><label for="cfgSsid">SSID</label><input id="cfgSsid" name="ssid" autocomplete="username"></div>
+                <div class="field"><label for="cfgWifiPass">Password</label><input id="cfgWifiPass" name="wifi_password" type="password" autocomplete="current-password" placeholder="unchanged"></div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head"><span class="eyebrow">RS485 UART</span><span class="pill info">8N1</span></div>
+              <div class="card-body form-grid">
+                <div class="field"><label for="cfgBaud">Baud Rate</label><select id="cfgBaud" name="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select></div>
+                <div class="field"><label for="cfgDataBits">Data Bits</label><select id="cfgDataBits" name="data_bits"><option>7</option><option>8</option></select></div>
+                <div class="field"><label for="cfgStopBits">Stop Bits</label><select id="cfgStopBits" name="stop_bits"><option>1</option><option>2</option></select></div>
+                <div class="field"><label for="cfgParity">Parity</label><select id="cfgParity" name="parity"><option value="none">none</option><option value="even">even</option><option value="odd">odd</option></select></div>
+                <div class="field"><label for="cfgFraming">Packet Framing</label><select id="cfgFraming" name="framing"><option value="inter-byte">inter-byte</option><option value="delimiter">delimiter</option><option value="length">length-based</option></select></div>
+                <div class="field"><label for="cfgIdleGap">Idle Gap ms</label><input id="cfgIdleGap" name="idle_gap_ms" type="number" min="1" max="1000" value="20"><span class="hint">default packet split: 20 ms</span></div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head"><span class="eyebrow">TCP Bridge</span><span class="pill ok">server/client</span></div>
+              <div class="card-body form-grid">
+                <div class="field"><label for="cfgTcpMode">Mode</label><select id="cfgTcpMode" name="tcp_mode"><option value="server">server</option><option value="client">client</option></select></div>
+                <div class="field"><label for="cfgTcpHost">Host</label><input id="cfgTcpHost" name="tcp_host" value="0.0.0.0"></div>
+                <div class="field"><label for="cfgTcpPort">Port</label><input id="cfgTcpPort" name="tcp_port" type="number" min="1" max="65535" value="502"></div>
+                <div class="field"><label for="cfgMaxClients">Max Clients</label><input id="cfgMaxClients" name="max_clients" type="number" min="1" max="4" value="2"><span class="hint">minimum 1, maximum 4</span></div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head"><span class="eyebrow">Console and Device</span><span class="pill">bounded</span></div>
+              <div class="card-body form-grid">
+                <div class="field"><label for="cfgDeviceName">Device Name</label><input id="cfgDeviceName" name="device_name" value="bridge"></div>
+                <div class="field"><label for="cfgConsoleLimit">Console Lines</label><input id="cfgConsoleLimit" name="console_limit" type="number" min="50" max="500" value="300"></div>
+                <div class="field"><label for="cfgApPassword">AP Password</label><input id="cfgApPassword" name="ap_password" type="password" autocomplete="new-password" placeholder="optional"></div>
+                <div class="field"><label for="cfgBasicAuth">Basic Auth</label><select id="cfgBasicAuth" name="basic_auth"><option value="enabled">enabled</option><option value="disabled">disabled</option></select></div>
+              </div>
+              <div class="card-body" style="border-top: 1px solid var(--border);">
+                <button id="factoryReset" class="btn danger" type="button">Factory Reset</button>
+                <span class="note">Boot with BtnA held for 5 seconds to confirm on device.</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="actions">
+            <span class="note" id="settingsNote">no changes</span>
+            <button class="btn ghost" id="reloadConfig" type="button">Reload</button>
+            <button class="btn primary" type="submit">Save & Reboot</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="page" id="page-provisioning" data-route="provisioning" hidden>
+        <div class="ap-shell">
+          <div class="provision-card">
+            <div class="page-head">
+              <h1>Wi-Fi Provisioning</h1>
+              <span class="pill info">AP mode</span>
+            </div>
+            <p class="note" style="margin-bottom: 14px;">Use when saved Wi-Fi is missing, connection timeout occurs, or Factory Reset clears NVS.</p>
+            <form id="provisionForm">
+              <div class="field" style="margin-bottom: 10px;">
+                <span class="label">Detected Networks</span>
+                <div class="ssid-list" id="ssidList"></div>
+              </div>
+              <div class="form-grid">
+                <div class="field"><label for="provSsid">SSID</label><input id="provSsid" name="ssid" autocomplete="username" required></div>
+                <div class="field"><label for="provPass">Password</label><input id="provPass" name="password" type="password" autocomplete="current-password" placeholder="optional"></div>
+              </div>
+              <div class="actions">
+                <span class="note">Save -> NVS -> ESP.restart() -> STA retry</span>
+                <button class="btn primary" type="submit">Save & Reboot</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="page-ota" data-route="ota" hidden>
+        <div class="page-head">
+          <h1>OTA Update</h1>
+          <span class="sub">Firmware upload - auto reboot</span>
+        </div>
+
+        <article class="card">
+          <div class="card-head">
+            <span class="eyebrow">Firmware</span>
+            <span class="pill" id="otaPhase">Waiting</span>
+          </div>
+          <div class="card-body">
+            <form id="otaForm">
+              <label class="drop" id="otaDrop" for="otaFile">
+                <strong>Drop firmware.bin here</strong>
+                <span>single .bin only - max 4 MiB - posts to /update</span>
+                <input id="otaFile" type="file" accept=".bin" hidden>
+              </label>
+              <div class="kv" style="margin-top: 12px;">
+                <span class="k">Selected</span><span class="v" id="otaFileName">none</span>
+                <span class="k">Progress</span><span class="v" id="otaProgressText">0%</span>
+              </div>
+              <div class="progress" style="margin-top: 10px;"><i id="otaProgress"></i></div>
+              <div class="actions">
+                <span class="note warn">Device reboots automatically after verified flash.</span>
+                <button class="btn ghost" type="button" id="otaClear">Discard</button>
+                <button class="btn primary" type="submit" id="otaUpload" disabled>Upload & Flash</button>
+              </div>
+            </form>
+          </div>
+        </article>
+      </section>
+
+      <section class="page" id="page-about" data-route="about" hidden>
+        <div class="page-head">
+          <h1>About</h1>
+          <span class="sub">Embedded RS485 Packet Sniffer + TCP Gateway</span>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-body about-device">
+              <div class="device-chip"><i></i><span>AtomS3<br>Lite</span></div>
+              <div>
+                <div class="eyebrow">Device</div>
+                <h2 style="font-size: 20px; margin-top: 4px;">DM-D5102Q Bridge</h2>
+                <p class="note" style="margin-top: 6px;">RS485 Packet Capture, TCP Bridge, WebSocket Debug Console, HEX Packet Injector, OTA-enabled Wi-Fi tool.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head"><span class="eyebrow">Runtime</span><span class="pill">C++17 / Arduino</span></div>
+            <div class="card-body kv">
+              <span class="k">MCU</span><span class="v">ESP32-S3</span>
+              <span class="k">Interface</span><span class="v">Atom RS485</span>
+              <span class="k">Storage</span><span class="v">Preferences NVS + LittleFS assets</span>
+              <span class="k">Console</span><span class="v">WebSocket batching, 20-100 ms target</span>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const MAX_CONSOLE_LINES = 300;
+    const MAX_TX_BYTES = 256;
+    const CONSOLE_BATCH_MS = 50;
+    const STATUS_POLL_MS = 1500;
+    const LOCAL_DEMO_HOSTS = new Set(["", "127.0.0.1", "localhost"]);
+    const LOCAL_DEMO = LOCAL_DEMO_HOSTS.has(location.hostname);
+
+    const demoState = {
+      wifi: { ssid: "atom-lab-5g", ip: "192.168.4.18", mac: "8C:4F:00:1A:B2:C0", rssi: -54, connected: true },
+      uart: { baud: 115200, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
+      tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
+      console: { limit: 300 },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.0", build: "local" },
+      metrics: {
+        uptime_sec: 8049,
+        heap_free: 192512,
+        heap_total: 327680,
+        rx_packets: 4218,
+        tx_packets: 1027,
+        rx_rate: 12,
+        tx_rate: 3,
+        queue_usage: 18,
+        uart_overflow: 0,
+        queue_overflow: 0,
+        dropped_packets: 0
+      }
+    };
+
+    const state = structuredCloneSafe(demoState);
+    const consoleLines = [];
+    const pendingPackets = [];
+    const filters = { rx: true, tx: true, err: true, system: true };
+    let activeRoute = "dashboard";
+    let consolePaused = false;
+    let socket = null;
+    let selectedOtaFile = null;
+    let scanTimer = null;
+    let scanResults = [];
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+    function structuredCloneSafe(value) {
+      if (typeof structuredClone === "function") return structuredClone(value);
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function pad(value, width) {
+      return String(value).padStart(width, "0");
+    }
+
+    function formatUptime(totalSeconds) {
+      const days = Math.floor(totalSeconds / 86400);
+      const h = Math.floor((totalSeconds % 86400) / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      const clock = `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)}`;
+      return days ? `${days}d ${clock}` : clock;
+    }
+
+    function timestamp() {
+      const d = new Date();
+      return `[${pad(d.getHours(), 2)}:${pad(d.getMinutes(), 2)}:${pad(d.getSeconds(), 2)}.${pad(d.getMilliseconds(), 3)}]`;
+    }
+
+    async function api(path, options = {}) {
+      if (LOCAL_DEMO) throw new Error(`local_demo:${path}`);
+      const headers = Object.assign({ "Accept": "application/json" }, options.headers || {});
+      if (options.body && !(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
+      const res = await fetch(path, Object.assign({}, options, { headers }));
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const text = await res.text();
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        return { ok: true, data: text };
+      }
+    }
+
+    function normalizeStatus(payload) {
+      const data = payload && payload.data ? payload.data : payload || {};
+      return {
+        wifi: Object.assign({}, state.wifi, data.wifi || {
+          ssid: data.ssid,
+          ip: data.ip,
+          mac: data.mac,
+          rssi: data.rssi,
+          connected: data.wifi_connected
+        }),
+        uart: Object.assign({}, state.uart, data.uart || {
+          baud: data.baud,
+          data_bits: data.data_bits,
+          stop_bits: data.stop_bits,
+          parity: data.parity,
+          framing: data.framing,
+          idle_gap_ms: data.idle_gap_ms
+        }),
+        tcp: Object.assign({}, state.tcp, data.tcp || {
+          mode: data.tcp_mode,
+          host: data.tcp_host,
+          port: data.tcp_port,
+          clients: data.tcp_clients,
+          max_clients: data.max_clients,
+          connected: data.tcp_connected
+        }),
+        device: Object.assign({}, state.device, data.device || {
+          name: data.device_name,
+          board: data.board,
+          version: data.version,
+          build: data.build
+        }),
+        metrics: Object.assign({}, state.metrics, data.metrics || {
+          uptime_sec: data.uptime_sec,
+          heap_free: data.heap_free,
+          heap_total: data.heap_total,
+          rx_packets: data.rx_count,
+          tx_packets: data.tx_count,
+          rx_rate: data.rx_rate,
+          tx_rate: data.tx_rate,
+          queue_usage: data.queue_usage,
+          uart_overflow: data.uart_overflow,
+          queue_overflow: data.queue_overflow,
+          dropped_packets: data.dropped_packets
+        })
+      };
+    }
+
+    function mergeDefined(target, source) {
+      for (const [key, value] of Object.entries(source)) {
+        if (value !== undefined && value !== null) target[key] = value;
+      }
+    }
+
+    function setText(selector, value) {
+      const el = $(selector);
+      if (el) el.textContent = value;
+    }
+
+    function renderDashboard() {
+      setText("[data-metric='rssi']", state.wifi.rssi);
+      setText("[data-metric='rssi_quality']", state.wifi.rssi > -60 ? "strong" : state.wifi.rssi > -75 ? "ok" : "weak");
+      setText("[data-metric='uptime']", formatUptime(state.metrics.uptime_sec));
+      setText("[data-metric='heap_free_kb']", Math.round(state.metrics.heap_free / 1024));
+      setText("[data-metric='heap_hint']", `${Math.round((state.metrics.heap_free / state.metrics.heap_total) * 100)}% free`);
+      setText("[data-metric='tcp_clients']", state.tcp.clients);
+      setText("[data-metric='max_clients']", state.tcp.max_clients);
+      setText("[data-metric='rx_packets']", Number(state.metrics.rx_packets).toLocaleString());
+      setText("[data-metric='tx_packets']", Number(state.metrics.tx_packets).toLocaleString());
+      setText("[data-metric='rx_rate']", state.metrics.rx_rate);
+      setText("[data-metric='tx_rate']", state.metrics.tx_rate);
+      setText("[data-metric='queue_usage']", state.metrics.queue_usage);
+      setText("[data-metric='queue_hint']", state.metrics.queue_usage > 75 ? "queue pressure" : "RX queue ok");
+      setText("[data-metric='uart_overflow']", state.metrics.uart_overflow);
+      setText("[data-metric='queue_overflow']", state.metrics.queue_overflow);
+      setText("[data-metric='dropped_packets']", state.metrics.dropped_packets);
+
+      setText("[data-field='ssid']", state.wifi.ssid);
+      setText("[data-field='ip']", state.wifi.ip);
+      setText("[data-field='rssi']", state.wifi.rssi);
+      setText("[data-field='mac']", state.wifi.mac);
+      setText("[data-field='baud']", state.uart.baud);
+      setText("[data-field='baud_pill']", `${state.uart.baud} bps`);
+      setText("[data-field='uart_format']", uartFormat());
+      setText("[data-field='framing']", `${state.uart.framing}, ${state.uart.idle_gap_ms} ms`);
+      setText("[data-field='tcp_mode']", state.tcp.mode);
+      setText("[data-field='tcp_host']", state.tcp.host);
+      setText("[data-field='tcp_port']", state.tcp.port);
+      setText("[data-field='tcp_state']", state.tcp.mode === "server" ? "Listening" : "Client");
+      setText("[data-field='device_name']", state.device.name);
+      setText("[data-field='version']", state.device.version);
+      setText("[data-field='board']", state.device.board);
+      setText("[data-field='build']", state.device.build);
+
+      setText("#navIp", state.wifi.ip);
+      setText("#navRssi", `${state.wifi.rssi} dBm`);
+      setText("#navUptime", formatUptime(state.metrics.uptime_sec));
+      renderLed();
+    }
+
+    function uartFormat() {
+      const parity = state.uart.parity === "none" ? "N" : state.uart.parity.charAt(0).toUpperCase();
+      return `${state.uart.data_bits}${parity}${state.uart.stop_bits}`;
+    }
+
+    function renderLed() {
+      const led = $("#ledState");
+      if (!led) return;
+      led.className = "led";
+      let label = "WIFI";
+      if (activeRoute === "ota") {
+        led.classList.add("pulse");
+        led.style.color = "var(--purple)";
+        label = "OTA";
+      } else if (state.metrics.dropped_packets > 0 || state.metrics.uart_overflow > 0 || state.metrics.queue_overflow > 0) {
+        led.classList.add("err", "pulse");
+        label = "ERROR";
+      } else if (activeRoute === "scanner") {
+        led.classList.add("warn", "pulse");
+        label = "SCAN";
+      } else if (state.tcp.clients > 0) {
+        led.classList.add("cyan");
+        label = "TCP";
+      } else if (!state.wifi.connected) {
+        led.classList.add("tx", "pulse");
+        label = "AP";
+      }
+      $("span:last-child", led).textContent = label;
+    }
+
+    function fillSettings() {
+      $("#cfgSsid").value = state.wifi.ssid || "";
+      $("#cfgBaud").value = String(state.uart.baud || 115200);
+      $("#cfgDataBits").value = String(state.uart.data_bits || 8);
+      $("#cfgStopBits").value = String(state.uart.stop_bits || 1);
+      $("#cfgParity").value = state.uart.parity || "none";
+      $("#cfgFraming").value = state.uart.framing || "inter-byte";
+      $("#cfgIdleGap").value = state.uart.idle_gap_ms || 20;
+      $("#cfgTcpMode").value = state.tcp.mode || "server";
+      $("#cfgTcpHost").value = state.tcp.host || "0.0.0.0";
+      $("#cfgTcpPort").value = state.tcp.port || 502;
+      $("#cfgMaxClients").value = state.tcp.max_clients || 2;
+      $("#cfgDeviceName").value = state.device.name || "bridge";
+      $("#cfgConsoleLimit").value = state.console.limit || MAX_CONSOLE_LINES;
+      $("#settingsNote").textContent = "no changes";
+    }
+
+    async function loadStatus() {
+      try {
+        const payload = await api("/api/status");
+        const normalized = normalizeStatus(payload);
+        mergeDefined(state.wifi, normalized.wifi);
+        mergeDefined(state.uart, normalized.uart);
+        mergeDefined(state.tcp, normalized.tcp);
+        mergeDefined(state.device, normalized.device);
+        mergeDefined(state.metrics, normalized.metrics);
+      } catch (_) {
+        tickDemoState();
+      }
+      renderDashboard();
+    }
+
+    async function loadConfig() {
+      try {
+        const payload = await api("/api/config");
+        const normalized = normalizeStatus(payload);
+        mergeDefined(state.wifi, normalized.wifi);
+        mergeDefined(state.uart, normalized.uart);
+        mergeDefined(state.tcp, normalized.tcp);
+        mergeDefined(state.device, normalized.device);
+        fillSettings();
+        toast("Config loaded", "ok");
+      } catch (_) {
+        fillSettings();
+        toast("Using local demo config", "warn");
+      }
+    }
+
+    function formPayload(form) {
+      const payload = {};
+      const formData = new FormData(form);
+      for (const [key, value] of formData.entries()) {
+        if (value === "") continue;
+        payload[key] = value;
+      }
+      return payload;
+    }
+
+    async function saveConfig(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const payload = formPayload(form);
+      payload.baud = Number(payload.baud);
+      payload.data_bits = Number(payload.data_bits);
+      payload.stop_bits = Number(payload.stop_bits);
+      payload.idle_gap_ms = Number(payload.idle_gap_ms);
+      payload.tcp_port = Number(payload.tcp_port);
+      payload.max_clients = Math.max(1, Math.min(4, Number(payload.max_clients)));
+      payload.console_limit = Math.max(50, Math.min(500, Number(payload.console_limit)));
+
+      try {
+        await api("/api/config", { method: "POST", body: JSON.stringify(payload) });
+        toast("Settings saved. Rebooting...", "ok");
+      } catch (_) {
+        applyConfigPayload(payload);
+        toast("Demo save applied locally", "warn");
+      }
+      $("#settingsNote").textContent = "saved - waiting for reboot";
+      renderDashboard();
+    }
+
+    function applyConfigPayload(payload) {
+      mergeDefined(state.wifi, { ssid: payload.ssid });
+      mergeDefined(state.uart, {
+        baud: payload.baud,
+        data_bits: payload.data_bits,
+        stop_bits: payload.stop_bits,
+        parity: payload.parity,
+        framing: payload.framing,
+        idle_gap_ms: payload.idle_gap_ms
+      });
+      mergeDefined(state.tcp, {
+        mode: payload.tcp_mode,
+        host: payload.tcp_host,
+        port: payload.tcp_port,
+        max_clients: payload.max_clients
+      });
+      mergeDefined(state.console, { limit: payload.console_limit });
+      mergeDefined(state.device, { name: payload.device_name });
+    }
+
+    function tickDemoState() {
+      state.metrics.uptime_sec += 1;
+      state.metrics.rx_packets += Math.floor(Math.random() * 4);
+      state.metrics.tx_packets += Math.floor(Math.random() * 2);
+      state.metrics.rx_rate = 8 + Math.floor(Math.random() * 8);
+      state.metrics.tx_rate = 1 + Math.floor(Math.random() * 4);
+      state.metrics.queue_usage = Math.max(4, Math.min(95, state.metrics.queue_usage + Math.floor(Math.random() * 7) - 3));
+      state.wifi.rssi = -54 + Math.floor((Math.random() - 0.5) * 6);
+    }
+
+    function parseHexInput(input) {
+      const cleaned = String(input).replace(/[\s:_-]+/g, "").toUpperCase();
+      if (!cleaned) return { ok: false, error: "empty_hex" };
+      if (!/^[0-9A-F]+$/.test(cleaned)) return { ok: false, error: "bad_hex" };
+      if (cleaned.length % 2 !== 0) return { ok: false, error: "odd_length" };
+      const bytes = cleaned.match(/.{2}/g).map((part) => parseInt(part, 16));
+      if (bytes.length > MAX_TX_BYTES) return { ok: false, error: "too_long" };
+      return { ok: true, bytes, hex: bytes.map((b) => pad(b.toString(16).toUpperCase(), 2)).join(" ") };
+    }
+
+    function addConsolePacket(packet) {
+      const normalized = {
+        ts: packet.ts || timestamp(),
+        kind: packet.kind || packet.type || "system",
+        body: packet.body || packet.hex || packet.message || "",
+        length: packet.length
+      };
+      if (normalized.kind === "error") normalized.kind = "err";
+      if (normalized.kind === "sys") normalized.kind = "system";
+      pendingPackets.push(normalized);
+    }
+
+    function flushConsoleBatch() {
+      if (!consolePaused && pendingPackets.length) {
+        const incoming = pendingPackets.splice(0, pendingPackets.length);
+        consoleLines.push(...incoming);
+        while (consoleLines.length > MAX_CONSOLE_LINES) consoleLines.shift();
+        renderConsole();
+      }
+      setTimeout(flushConsoleBatch, CONSOLE_BATCH_MS);
+    }
+
+    function renderConsole() {
+      const q = $("#consoleSearch").value.trim().toUpperCase();
+      const visible = consoleLines.filter((line) => {
+        if (!filters[line.kind]) return false;
+        if (!q) return true;
+        return `${line.body} ${line.kind}`.toUpperCase().includes(q);
+      });
+      $("#lineCount").textContent = consoleLines.length;
+      $("#visibleLineCount").textContent = visible.length;
+      const html = visible.map((line) => {
+        const tag = line.kind === "rx" || line.kind === "tx"
+          ? `${line.kind.toUpperCase()} ${line.length || byteLengthFromHex(line.body)}B`
+          : line.kind.toUpperCase();
+        return `<div class="console-line ${line.kind}"><span class="ts">${escapeHtml(line.ts)}</span><span class="tag">${escapeHtml(tag)}</span><span class="body">${highlightHex(line.body, q)}</span></div>`;
+      }).join("");
+      $("#consoleOutput").innerHTML = html || `<div class="note" style="padding: 14px 12px;">No frames match the current filter.</div>`;
+      if ($("#autoScroll").checked) $("#consoleOutput").scrollTop = $("#consoleOutput").scrollHeight;
+    }
+
+    function byteLengthFromHex(hex) {
+      const cleaned = String(hex).replace(/\s+/g, "");
+      return Math.floor(cleaned.length / 2);
+    }
+
+    function highlightHex(body, query) {
+      const safe = escapeHtml(body);
+      if (!query) return safe;
+      const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return safe.replace(new RegExp(escaped, "gi"), (match) => `<mark>${match}</mark>`);
+    }
+
+    async function sendHex(event) {
+      event.preventDefault();
+      const input = $("#txHex");
+      const parsed = parseHexInput(input.value);
+      if (!parsed.ok) {
+        input.classList.add("invalid");
+        toast(`HEX TX rejected: ${parsed.error}`, "err");
+        return;
+      }
+      input.classList.remove("invalid");
+      if ($("#txConfirm").checked && !confirm(`Send ${parsed.bytes.length} bytes to RS485?`)) return;
+
+      try {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "tx", hex: parsed.hex }));
+        } else {
+          await api("/api/tx", { method: "POST", body: JSON.stringify({ hex: parsed.hex }) });
+        }
+        state.metrics.tx_packets += 1;
+        addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
+        toast(`TX ${parsed.bytes.length}B queued`, "ok");
+      } catch (_) {
+        addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
+        toast(`Demo TX ${parsed.bytes.length}B`, "warn");
+      }
+      renderDashboard();
+    }
+
+    function connectConsoleSocket() {
+      if (LOCAL_DEMO) return;
+      if (!("WebSocket" in window)) return;
+      const scheme = location.protocol === "https:" ? "wss://" : "ws://";
+      try {
+        socket = new WebSocket(`${scheme}${location.host}/ws/console`);
+      } catch (_) {
+        socket = null;
+        return;
+      }
+      socket.addEventListener("open", () => {
+        addConsolePacket({ kind: "system", body: "WebSocket console connected" });
+        toast("WebSocket connected", "ok");
+      });
+      socket.addEventListener("message", (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === "status") {
+            mergeDefined(state.metrics, normalizeStatus(payload).metrics);
+            renderDashboard();
+            return;
+          }
+          addConsolePacket({
+            kind: payload.type === "error" ? "err" : payload.type,
+            body: payload.hex || payload.message || JSON.stringify(payload),
+            length: payload.length
+          });
+        } catch (_) {
+          addConsolePacket({ kind: "system", body: event.data });
+        }
+      });
+      socket.addEventListener("close", () => {
+        addConsolePacket({ kind: "system", body: "WebSocket disconnected - demo stream active" });
+      });
+    }
+
+    function startDemoConsole() {
+      const samples = [
+        "AA 55 01 03 00 FF 7C 10",
+        "AA 55 02 04 12 01 6E 31",
+        "F7 0A 11 00 20 43",
+        "AA 55 10 02 00 01"
+      ];
+      setInterval(() => {
+        if (socket && socket.readyState === WebSocket.OPEN) return;
+        const r = Math.random();
+        if (r < 0.58) addConsolePacket({ kind: "rx", body: samples[Math.floor(Math.random() * samples.length)] });
+        else if (r < 0.78) addConsolePacket({ kind: "tx", body: "AA 55 01 03 00 FF" });
+        else if (r < 0.94) addConsolePacket({ kind: "system", body: "TCP keepalive - bridge monitor ok" });
+        else addConsolePacket({ kind: "err", body: "CRC mismatch - packet dropped" });
+      }, 260);
+    }
+
+    async function startScan() {
+      const start = Number($("#scanStart").value);
+      const end = Number($("#scanEnd").value);
+      const step = Number($("#scanStep").value);
+      const sample_ms = Number($("#scanSample").value);
+      if (start < 300 || end > 921600 || end <= start || step <= 0) {
+        toast("Invalid scanner range", "err");
+        return;
+      }
+      $("#startScan").disabled = true;
+      $("#stopScan").disabled = false;
+      $("#scannerPhase").textContent = "Scanning";
+      $("#scannerPhase").className = "pill warn";
+      scanResults = [];
+      renderScannerRows();
+      try {
+        await api("/api/scanner/start", { method: "POST", body: JSON.stringify({ start, end, step, sample_ms }) });
+        toast("Scanner started on device", "ok");
+      } catch (_) {
+        toast("Demo scanner active", "warn");
+      }
+      driveDemoScan(start, end, step, sample_ms);
+    }
+
+    function driveDemoScan(start, end, step, sampleMs) {
+      let cursor = start;
+      const total = Math.floor((end - start) / step) + 1;
+      let index = 0;
+      clearInterval(scanTimer);
+      scanTimer = setInterval(() => {
+        if (cursor > end) {
+          finishScan();
+          return;
+        }
+        const standard = [9600, 19200, 38400, 57600, 115200];
+        const nearest = standard.reduce((best, cur) => Math.abs(cur - cursor) < Math.abs(best - cursor) ? cur : best, standard[0]);
+        const score = Math.max(0, Math.round(96 - Math.abs(nearest - cursor) / Math.max(1, step) * 18 - Math.random() * 10));
+        const bytes = Math.max(0, Math.round(score * 1.8 + Math.random() * 18));
+        scanResults.push({ baud: cursor, score, bytes });
+        index += 1;
+        const pct = Math.round((index / total) * 100);
+        $("#scanCursor").textContent = `${cursor} bps`;
+        $("#scanProgress").style.width = `${pct}%`;
+        $("#scanProgressLabel").textContent = `${pct}%`;
+        $("#scanSamples").textContent = scanResults.length;
+        renderScannerRows();
+        cursor += step;
+      }, Math.max(60, sampleMs / 8));
+    }
+
+    async function stopScan() {
+      clearInterval(scanTimer);
+      scanTimer = null;
+      try {
+        await api("/api/scanner/stop", { method: "POST", body: "{}" });
+      } catch (_) {}
+      finishScan();
+    }
+
+    function finishScan() {
+      clearInterval(scanTimer);
+      scanTimer = null;
+      $("#startScan").disabled = false;
+      $("#stopScan").disabled = true;
+      $("#scannerPhase").textContent = "Done";
+      $("#scannerPhase").className = "pill ok";
+      $("#scanProgress").style.width = "100%";
+      $("#scanProgressLabel").textContent = "100%";
+      const top = [...scanResults].sort((a, b) => b.score - a.score)[0];
+      $("#scanTop").textContent = top ? `${top.baud} bps` : "-";
+      renderScannerRows();
+    }
+
+    function renderScannerRows() {
+      const ranked = [...scanResults].sort((a, b) => b.score - a.score).slice(0, 8);
+      $("#candidateCount").textContent = `${ranked.length} rows`;
+      $("#scanTop").textContent = ranked[0] ? `${ranked[0].baud} bps` : "-";
+      $("#scannerRows").innerHTML = ranked.map((row, idx) => `
+        <div class="scanner-row">
+          <span>${idx + 1}</span>
+          <span>${row.baud.toLocaleString()}</span>
+          <span class="bar"><i style="width: ${row.score}%"></i></span>
+          <span>${row.score}</span>
+          <span>${row.bytes} B</span>
+          <button class="btn ghost" type="button" data-apply-baud="${row.baud}">Apply</button>
+        </div>
+      `).join("") || `<div class="note" style="padding: 12px;">Run a scan to see candidates.</div>`;
+    }
+
+    function applyScannerBaud(baud) {
+      state.uart.baud = Number(baud);
+      $("#cfgBaud").value = String(baud);
+      toast(`Baud ${baud} applied locally`, "ok");
+      renderDashboard();
+    }
+
+    function renderNetworks() {
+      const networks = [
+        { ssid: "atom-lab-5g", rssi: -54, locked: true },
+        { ssid: "office-iot", rssi: -62, locked: true },
+        { ssid: "guest", rssi: -70, locked: false },
+        { ssid: "DIRECT-7C-HP", rssi: -78, locked: true }
+      ];
+      $("#ssidList").innerHTML = networks.map((net) => `
+        <div class="ssid-row" data-ssid="${escapeHtml(net.ssid)}">
+          <span>${net.locked ? "*" : "-"}</span>
+          <span>${escapeHtml(net.ssid)}</span>
+          <span>${net.rssi} dBm</span>
+        </div>
+      `).join("");
+    }
+
+    async function saveProvisioning(event) {
+      event.preventDefault();
+      const payload = formPayload(event.currentTarget);
+      try {
+        await api("/api/config", { method: "POST", body: JSON.stringify({ ssid: payload.ssid, wifi_password: payload.password }) });
+        toast("Wi-Fi saved. Rebooting...", "ok");
+      } catch (_) {
+        state.wifi.ssid = payload.ssid;
+        state.wifi.connected = true;
+        toast("Demo provisioning saved", "warn");
+      }
+      renderDashboard();
+    }
+
+    function selectOtaFile(file) {
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".bin")) {
+        toast("Only .bin firmware files are accepted", "err");
+        return;
+      }
+      selectedOtaFile = file;
+      $("#otaFileName").textContent = `${file.name} (${file.size.toLocaleString()} B)`;
+      $("#otaUpload").disabled = false;
+      $("#otaPhase").textContent = "Ready";
+      $("#otaPhase").className = "pill info";
+    }
+
+    function uploadFirmware(event) {
+      event.preventDefault();
+      if (!selectedOtaFile) return;
+      $("#otaUpload").disabled = true;
+      $("#otaPhase").textContent = "Uploading";
+      $("#otaPhase").className = "pill info";
+      const form = new FormData();
+      form.append("firmware", selectedOtaFile, selectedOtaFile.name);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/update");
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const pct = Math.round((event.loaded / event.total) * 100);
+        $("#otaProgress").style.width = `${pct}%`;
+        $("#otaProgressText").textContent = `${pct}%`;
+      };
+      xhr.onload = () => {
+        $("#otaProgress").style.width = "100%";
+        $("#otaProgressText").textContent = "100%";
+        $("#otaPhase").textContent = xhr.status >= 200 && xhr.status < 300 ? "Rebooting" : "Failed";
+        $("#otaPhase").className = xhr.status >= 200 && xhr.status < 300 ? "pill warn" : "pill err";
+        toast(xhr.status >= 200 && xhr.status < 300 ? "Firmware uploaded. Rebooting..." : "OTA upload failed", xhr.status >= 200 && xhr.status < 300 ? "ok" : "err");
+      };
+      xhr.onerror = () => demoOtaProgress();
+      try {
+        xhr.send(form);
+      } catch (_) {
+        demoOtaProgress();
+      }
+    }
+
+    function demoOtaProgress() {
+      let pct = 0;
+      const id = setInterval(() => {
+        pct += 8 + Math.round(Math.random() * 10);
+        if (pct >= 100) {
+          pct = 100;
+          clearInterval(id);
+          $("#otaPhase").textContent = "Rebooting";
+          $("#otaPhase").className = "pill warn";
+          toast("Demo OTA complete", "warn");
+        }
+        $("#otaProgress").style.width = `${pct}%`;
+        $("#otaProgressText").textContent = `${pct}%`;
+      }, 140);
+    }
+
+    async function factoryReset() {
+      if (!confirm("Factory Reset clears NVS, Wi-Fi, UART, TCP, and console settings. Continue?")) return;
+      try {
+        await api("/api/factory-reset", { method: "POST", body: "{}" });
+        toast("Factory Reset requested. Rebooting...", "ok");
+      } catch (_) {
+        state.wifi.connected = false;
+        state.wifi.ip = "192.168.4.1";
+        state.tcp.clients = 0;
+        toast("Demo Factory Reset entered AP mode", "warn");
+        navigate("provisioning");
+      }
+      renderDashboard();
+    }
+
+    function navigate(route) {
+      activeRoute = route || "dashboard";
+      $$(".page").forEach((page) => { page.hidden = page.dataset.route !== activeRoute; });
+      $$(".nav-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.route === activeRoute));
+      if (location.hash.replace("#", "") !== activeRoute) location.hash = activeRoute;
+      renderLed();
+    }
+
+    function toast(message, tone = "info") {
+      const el = document.createElement("div");
+      el.className = `toast ${tone}`;
+      el.textContent = message;
+      $("#toastStack").appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    function bindEvents() {
+      $$(".nav-tabs button").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.route)));
+      window.addEventListener("hashchange", () => navigate(location.hash.replace("#", "") || "dashboard"));
+      $("#settingsForm").addEventListener("input", () => { $("#settingsNote").textContent = "unsaved changes"; });
+      $("#settingsForm").addEventListener("submit", saveConfig);
+      $("#reloadConfig").addEventListener("click", loadConfig);
+      $("#factoryReset").addEventListener("click", factoryReset);
+      $("#txForm").addEventListener("submit", sendHex);
+      $("#txHex").addEventListener("input", (event) => {
+        const parsed = parseHexInput(event.target.value);
+        event.target.classList.toggle("invalid", event.target.value.trim() !== "" && !parsed.ok);
+      });
+      $("#consoleSearch").addEventListener("input", renderConsole);
+      $("#pauseConsole").addEventListener("click", () => {
+        consolePaused = !consolePaused;
+        $("#pauseConsole").textContent = consolePaused ? ">" : "||";
+        toast(consolePaused ? "Console paused" : "Console resumed", "info");
+      });
+      $("#clearConsole").addEventListener("click", () => {
+        consoleLines.splice(0, consoleLines.length);
+        renderConsole();
+        toast("Console cleared", "info");
+      });
+      $("#copyConsole").addEventListener("click", () => {
+        const text = consoleLines.map((line) => `${line.ts} ${line.kind.toUpperCase()} ${line.body}`).join("\n");
+        navigator.clipboard && navigator.clipboard.writeText(text);
+        toast(`Copied ${consoleLines.length} lines`, "info");
+      });
+      $$("[data-filter]").forEach((button) => button.addEventListener("click", () => {
+        const key = button.dataset.filter;
+        filters[key] = !filters[key];
+        button.classList.toggle("active", filters[key]);
+        renderConsole();
+      }));
+      $("#startScan").addEventListener("click", startScan);
+      $("#stopScan").addEventListener("click", stopScan);
+      $("#scannerRows").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-apply-baud]");
+        if (button) applyScannerBaud(button.dataset.applyBaud);
+      });
+      $("#provisionForm").addEventListener("submit", saveProvisioning);
+      $("#ssidList").addEventListener("click", (event) => {
+        const row = event.target.closest("[data-ssid]");
+        if (!row) return;
+        $$(".ssid-row").forEach((item) => item.classList.remove("selected"));
+        row.classList.add("selected");
+        $("#provSsid").value = row.dataset.ssid;
+      });
+      $("#otaFile").addEventListener("change", (event) => selectOtaFile(event.target.files[0]));
+      $("#otaForm").addEventListener("submit", uploadFirmware);
+      $("#otaClear").addEventListener("click", () => {
+        selectedOtaFile = null;
+        $("#otaFile").value = "";
+        $("#otaFileName").textContent = "none";
+        $("#otaProgress").style.width = "0";
+        $("#otaProgressText").textContent = "0%";
+        $("#otaUpload").disabled = true;
+        $("#otaPhase").textContent = "Waiting";
+        $("#otaPhase").className = "pill";
+      });
+      const drop = $("#otaDrop");
+      drop.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        drop.classList.add("drag");
+      });
+      drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+      drop.addEventListener("drop", (event) => {
+        event.preventDefault();
+        drop.classList.remove("drag");
+        selectOtaFile(event.dataTransfer.files[0]);
+      });
+    }
+
+    function init() {
+      bindEvents();
+      renderNetworks();
+      fillSettings();
+      renderDashboard();
+      renderConsole();
+      renderScannerRows();
+      addConsolePacket({ kind: "system", body: "Bridge ready - 115200 8N1 - TCP 0.0.0.0:502" });
+      addConsolePacket({ kind: "rx", body: "AA 55 01 03 00 FF 7C 10" });
+      connectConsoleSocket();
+      startDemoConsole();
+      flushConsoleBatch();
+      loadStatus();
+      setInterval(loadStatus, STATUS_POLL_MS);
+      navigate(location.hash.replace("#", "") || "dashboard");
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

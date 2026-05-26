@@ -1,0 +1,282 @@
+#include "web_server.h"
+
+#include <LittleFS.h>
+#include "../utils/hex.h"
+
+namespace dm {
+
+namespace {
+
+String jsonString(JsonDocument& doc) {
+  String out;
+  serializeJson(doc, out);
+  return out;
+}
+
+}  // namespace
+
+void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& status, BaudScanner& scanner) {
+  config_ = &config;
+  store_ = &store;
+  status_ = &status;
+  scanner_ = &scanner;
+
+  LittleFS.begin(true);
+  ws_.onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {
+    handleWsEvent(server, client, type, arg, data, len);
+  });
+  server_.addHandler(&ws_);
+  registerRoutes();
+  ota_.begin(server_, status);
+  server_.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+  server_.onNotFound([](AsyncWebServerRequest* request) {
+    request->send(404, "application/json", "{\"ok\":false,\"error\":\"not_found\"}");
+  });
+  server_.begin();
+}
+
+void WebServer::setTxSink(TxSink sink, void* ctx) {
+  txSink_ = sink;
+  txCtx_ = ctx;
+}
+
+void WebServer::setConfigSaveHandler(ConfigSaveHandler handler, void* ctx) {
+  saveHandler_ = handler;
+  saveCtx_ = ctx;
+}
+
+void WebServer::setFactoryResetHandler(FactoryResetHandler handler, void* ctx) {
+  resetHandler_ = handler;
+  resetCtx_ = ctx;
+}
+
+void WebServer::poll() {
+  ws_.cleanupClients(2);
+  ota_.poll();
+}
+
+void WebServer::broadcastPacket(const Packet& packet) {
+  if (ws_.count() == 0) return;
+  JsonDocument doc;
+  doc["type"] = packetDirectionName(packet.direction);
+  doc["ts"] = packet.timestampMs;
+  doc["hex"] = packet.hex();
+  doc["length"] = packet.length;
+  if (packet.message.length()) doc["message"] = packet.message;
+  ws_.textAll(jsonString(doc));
+}
+
+OtaManager& WebServer::ota() {
+  return ota_;
+}
+
+bool WebServer::authenticate(AsyncWebServerRequest* request, bool required) {
+  if (!required || !config_ || !config_->security.basicAuth) return true;
+  if (request->authenticate(config_->security.username.c_str(), config_->security.password.c_str())) return true;
+  request->requestAuthentication();
+  return false;
+}
+
+void WebServer::sendJson(AsyncWebServerRequest* request, JsonDocument& doc, int status) {
+  request->send(status, "application/json", jsonString(doc));
+}
+
+void WebServer::sendError(AsyncWebServerRequest* request, int status, const char* code) {
+  JsonDocument doc;
+  doc["ok"] = false;
+  doc["error"] = code;
+  sendJson(request, doc, status);
+}
+
+void WebServer::registerRoutes() {
+  server_.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    status_->writeJson(doc, *config_);
+    sendJson(request, doc);
+  });
+
+  server_.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    if (!authenticate(request, false)) return;
+    JsonDocument doc;
+    status_->writeJson(doc, *config_);
+    sendJson(request, doc);
+  });
+
+  server_.on("/api/config", HTTP_POST,
+    [](AsyncWebServerRequest*) {},
+    nullptr,
+    [this](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+      collectBody(this, request, data, len, index, total, [](WebServer* self, AsyncWebServerRequest* req, const String& body) {
+        self->handleConfigBody(req, body);
+      });
+    });
+
+  server_.on("/api/tx", HTTP_POST,
+    [](AsyncWebServerRequest*) {},
+    nullptr,
+    [this](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+      collectBody(this, request, data, len, index, total, [](WebServer* self, AsyncWebServerRequest* req, const String& body) {
+        self->handleTxBody(req, body);
+      });
+    });
+
+  server_.on("/api/scanner/result", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    JsonDocument doc;
+    scanner_->writeJson(doc);
+    sendJson(request, doc);
+  });
+
+  server_.on("/api/scanner/start", HTTP_POST,
+    [](AsyncWebServerRequest*) {},
+    nullptr,
+    [this](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+      collectBody(this, request, data, len, index, total, [](WebServer* self, AsyncWebServerRequest* req, const String& body) {
+        self->handleScannerStartBody(req, body);
+      });
+    });
+
+  server_.on("/api/scanner/stop", HTTP_POST, [this](AsyncWebServerRequest* request) {
+    if (!authenticate(request, true)) return;
+    scanner_->stop();
+    JsonDocument doc;
+    scanner_->writeJson(doc);
+    sendJson(request, doc);
+  });
+
+  server_.on("/api/factory-reset", HTTP_POST, [this](AsyncWebServerRequest* request) {
+    if (!authenticate(request, true)) return;
+    JsonDocument doc;
+    doc["ok"] = true;
+    doc["data"]["reboot"] = true;
+    sendJson(request, doc);
+    if (resetHandler_) resetHandler_(resetCtx_);
+  });
+}
+
+void WebServer::handleConfigBody(AsyncWebServerRequest* request, const String& body) {
+  if (!authenticate(request, true)) return;
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, body);
+  if (err) {
+    sendError(request, 400, "invalid_json");
+    return;
+  }
+
+  DeviceConfig next = *config_;
+  if (doc["ssid"].is<const char*>()) next.wifi.ssid = doc["ssid"].as<String>();
+  if (doc["wifi_password"].is<const char*>()) next.wifi.password = doc["wifi_password"].as<String>();
+  if (doc["ap_password"].is<const char*>()) next.wifi.apPassword = doc["ap_password"].as<String>();
+  if (doc["baud"].is<uint32_t>()) next.uart.baud = doc["baud"].as<uint32_t>();
+  if (doc["data_bits"].is<uint8_t>()) next.uart.dataBits = doc["data_bits"].as<uint8_t>();
+  if (doc["stop_bits"].is<uint8_t>()) next.uart.stopBits = doc["stop_bits"].as<uint8_t>();
+  if (doc["parity"].is<const char*>()) next.uart.parity = doc["parity"].as<String>();
+  if (doc["framing"].is<const char*>()) next.uart.framing = doc["framing"].as<String>();
+  if (doc["idle_gap_ms"].is<uint16_t>()) next.uart.idleGapMs = doc["idle_gap_ms"].as<uint16_t>();
+  if (doc["tcp_mode"].is<const char*>()) next.tcp.mode = doc["tcp_mode"].as<String>();
+  if (doc["tcp_host"].is<const char*>()) next.tcp.host = doc["tcp_host"].as<String>();
+  if (doc["tcp_port"].is<uint16_t>()) next.tcp.port = doc["tcp_port"].as<uint16_t>();
+  if (doc["max_clients"].is<uint8_t>()) next.tcp.maxClients = doc["max_clients"].as<uint8_t>();
+  if (doc["console_limit"].is<uint16_t>()) next.console.lineLimit = doc["console_limit"].as<uint16_t>();
+  if (doc["device_name"].is<const char*>()) next.deviceName = doc["device_name"].as<String>();
+  if (doc["basic_auth"].is<const char*>()) next.security.basicAuth = doc["basic_auth"].as<String>() != "disabled";
+
+  bool ok = store_->save(next);
+  if (ok) {
+    *config_ = next;
+    if (saveHandler_) saveHandler_(next, saveCtx_);
+  }
+  JsonDocument response;
+  response["ok"] = ok;
+  response["data"]["reboot"] = true;
+  sendJson(request, response, ok ? 200 : 500);
+}
+
+void WebServer::handleTxBody(AsyncWebServerRequest* request, const String& body) {
+  if (!authenticate(request, true)) return;
+  JsonDocument doc;
+  if (deserializeJson(doc, body)) {
+    sendError(request, 400, "invalid_json");
+    return;
+  }
+  String hex = doc["hex"].as<String>();
+  HexParseResult parsed = parseHex(hex);
+  if (!parsed.ok) {
+    sendError(request, 400, parsed.error.c_str());
+    return;
+  }
+  bool queued = txSink_ && txSink_(parsed.bytes, parsed.length, txCtx_);
+  JsonDocument response;
+  response["ok"] = queued;
+  response["data"]["queued"] = queued;
+  response["data"]["length"] = parsed.length;
+  sendJson(request, response, queued ? 200 : 503);
+}
+
+void WebServer::handleScannerStartBody(AsyncWebServerRequest* request, const String& body) {
+  if (!authenticate(request, true)) return;
+  JsonDocument doc;
+  if (deserializeJson(doc, body)) {
+    sendError(request, 400, "invalid_json");
+    return;
+  }
+  bool ok = scanner_->start(doc["start"] | 9600, doc["end"] | 115200, doc["step"] | 9600, doc["sample_ms"] | 500);
+  JsonDocument response;
+  if (ok) scanner_->writeJson(response);
+  else {
+    response["ok"] = false;
+    response["error"] = "invalid_scan_range";
+  }
+  sendJson(request, response, ok ? 200 : 400);
+}
+
+void WebServer::handleWsEvent(AsyncWebSocket*, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {
+  if (type == WS_EVT_CONNECT) {
+    client->text("{\"type\":\"system\",\"message\":\"connected\"}");
+    return;
+  }
+  if (type != WS_EVT_DATA) return;
+  AwsFrameInfo* info = static_cast<AwsFrameInfo*>(arg);
+  if (!info || !info->final || info->index != 0 || info->opcode != WS_TEXT) return;
+  String text;
+  text.reserve(len);
+  for (size_t i = 0; i < len; ++i) text += static_cast<char>(data[i]);
+  handleWsText(client, text);
+}
+
+void WebServer::handleWsText(AsyncWebSocketClient* client, const String& text) {
+  JsonDocument doc;
+  if (deserializeJson(doc, text)) {
+    client->text("{\"type\":\"error\",\"message\":\"invalid_json\"}");
+    return;
+  }
+  String type = doc["type"].as<String>();
+  if (type == "ping") {
+    client->text("{\"type\":\"pong\"}");
+    return;
+  }
+  if (type == "tx") {
+    String hex = doc["hex"].as<String>();
+    HexParseResult parsed = parseHex(hex);
+    if (!parsed.ok || !txSink_ || !txSink_(parsed.bytes, parsed.length, txCtx_)) {
+      client->text("{\"type\":\"error\",\"message\":\"tx_rejected\"}");
+      return;
+    }
+    client->text("{\"type\":\"system\",\"message\":\"tx_queued\"}");
+  }
+}
+
+void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total, BodyHandler handler) {
+  if (index == 0) request->_tempObject = new String();
+  String* body = static_cast<String*>(request->_tempObject);
+  if (!body) return;
+  body->reserve(total);
+  for (size_t i = 0; i < len; ++i) *body += static_cast<char>(data[i]);
+  if (index + len == total) {
+    String complete = *body;
+    delete body;
+    request->_tempObject = nullptr;
+    handler(self, request, complete);
+  }
+}
+
+}  // namespace dm
