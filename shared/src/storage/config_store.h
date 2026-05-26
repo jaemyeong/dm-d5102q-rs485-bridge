@@ -68,7 +68,8 @@ class ConfigStore {
   void end();
   DeviceConfig load();
   bool save(const DeviceConfig& config);
-  bool reset();
+  bool resetExceptWifi();
+  bool eraseAll();
   bool hasWifiCredentials(const DeviceConfig& config) const;
 
  private:

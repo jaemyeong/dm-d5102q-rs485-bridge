@@ -157,13 +157,24 @@ void WebServer::registerRoutes() {
     sendJson(request, doc);
   });
 
-  server_.on("/api/factory-reset", HTTP_POST, [this](AsyncWebServerRequest* request) {
+  server_.on("/api/factory-reset/settings", HTTP_POST, [this](AsyncWebServerRequest* request) {
     if (!authenticate(request, true)) return;
     JsonDocument doc;
     doc["ok"] = true;
     doc["data"]["reboot"] = true;
+    doc["data"]["mode"] = "settings";
     sendJson(request, doc);
-    if (resetHandler_) resetHandler_(resetCtx_);
+    if (resetHandler_) resetHandler_(resetCtx_, false);
+  });
+
+  server_.on("/api/factory-reset/all", HTTP_POST, [this](AsyncWebServerRequest* request) {
+    if (!authenticate(request, true)) return;
+    JsonDocument doc;
+    doc["ok"] = true;
+    doc["data"]["reboot"] = true;
+    doc["data"]["mode"] = "all";
+    sendJson(request, doc);
+    if (resetHandler_) resetHandler_(resetCtx_, true);
   });
 }
 

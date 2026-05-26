@@ -1027,7 +1027,7 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">시스템</span>
-              <span class="pill" data-field="version">0.1.6</span>
+              <span class="pill" data-field="version">0.1.7</span>
             </div>
             <div class="card-body kv">
               <span class="k">장치</span><span class="v" data-field="device_name">bridge</span>
@@ -1196,8 +1196,9 @@
                 <div class="field"><label for="cfgBasicAuth">Basic Auth</label><select id="cfgBasicAuth" name="basic_auth"><option value="enabled">활성</option><option value="disabled">비활성</option></select></div>
               </div>
               <div class="card-body" style="border-top: 1px solid var(--border);">
-                <button id="factoryReset" class="btn danger" type="button">공장 초기화</button>
-                <span class="note">부팅 시 BtnA를 5초 이상 누르면 공장 초기화됩니다.</span>
+                <button id="factoryResetSettings" class="btn danger" type="button">설정 초기화</button>
+                <button id="factoryResetAll" class="btn danger" type="button" style="margin-left: 8px;">전체 초기화 (Wi-Fi 포함)</button>
+                <span class="note">설정 초기화는 Wi-Fi 자격증명을 유지합니다. 전체 초기화는 NVS 파티션 전체를 지웁니다(BtnA 5초와 동일).</span>
               </div>
             </article>
           </div>
@@ -1342,7 +1343,7 @@
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
       security: { basic_auth: true, username: "admin" },
-      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.6", build: "local" },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.7", build: "local" },
       log_server: { enabled: true, port: 8898, max_clients: 2, heartbeat_ms: 2000 },
       metrics: {
         uptime_sec: 8049,
@@ -2248,11 +2249,22 @@
       }, 140);
     }
 
-    async function factoryReset() {
-      if (!confirm("공장 초기화를 실행하면 NVS, Wi-Fi, UART, TCP, 콘솔 설정이 삭제됩니다. 계속할까요?")) return;
+    async function factoryResetSettings() {
+      if (!confirm("설정을 초기화합니다. Wi-Fi 자격증명은 유지되고 그 외 UART/TCP/콘솔/로그 설정이 default로 돌아갑니다. 계속할까요?")) return;
       try {
-        await api("/api/factory-reset", { method: "POST", body: "{}" });
-        toast("공장 초기화를 요청했습니다. 재부팅합니다...", "ok");
+        await api("/api/factory-reset/settings", { method: "POST", body: "{}" });
+        toast("설정 초기화를 요청했습니다. 재부팅합니다...", "ok");
+      } catch (_) {
+        if (LOCAL_DEMO) toast("데모 모드: 설정 초기화 시뮬레이션", "warn");
+        else toast("설정 초기화 요청에 실패했습니다", "err");
+      }
+    }
+
+    async function factoryResetAll() {
+      if (!confirm("전체 NVS 파티션을 wipe합니다. Wi-Fi 자격증명, UART, TCP, 콘솔, 로그, 보안 설정 모두 사라집니다. 재부팅 후 provisioning AP 모드로 진입합니다. 계속할까요?")) return;
+      try {
+        await api("/api/factory-reset/all", { method: "POST", body: "{}" });
+        toast("전체 초기화를 요청했습니다. 재부팅합니다...", "ok");
       } catch (_) {
         if (LOCAL_DEMO) {
           state.wifi.connected = false;
@@ -2261,7 +2273,7 @@
           toast("데모 모드: AP 모드로 전환되었습니다", "warn");
           navigate("provisioning");
         } else {
-          toast("공장 초기화 요청에 실패했습니다", "err");
+          toast("전체 초기화 요청에 실패했습니다", "err");
         }
       }
       renderDashboard();
@@ -2307,7 +2319,8 @@
       });
       $("#settingsForm").addEventListener("submit", saveConfig);
       $("#reloadConfig").addEventListener("click", loadConfig);
-      $("#factoryReset").addEventListener("click", factoryReset);
+      $("#factoryResetSettings").addEventListener("click", factoryResetSettings);
+      $("#factoryResetAll").addEventListener("click", factoryResetAll);
       $("#txForm").addEventListener("submit", sendHex);
       $("#txHex").addEventListener("input", (event) => {
         const parsed = parseHexInput(event.target.value);

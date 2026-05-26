@@ -14,7 +14,7 @@
 namespace dm {
 
 using ConfigSaveHandler = bool (*)(const DeviceConfig& config, void* ctx);
-using FactoryResetHandler = void (*)(void* ctx);
+using FactoryResetHandler = void (*)(void* ctx, bool fullWipe);
 
 class WebServer {
  public:

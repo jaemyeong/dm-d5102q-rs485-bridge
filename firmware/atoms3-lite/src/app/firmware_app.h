@@ -20,12 +20,13 @@ class FirmwareApp {
   void begin();
   void loop();
   bool queueTx(const uint8_t* data, size_t length);
-  void factoryReset();
+  void factoryResetSettings();
+  void factoryResetAll();
 
  private:
   static bool txSink(const uint8_t* data, size_t length, void* ctx);
   static bool saveConfigSink(const DeviceConfig& config, void* ctx);
-  static void factoryResetSink(void* ctx);
+  static void factoryResetSink(void* ctx, bool fullWipe);
   static void tickStatusTask(void* ctx);
   static void heartbeatTask(void* ctx);
 

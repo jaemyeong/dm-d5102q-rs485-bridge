@@ -1,5 +1,7 @@
 #include "config_store.h"
 
+#include <nvs_flash.h>
+
 #include "board_config.h"
 
 namespace dm {
@@ -86,8 +88,32 @@ bool ConfigStore::save(const DeviceConfig& input) {
   return ok;
 }
 
-bool ConfigStore::reset() {
-  return open_ && prefs_.clear();
+bool ConfigStore::resetExceptWifi() {
+  if (!open_) return false;
+  String ssid       = prefs_.getString("wifi_ssid", "");
+  String psk        = prefs_.getString("wifi_psk", "");
+  String apSsid     = prefs_.getString("ap_ssid", "");
+  String apPsk      = prefs_.getString("ap_psk", "");
+  uint32_t wifiTo   = prefs_.getUInt("wifi_timeout", 0);
+  if (!prefs_.clear()) return false;
+  if (ssid.length())   prefs_.putString("wifi_ssid", ssid);
+  if (psk.length())    prefs_.putString("wifi_psk", psk);
+  if (apSsid.length()) prefs_.putString("ap_ssid", apSsid);
+  if (apPsk.length())  prefs_.putString("ap_psk", apPsk);
+  if (wifiTo)          prefs_.putUInt("wifi_timeout", wifiTo);
+  return true;
+}
+
+bool ConfigStore::eraseAll() {
+  if (open_) {
+    prefs_.end();
+    open_ = false;
+  }
+  esp_err_t err = nvs_flash_erase();
+  if (err != ESP_OK) return false;
+  err = nvs_flash_init();
+  return err == ESP_OK || err == ESP_ERR_NVS_NEW_VERSION_FOUND
+                       || err == ESP_ERR_NVS_NO_FREE_PAGES;
 }
 
 bool ConfigStore::hasWifiCredentials(const DeviceConfig& config) const {

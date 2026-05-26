@@ -50,10 +50,18 @@ bool FirmwareApp::queueTx(const uint8_t* data, size_t length) {
   return rs485_.enqueueTx(data, length);
 }
 
-void FirmwareApp::factoryReset() {
-  log_.log("[factory-reset] clearing NVS and rebooting");
+void FirmwareApp::factoryResetSettings() {
+  log_.log("[factory-reset] settings only (wifi credentials preserved)");
   delay(50);
-  configStore_.reset();
+  configStore_.resetExceptWifi();
+  delay(150);
+  ESP.restart();
+}
+
+void FirmwareApp::factoryResetAll() {
+  log_.log("[factory-reset] full NVS wipe (all namespaces)");
+  delay(50);
+  configStore_.eraseAll();
   delay(150);
   ESP.restart();
 }
@@ -67,8 +75,12 @@ bool FirmwareApp::saveConfigSink(const DeviceConfig& config, void* ctx) {
   return true;
 }
 
-void FirmwareApp::factoryResetSink(void* ctx) {
-  static_cast<FirmwareApp*>(ctx)->factoryReset();
+void FirmwareApp::factoryResetSink(void* ctx, bool fullWipe) {
+  if (fullWipe) {
+    static_cast<FirmwareApp*>(ctx)->factoryResetAll();
+  } else {
+    static_cast<FirmwareApp*>(ctx)->factoryResetSettings();
+  }
 }
 
 void FirmwareApp::tickStatusTask(void* ctx) {
@@ -84,7 +96,7 @@ void FirmwareApp::checkFactoryResetButton() {
   if (resetHoldStartMs_ == 0) resetHoldStartMs_ = millis();
   if (!resetTriggered_ && millis() - resetHoldStartMs_ >= 5000) {
     resetTriggered_ = true;
-    factoryReset();
+    factoryResetAll();
   }
 }
 
@@ -178,7 +190,7 @@ void FirmwareApp::applyConfig(const DeviceConfig& config) {
 }
 
 void FirmwareApp::emitBootLog() {
-  log_.log("[boot] dm-d5102q-bridge v0.1.6 build=%s %s", __DATE__, __TIME__);
+  log_.log("[boot] dm-d5102q-bridge v0.1.7 build=%s %s", __DATE__, __TIME__);
   log_.log("[boot] device=\"%s\" board=%s", config_.deviceName.c_str(), ARDUINO_BOARD);
   const char parity = config_.uart.parity == "even" ? 'E'
                     : config_.uart.parity == "odd"  ? 'O'
