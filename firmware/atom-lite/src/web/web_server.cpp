@@ -31,6 +31,10 @@ void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& st
   ota_.begin(server_, status);
   server_.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server_.onNotFound([](AsyncWebServerRequest* request) {
+    if (request->method() == HTTP_GET && !request->url().startsWith("/api/")) {
+      request->send(LittleFS, "/index.html", "text/html");
+      return;
+    }
     request->send(404, "application/json", "{\"ok\":false,\"error\":\"not_found\"}");
   });
   server_.begin();

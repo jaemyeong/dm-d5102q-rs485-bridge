@@ -15,6 +15,7 @@ class OtaManager {
 
  private:
   bool rebootPending_ = false;
+  uint32_t rebootAtMs_ = 0;
 };
 
 }  // namespace dm

@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this project for diagnostics or research, please cite it using this metadata."
 title: "DM-D5102Q RS485 TCP Bridge"
-version: "0.1.0"
+version: "0.1.1"
 license: MIT
 type: software
 authors:

@@ -79,6 +79,8 @@ for (const symbol of [
   "/api/factory-reset",
   "/ws/console",
   "/update",
+  "U_LITTLEFS",
+  "0.1.1",
   "Preferences",
   "LittleFS",
   "Update",

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const html = readFileSync(join(root, "shared/data/index.html"), "utf8");
 
-assert.match(html, /<title>DM-D5102Q RS485 TCP Bridge<\/title>/);
+assert.match(html, /<title>DM-D5102Q RS485 TCP 브리지<\/title>/);
 assert.doesNotMatch(html, /https?:\/\//);
 assert.doesNotMatch(html, /type="text\/babel"/);
 assert.doesNotMatch(html, /react/i);
@@ -17,9 +17,10 @@ for (const route of [
   "console",
   "scanner",
   "settings",
-  "provisioning",
   "ota",
   "about",
+  "provisioning",
+  "rebooting",
 ]) {
   assert.match(html, new RegExp(`data-route="${route}"`));
 }
@@ -39,13 +40,14 @@ for (const endpoint of [
 }
 
 for (const requiredText of [
-  "Wi-Fi Provisioning",
-  "RS485 Console",
+  "Wi-Fi 프로비저닝",
+  "RS485 콘솔",
   "HEX TX",
-  "TCP Bridge",
-  "OTA Update",
-  "Overflow",
-  "Factory Reset",
+  "TCP 브리지",
+  "OTA 업데이트",
+  "오버플로",
+  "공장 초기화",
+  "재부팅 중입니다",
 ]) {
   assert.match(html, new RegExp(requiredText));
 }
@@ -62,10 +64,16 @@ assert.match(html, /function startScan/);
 assert.match(html, /function loadWifiNetworks/);
 assert.match(html, /function normalizeNetworks/);
 assert.match(html, /function isProvisioningMode/);
+assert.match(html, /function routeFromPath/);
+assert.match(html, /history\.pushState/);
+assert.match(html, /window\.addEventListener\("popstate"/);
 assert.match(html, /body\.provisioning-only/);
 assert.match(html, /id="cfgBaud"[^>]+type="number"/);
 assert.match(html, /id="baudPresets"/);
 assert.match(html, /if \(!LOCAL_DEMO\) return;\s*const samples/);
+assert.match(html, /version: "0\.1\.1"/);
 assert.doesNotMatch(html, /DIRECT-7C-HP/);
 assert.doesNotMatch(html, /<select id="cfgBaud"/);
 assert.doesNotMatch(html, /WIFI_SCAN_POLL_MS/);
+assert.doesNotMatch(html, /location\.hash/);
+assert.doesNotMatch(html, /data-route="provisioning"[^>]*>Provisioning/);

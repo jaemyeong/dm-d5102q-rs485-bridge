@@ -5,7 +5,7 @@ This project is a debugging and self-diagnostics tool for user-owned IoT equipme
 
 ## Status
 
-- Initial version: 0.1.0 (Unreleased)
+- Current version: 0.1.1 (Unreleased)
 - Build system: Arduino IDE 2.x
 - Target boards: M5Stack AtomS3-Lite and M5Stack Atom-Lite
 - Firmware layout: separate `firmware/atoms3-lite/` and `firmware/atom-lite/` directories

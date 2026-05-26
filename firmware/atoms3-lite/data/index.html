@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DM-D5102Q RS485 TCP Bridge</title>
+  <title>DM-D5102Q RS485 TCP 브리지</title>
   <link rel="icon" href="data:,">
   <style>
     :root {
@@ -889,14 +889,13 @@
         <span class="brand-mark"></span>
         <span>DM-D5102Q</span>
       </div>
-      <nav class="nav-tabs" aria-label="Primary">
-        <button type="button" data-route="dashboard" class="active">Dashboard</button>
-        <button type="button" data-route="console">Console</button>
-        <button type="button" data-route="scanner">Scanner</button>
-        <button type="button" data-route="settings">Settings</button>
-        <button type="button" data-route="provisioning">Provisioning</button>
+      <nav class="nav-tabs" aria-label="주요 메뉴">
+        <button type="button" data-route="dashboard" class="active">대시보드</button>
+        <button type="button" data-route="console">콘솔</button>
+        <button type="button" data-route="scanner">스캐너</button>
+        <button type="button" data-route="settings">설정</button>
         <button type="button" data-route="ota">OTA</button>
-        <button type="button" data-route="about">About</button>
+        <button type="button" data-route="about">정보</button>
       </nav>
       <div class="top-state">
         <span id="ledState" class="led cyan"><i></i><span>TCP</span></span>
@@ -909,66 +908,66 @@
     <main>
       <section class="page" id="page-dashboard" data-route="dashboard">
         <div class="page-head">
-          <h1>Status Dashboard</h1>
-          <span class="sub">Device state - live</span>
+          <h1>상태 대시보드</h1>
+          <span class="sub">장치 상태 - 실시간</span>
         </div>
 
         <div class="grid-4">
           <article class="metric">
-            <div class="label">Wi-Fi RSSI</div>
+            <div class="label">Wi-Fi 신호</div>
             <div class="value"><span data-metric="rssi">-54</span><span class="unit">dBm</span></div>
-            <div class="hint good" data-metric="rssi_quality">strong</div>
+            <div class="hint good" data-metric="rssi_quality">강함</div>
           </article>
           <article class="metric">
-            <div class="label">Uptime</div>
+            <div class="label">가동 시간</div>
             <div class="value" data-metric="uptime">00:00:00</div>
-            <div class="hint">since boot</div>
+            <div class="hint">부팅 후 경과</div>
           </article>
           <article class="metric">
-            <div class="label">Heap</div>
+            <div class="label">힙 메모리</div>
             <div class="value"><span data-metric="heap_free_kb">188</span><span class="unit">KiB</span></div>
-            <div class="hint" data-metric="heap_hint">free RAM</div>
+            <div class="hint" data-metric="heap_hint">여유 RAM</div>
           </article>
           <article class="metric">
-            <div class="label">TCP Clients</div>
+            <div class="label">TCP 클라이언트</div>
             <div class="value"><span data-metric="tcp_clients">1</span><span class="unit">/ <span data-metric="max_clients">2</span></span></div>
-            <div class="hint">bridge sessions</div>
+            <div class="hint">브리지 세션</div>
           </article>
         </div>
 
         <div class="grid-3">
           <article class="metric">
-            <div class="label">RX Packets</div>
+            <div class="label">RX 패킷</div>
             <div class="value" data-metric="rx_packets">4,218</div>
             <div class="hint good"><span data-metric="rx_rate">12</span>/s</div>
           </article>
           <article class="metric">
-            <div class="label">TX Packets</div>
+            <div class="label">TX 패킷</div>
             <div class="value" data-metric="tx_packets">1,027</div>
             <div class="hint"><span data-metric="tx_rate">3</span>/s</div>
           </article>
           <article class="metric">
-            <div class="label">Queue Usage</div>
+            <div class="label">큐 사용률</div>
             <div class="value"><span data-metric="queue_usage">18</span><span class="unit">%</span></div>
-            <div class="hint" data-metric="queue_hint">RX queue ok</div>
+            <div class="hint" data-metric="queue_hint">RX 큐 정상</div>
           </article>
         </div>
 
         <div class="grid-3">
           <article class="metric">
-            <div class="label">UART Overflow</div>
+            <div class="label">UART 오버플로</div>
             <div class="value" data-metric="uart_overflow">0</div>
-            <div class="hint good">hardware FIFO</div>
+            <div class="hint good">하드웨어 FIFO</div>
           </article>
           <article class="metric">
-            <div class="label">Queue Overflow</div>
+            <div class="label">큐 오버플로</div>
             <div class="value" data-metric="queue_overflow">0</div>
-            <div class="hint good">software queue</div>
+            <div class="hint good">소프트웨어 큐</div>
           </article>
           <article class="metric">
-            <div class="label">Dropped Packets</div>
+            <div class="label">드롭된 패킷</div>
             <div class="value" data-metric="dropped_packets">0</div>
-            <div class="hint good">Overflow monitor clean</div>
+            <div class="hint good">오버플로 감시 정상</div>
           </article>
         </div>
 
@@ -976,11 +975,11 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">Wi-Fi</span>
-              <span class="pill ok" data-status="wifi">Connected</span>
+              <span class="pill ok" data-status="wifi">연결됨</span>
             </div>
             <div class="card-body kv">
               <span class="k">SSID</span><span class="v" data-field="ssid">atom-lab-5g</span>
-              <span class="k">IP Address</span><span class="v" data-field="ip">192.168.4.18</span>
+              <span class="k">IP 주소</span><span class="v" data-field="ip">192.168.4.18</span>
               <span class="k">RSSI</span><span class="v"><span data-field="rssi">-54</span> dBm</span>
               <span class="k">MAC</span><span class="v" data-field="mac">8C:4F:00:1A:B2:C0</span>
             </div>
@@ -993,35 +992,35 @@
             </div>
             <div class="card-body kv">
               <span class="k">Baud</span><span class="v" data-field="baud">115200</span>
-              <span class="k">Format</span><span class="v" data-field="uart_format">8N1</span>
-              <span class="k">Framing</span><span class="v" data-field="framing">inter-byte, 20 ms</span>
-              <span class="k">Half Duplex</span><span class="v">TX enable, flush wait, RX restore</span>
+              <span class="k">형식</span><span class="v" data-field="uart_format">8N1</span>
+              <span class="k">프레이밍</span><span class="v" data-field="framing">inter-byte, 20 ms</span>
+              <span class="k">반이중 제어</span><span class="v">TX enable, flush wait, RX restore</span>
             </div>
           </article>
 
           <article class="card">
             <div class="card-head">
-              <span class="eyebrow">TCP Bridge</span>
-              <span class="pill ok" data-field="tcp_state">Listening</span>
+              <span class="eyebrow">TCP 브리지</span>
+              <span class="pill ok" data-field="tcp_state">수신 대기</span>
             </div>
             <div class="card-body kv">
-              <span class="k">Mode</span><span class="v" data-field="tcp_mode">server</span>
-              <span class="k">Host</span><span class="v" data-field="tcp_host">0.0.0.0</span>
-              <span class="k">Port</span><span class="v" data-field="tcp_port">502</span>
-              <span class="k">Policy</span><span class="v">broadcast RX, queued TX writer</span>
+              <span class="k">모드</span><span class="v" data-field="tcp_mode">server</span>
+              <span class="k">호스트</span><span class="v" data-field="tcp_host">0.0.0.0</span>
+              <span class="k">포트</span><span class="v" data-field="tcp_port">502</span>
+              <span class="k">정책</span><span class="v">RX 브로드캐스트, TX 큐 단일 writer</span>
             </div>
           </article>
 
           <article class="card">
             <div class="card-head">
-              <span class="eyebrow">System</span>
-              <span class="pill" data-field="version">0.1.0</span>
+              <span class="eyebrow">시스템</span>
+              <span class="pill" data-field="version">0.1.1</span>
             </div>
             <div class="card-body kv">
-              <span class="k">Device</span><span class="v" data-field="device_name">bridge</span>
-              <span class="k">Board</span><span class="v" data-field="board">M5Stack AtomS3 Lite</span>
-              <span class="k">Build</span><span class="v" data-field="build">local</span>
-              <span class="k">Auth</span><span class="v">Basic Auth capable</span>
+              <span class="k">장치</span><span class="v" data-field="device_name">bridge</span>
+              <span class="k">보드</span><span class="v" data-field="board">M5Stack AtomS3 Lite</span>
+              <span class="k">빌드</span><span class="v" data-field="build">local</span>
+              <span class="k">인증</span><span class="v">Basic Auth 지원</span>
             </div>
           </article>
         </div>
@@ -1029,8 +1028,8 @@
 
       <section class="page" id="page-console" data-route="console" hidden>
         <div class="page-head">
-          <h1>RS485 Console</h1>
-          <span class="sub"><span id="visibleLineCount">0</span>/<span id="lineCount">0</span> lines - max 300</span>
+          <h1>RS485 콘솔</h1>
+          <span class="sub"><span id="visibleLineCount">0</span>/<span id="lineCount">0</span> 줄 - 최대 300</span>
         </div>
 
         <div class="console-wrap">
@@ -1039,63 +1038,63 @@
             <button class="chip tx active" type="button" data-filter="tx">TX</button>
             <button class="chip err active" type="button" data-filter="err">ERROR</button>
             <button class="chip sys active" type="button" data-filter="system">SYSTEM</button>
-            <input id="consoleSearch" aria-label="HEX contains filter" placeholder="HEX contains... AA 55">
-            <label class="note"><input id="autoScroll" type="checkbox" checked> auto scroll</label>
+            <input id="consoleSearch" aria-label="HEX 포함 필터" placeholder="HEX 포함... AA 55">
+            <label class="note"><input id="autoScroll" type="checkbox" checked> 자동 스크롤</label>
             <span class="grow"></span>
-            <button id="pauseConsole" class="icon-btn" type="button" title="Pause">||</button>
-            <button id="copyConsole" class="icon-btn" type="button" title="Copy visible">C</button>
-            <button id="clearConsole" class="icon-btn" type="button" title="Clear">X</button>
+            <button id="pauseConsole" class="icon-btn" type="button" title="일시정지">||</button>
+            <button id="copyConsole" class="icon-btn" type="button" title="표시 내용 복사">C</button>
+            <button id="clearConsole" class="icon-btn" type="button" title="지우기">X</button>
           </div>
 
           <div class="console" id="consoleOutput" aria-live="polite"></div>
 
           <form class="tx-panel" id="txForm">
             <span class="prefix">HEX TX</span>
-            <input id="txHex" autocomplete="off" spellcheck="false" value="AA 55 01 03 00 FF" aria-label="HEX TX input">
-            <label class="note"><input id="txConfirm" type="checkbox"> confirm</label>
-            <button id="txSend" class="btn primary" type="submit">Send</button>
+            <input id="txHex" autocomplete="off" spellcheck="false" value="AA 55 01 03 00 FF" aria-label="HEX TX 입력">
+            <label class="note"><input id="txConfirm" type="checkbox"> 확인</label>
+            <button id="txSend" class="btn primary" type="submit">전송</button>
           </form>
         </div>
       </section>
 
       <section class="page" id="page-scanner" data-route="scanner" hidden>
         <div class="page-head">
-          <h1>Baud Scanner</h1>
-          <span class="sub">RS485 sampling - bridge pause recommended</span>
+          <h1>Baud 스캐너</h1>
+          <span class="sub">RS485 샘플링 - 브리지 일시정지 권장</span>
         </div>
 
         <div class="grid-2">
           <article class="card">
             <div class="card-head">
-              <span class="eyebrow">Parameters</span>
-              <span class="pill" id="scannerPhase">Idle</span>
+              <span class="eyebrow">파라미터</span>
+              <span class="pill" id="scannerPhase">대기</span>
             </div>
             <div class="card-body">
               <div class="form-grid">
-                <div class="field"><label for="scanStart">Start Baud</label><input id="scanStart" type="number" min="300" max="921600" value="9600"></div>
-                <div class="field"><label for="scanEnd">End Baud</label><input id="scanEnd" type="number" min="300" max="921600" value="115200"></div>
-                <div class="field"><label for="scanStep">Step</label><input id="scanStep" type="number" min="1" value="9600"></div>
-                <div class="field"><label for="scanSample">Sample ms</label><input id="scanSample" type="number" min="50" value="500"></div>
+                <div class="field"><label for="scanStart">시작 Baud</label><input id="scanStart" type="number" min="300" max="921600" value="9600"></div>
+                <div class="field"><label for="scanEnd">종료 Baud</label><input id="scanEnd" type="number" min="300" max="921600" value="115200"></div>
+                <div class="field"><label for="scanStep">스텝</label><input id="scanStep" type="number" min="1" value="9600"></div>
+                <div class="field"><label for="scanSample">샘플 ms</label><input id="scanSample" type="number" min="50" value="500"></div>
               </div>
               <div class="actions">
-                <span class="note">TCP bridge pauses while scanner owns UART.</span>
-                <button id="stopScan" class="btn danger" type="button" disabled>Stop</button>
-                <button id="startScan" class="btn primary" type="button">Start scan</button>
+                <span class="note">스캐너가 UART를 점유하는 동안 TCP 브리지가 일시정지됩니다.</span>
+                <button id="stopScan" class="btn danger" type="button" disabled>중지</button>
+                <button id="startScan" class="btn primary" type="button">스캔 시작</button>
               </div>
             </div>
           </article>
 
           <article class="card">
             <div class="card-head">
-              <span class="eyebrow">Progress</span>
+              <span class="eyebrow">진행률</span>
               <span class="pill info" id="scanProgressLabel">0%</span>
             </div>
             <div class="card-body">
-              <div class="progress" aria-label="Scanner progress"><i id="scanProgress"></i></div>
+              <div class="progress" aria-label="스캐너 진행률"><i id="scanProgress"></i></div>
               <div class="kv" style="margin-top: 12px;">
-                <span class="k">Cursor</span><span class="v" id="scanCursor">-</span>
-                <span class="k">Top Candidate</span><span class="v" id="scanTop">-</span>
-                <span class="k">Samples</span><span class="v" id="scanSamples">0</span>
+                <span class="k">현재값</span><span class="v" id="scanCurrent">-</span>
+                <span class="k">최상위 후보</span><span class="v" id="scanTop">-</span>
+                <span class="k">샘플</span><span class="v" id="scanSamples">0</span>
               </div>
             </div>
           </article>
@@ -1103,12 +1102,12 @@
 
         <article class="card">
           <div class="card-head">
-            <span class="eyebrow">Top candidates</span>
+            <span class="eyebrow">상위 후보</span>
             <span class="pill" id="candidateCount">0 rows</span>
           </div>
           <div class="scanner-table">
             <div class="scanner-head">
-              <span>Rank</span><span>Baud</span><span>Distribution</span><span>Score</span><span>RX Bytes</span><span>Apply</span>
+              <span>순위</span><span>Baud</span><span>분포</span><span>점수</span><span>RX 바이트</span><span>적용</span>
             </div>
             <div id="scannerRows"></div>
           </div>
@@ -1117,8 +1116,8 @@
 
       <section class="page" id="page-settings" data-route="settings" hidden>
         <div class="page-head">
-          <h1>Settings</h1>
-          <span class="sub">NVS save - reboot required</span>
+          <h1>설정</h1>
+          <span class="sub">NVS 저장 - 재부팅 필요</span>
         </div>
 
         <form id="settingsForm">
@@ -1127,7 +1126,7 @@
               <div class="card-head"><span class="eyebrow">Wi-Fi</span><span class="pill info">STA</span></div>
               <div class="card-body form-grid">
                 <div class="field"><label for="cfgSsid">SSID</label><input id="cfgSsid" name="ssid" autocomplete="username"></div>
-                <div class="field"><label for="cfgWifiPass">Password</label><input id="cfgWifiPass" name="wifi_password" type="password" autocomplete="current-password" placeholder="unchanged"></div>
+                <div class="field"><label for="cfgWifiPass">비밀번호</label><input id="cfgWifiPass" name="wifi_password" type="password" autocomplete="current-password" placeholder="unchanged"></div>
               </div>
             </article>
 
@@ -1139,43 +1138,43 @@
                   <input id="cfgBaud" name="baud" type="number" min="300" max="921600" step="1" list="baudPresets" inputmode="numeric" value="115200">
                   <datalist id="baudPresets"><option value="9600"></option><option value="19200"></option><option value="38400"></option><option value="57600"></option><option value="115200"></option></datalist>
                 </div>
-                <div class="field"><label for="cfgDataBits">Data Bits</label><select id="cfgDataBits" name="data_bits"><option>7</option><option>8</option></select></div>
-                <div class="field"><label for="cfgStopBits">Stop Bits</label><select id="cfgStopBits" name="stop_bits"><option>1</option><option>2</option></select></div>
-                <div class="field"><label for="cfgParity">Parity</label><select id="cfgParity" name="parity"><option value="none">none</option><option value="even">even</option><option value="odd">odd</option></select></div>
-                <div class="field"><label for="cfgFraming">Packet Framing</label><select id="cfgFraming" name="framing"><option value="inter-byte">inter-byte</option><option value="delimiter">delimiter</option><option value="length">length-based</option></select></div>
-                <div class="field"><label for="cfgIdleGap">Idle Gap ms</label><input id="cfgIdleGap" name="idle_gap_ms" type="number" min="1" max="1000" value="20"><span class="hint">default packet split: 20 ms</span></div>
+                <div class="field"><label for="cfgDataBits">데이터 비트</label><select id="cfgDataBits" name="data_bits"><option>7</option><option>8</option></select></div>
+                <div class="field"><label for="cfgStopBits">정지 비트</label><select id="cfgStopBits" name="stop_bits"><option>1</option><option>2</option></select></div>
+                <div class="field"><label for="cfgParity">패리티</label><select id="cfgParity" name="parity"><option value="none">없음</option><option value="even">짝수</option><option value="odd">홀수</option></select></div>
+                <div class="field"><label for="cfgFraming">패킷 프레이밍</label><select id="cfgFraming" name="framing"><option value="inter-byte">바이트 간격</option><option value="delimiter">구분자</option><option value="length">길이 기반</option></select></div>
+                <div class="field"><label for="cfgIdleGap">유휴 간격 ms</label><input id="cfgIdleGap" name="idle_gap_ms" type="number" min="1" max="1000" value="20"><span class="hint">기본 패킷 분리: 20 ms</span></div>
               </div>
             </article>
 
             <article class="card">
-              <div class="card-head"><span class="eyebrow">TCP Bridge</span><span class="pill ok">server/client</span></div>
+              <div class="card-head"><span class="eyebrow">TCP 브리지</span><span class="pill ok">server/client</span></div>
               <div class="card-body form-grid">
-                <div class="field"><label for="cfgTcpMode">Mode</label><select id="cfgTcpMode" name="tcp_mode"><option value="server">server</option><option value="client">client</option></select></div>
-                <div class="field"><label for="cfgTcpHost">Host</label><input id="cfgTcpHost" name="tcp_host" value="0.0.0.0"></div>
-                <div class="field"><label for="cfgTcpPort">Port</label><input id="cfgTcpPort" name="tcp_port" type="number" min="1" max="65535" value="502"></div>
-                <div class="field"><label for="cfgMaxClients">Max Clients</label><input id="cfgMaxClients" name="max_clients" type="number" min="1" max="4" value="2"><span class="hint">minimum 1, maximum 4</span></div>
+                <div class="field"><label for="cfgTcpMode">모드</label><select id="cfgTcpMode" name="tcp_mode"><option value="server">서버</option><option value="client">클라이언트</option></select></div>
+                <div class="field"><label for="cfgTcpHost">호스트</label><input id="cfgTcpHost" name="tcp_host" value="0.0.0.0"></div>
+                <div class="field"><label for="cfgTcpPort">포트</label><input id="cfgTcpPort" name="tcp_port" type="number" min="1" max="65535" value="502"></div>
+                <div class="field"><label for="cfgMaxClients">최대 클라이언트</label><input id="cfgMaxClients" name="max_clients" type="number" min="1" max="4" value="2"><span class="hint">최소 1, 최대 4</span></div>
               </div>
             </article>
 
             <article class="card">
-              <div class="card-head"><span class="eyebrow">Console and Device</span><span class="pill">bounded</span></div>
+              <div class="card-head"><span class="eyebrow">콘솔 및 장치</span><span class="pill">제한됨</span></div>
               <div class="card-body form-grid">
-                <div class="field"><label for="cfgDeviceName">Device Name</label><input id="cfgDeviceName" name="device_name" value="bridge"></div>
-                <div class="field"><label for="cfgConsoleLimit">Console Lines</label><input id="cfgConsoleLimit" name="console_limit" type="number" min="50" max="500" value="300"></div>
-                <div class="field"><label for="cfgApPassword">AP Password</label><input id="cfgApPassword" name="ap_password" type="password" autocomplete="new-password" placeholder="optional"></div>
-                <div class="field"><label for="cfgBasicAuth">Basic Auth</label><select id="cfgBasicAuth" name="basic_auth"><option value="enabled">enabled</option><option value="disabled">disabled</option></select></div>
+                <div class="field"><label for="cfgDeviceName">장치 이름</label><input id="cfgDeviceName" name="device_name" value="bridge"></div>
+                <div class="field"><label for="cfgConsoleLimit">콘솔 라인</label><input id="cfgConsoleLimit" name="console_limit" type="number" min="50" max="500" value="300"></div>
+                <div class="field"><label for="cfgApPassword">AP 비밀번호</label><input id="cfgApPassword" name="ap_password" type="password" autocomplete="new-password" placeholder="선택 사항"></div>
+                <div class="field"><label for="cfgBasicAuth">Basic Auth</label><select id="cfgBasicAuth" name="basic_auth"><option value="enabled">활성</option><option value="disabled">비활성</option></select></div>
               </div>
               <div class="card-body" style="border-top: 1px solid var(--border);">
-                <button id="factoryReset" class="btn danger" type="button">Factory Reset</button>
-                <span class="note">Boot with BtnA held for 5 seconds to confirm on device.</span>
+                <button id="factoryReset" class="btn danger" type="button">공장 초기화</button>
+                <span class="note">부팅 시 BtnA를 5초 이상 누르면 공장 초기화됩니다.</span>
               </div>
             </article>
           </div>
 
           <div class="actions">
-            <span class="note" id="settingsNote">no changes</span>
-            <button class="btn ghost" id="reloadConfig" type="button">Reload</button>
-            <button class="btn primary" type="submit">Save & Reboot</button>
+            <span class="note" id="settingsNote">변경 없음</span>
+            <button class="btn ghost" id="reloadConfig" type="button">다시 불러오기</button>
+            <button class="btn primary" type="submit">저장 후 재부팅</button>
           </div>
         </form>
       </section>
@@ -1184,58 +1183,74 @@
         <div class="ap-shell">
           <div class="provision-card">
             <div class="page-head">
-              <h1>Wi-Fi Provisioning</h1>
-              <span class="pill info">AP mode</span>
+              <h1>Wi-Fi 프로비저닝</h1>
+              <span class="pill info">AP 모드</span>
             </div>
-            <p class="note" style="margin-bottom: 14px;">Use when saved Wi-Fi is missing, connection timeout occurs, or Factory Reset clears NVS.</p>
+            <p class="note" style="margin-bottom: 14px;">저장된 Wi-Fi가 없거나 연결 시간이 초과되었거나 공장 초기화로 NVS가 지워진 경우에만 표시됩니다.</p>
             <form id="provisionForm">
               <div class="field" style="margin-bottom: 10px;">
                 <div class="field-head">
-                  <span class="label">Detected Networks</span>
-                  <button id="refreshNetworks" class="btn ghost small" type="button">Refresh</button>
+                  <span class="label">감지된 네트워크</span>
+                  <button id="refreshNetworks" class="btn ghost small" type="button">새로고침</button>
                 </div>
                 <div class="ssid-list" id="ssidList"></div>
               </div>
               <div class="form-grid">
                 <div class="field"><label for="provSsid">SSID</label><input id="provSsid" name="ssid" autocomplete="username" required></div>
-                <div class="field"><label for="provPass">Password</label><input id="provPass" name="password" type="password" autocomplete="current-password" placeholder="optional"></div>
+                <div class="field"><label for="provPass">비밀번호</label><input id="provPass" name="password" type="password" autocomplete="current-password" placeholder="선택 사항"></div>
               </div>
               <div class="actions">
-                <span class="note">Save -> NVS -> ESP.restart() -> STA retry</span>
-                <button class="btn primary" type="submit">Save & Reboot</button>
+                <span class="note">저장 -> NVS -> ESP.restart() -> STA 재연결</span>
+                <button class="btn primary" type="submit">저장 후 재부팅</button>
               </div>
             </form>
           </div>
         </div>
       </section>
 
+      <section class="page" id="page-rebooting" data-route="rebooting" hidden>
+        <div class="ap-shell">
+          <div class="provision-card">
+            <div class="page-head">
+              <h1>재부팅 중입니다</h1>
+              <span class="pill warn">재부팅</span>
+            </div>
+            <p class="note" id="rebootMessage" style="margin-bottom: 14px;">설정을 저장했습니다. 장치가 재부팅되고 Wi-Fi에 다시 연결됩니다.</p>
+            <div class="kv">
+              <span class="k">다음 단계</span><span class="v">저장한 Wi-Fi에 연결된 뒤 새 IP 주소로 관리자 페이지에 접속하세요.</span>
+              <span class="k">AP 모드</span><span class="v">연결 실패 시 DM-D5102Q 설정 AP가 다시 열립니다.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="page" id="page-ota" data-route="ota" hidden>
         <div class="page-head">
-          <h1>OTA Update</h1>
-          <span class="sub">Firmware upload - auto reboot</span>
+          <h1>OTA 업데이트</h1>
+          <span class="sub">펌웨어 업로드 - 자동 재부팅</span>
         </div>
 
         <article class="card">
           <div class="card-head">
-            <span class="eyebrow">Firmware</span>
-            <span class="pill" id="otaPhase">Waiting</span>
+            <span class="eyebrow">펌웨어</span>
+            <span class="pill" id="otaPhase">대기</span>
           </div>
           <div class="card-body">
             <form id="otaForm">
               <label class="drop" id="otaDrop" for="otaFile">
-                <strong>Drop firmware.bin here</strong>
-                <span>single .bin only - max 4 MiB - posts to /update</span>
+                <strong>firmware.bin 또는 littlefs.bin을 여기에 놓기</strong>
+                <span>.bin 파일 - 펌웨어 또는 littlefs 웹 UI - /update 전송</span>
                 <input id="otaFile" type="file" accept=".bin" hidden>
               </label>
               <div class="kv" style="margin-top: 12px;">
-                <span class="k">Selected</span><span class="v" id="otaFileName">none</span>
-                <span class="k">Progress</span><span class="v" id="otaProgressText">0%</span>
+                <span class="k">선택됨</span><span class="v" id="otaFileName">없음</span>
+                <span class="k">진행률</span><span class="v" id="otaProgressText">0%</span>
               </div>
               <div class="progress" style="margin-top: 10px;"><i id="otaProgress"></i></div>
               <div class="actions">
-                <span class="note warn">Device reboots automatically after verified flash.</span>
-                <button class="btn ghost" type="button" id="otaClear">Discard</button>
-                <button class="btn primary" type="submit" id="otaUpload" disabled>Upload & Flash</button>
+                <span class="note warn">검증된 플래시 후 장치가 자동 재부팅됩니다.</span>
+                <button class="btn ghost" type="button" id="otaClear">취소</button>
+                <button class="btn primary" type="submit" id="otaUpload" disabled>업로드 및 플래시</button>
               </div>
             </form>
           </div>
@@ -1244,8 +1259,8 @@
 
       <section class="page" id="page-about" data-route="about" hidden>
         <div class="page-head">
-          <h1>About</h1>
-          <span class="sub">Embedded RS485 Packet Sniffer + TCP Gateway</span>
+          <h1>정보</h1>
+          <span class="sub">임베디드 RS485 패킷 스니퍼 + TCP 게이트웨이</span>
         </div>
 
         <div class="grid-2">
@@ -1253,20 +1268,20 @@
             <div class="card-body about-device">
               <div class="device-chip"><i></i><span>AtomS3<br>Lite</span></div>
               <div>
-                <div class="eyebrow">Device</div>
+                <div class="eyebrow">장치</div>
                 <h2 style="font-size: 20px; margin-top: 4px;">DM-D5102Q Bridge</h2>
-                <p class="note" style="margin-top: 6px;">RS485 Packet Capture, TCP Bridge, WebSocket Debug Console, HEX Packet Injector, OTA-enabled Wi-Fi tool.</p>
+                <p class="note" style="margin-top: 6px;">RS485 패킷 캡처, TCP 브리지, WebSocket 디버그 콘솔, HEX 패킷 주입, OTA 지원 Wi-Fi 도구입니다.</p>
               </div>
             </div>
           </article>
 
           <article class="card">
-            <div class="card-head"><span class="eyebrow">Runtime</span><span class="pill">C++17 / Arduino</span></div>
+            <div class="card-head"><span class="eyebrow">런타임</span><span class="pill">C++17 / Arduino</span></div>
             <div class="card-body kv">
               <span class="k">MCU</span><span class="v">ESP32-S3</span>
-              <span class="k">Interface</span><span class="v">Atom RS485</span>
-              <span class="k">Storage</span><span class="v">Preferences NVS + LittleFS assets</span>
-              <span class="k">Console</span><span class="v">WebSocket batching, 20-100 ms target</span>
+              <span class="k">인터페이스</span><span class="v">Atom RS485</span>
+              <span class="k">저장소</span><span class="v">Preferences NVS + LittleFS 웹 자산</span>
+              <span class="k">콘솔</span><span class="v">WebSocket 배칭, 20-100 ms 목표</span>
             </div>
           </article>
         </div>
@@ -1292,7 +1307,7 @@
       uart: { baud: 115200, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
-      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.0", build: "local" },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.1", build: "local" },
       metrics: {
         uptime_sec: 8049,
         heap_free: 192512,
@@ -1379,13 +1394,22 @@
       return state.wifi.mode === "ap" || isApHost() || (!state.wifi.connected && state.wifi.ip === "192.168.4.1");
     }
 
+    function routeFromPath(pathname = location.pathname) {
+      const route = pathname.replace(/^\/+/, "").replace(/\/+$/, "") || "dashboard";
+      return ["dashboard", "console", "scanner", "settings", "ota", "about", "provisioning", "rebooting"].includes(route) ? route : "dashboard";
+    }
+
+    function pathForRoute(route) {
+      return route === "dashboard" ? "/" : `/${route}`;
+    }
+
     function initialRoute() {
       if (isApHost()) return "provisioning";
-      return location.hash.replace("#", "") || "dashboard";
+      return routeFromPath();
     }
 
     function syncShellMode() {
-      document.body.classList.toggle("provisioning-only", isProvisioningMode());
+      document.body.classList.toggle("provisioning-only", isProvisioningMode() || activeRoute === "rebooting");
     }
 
     function normalizeStatus(payload) {
@@ -1450,10 +1474,10 @@
 
     function renderDashboard() {
       setText("[data-metric='rssi']", state.wifi.rssi);
-      setText("[data-metric='rssi_quality']", state.wifi.rssi > -60 ? "strong" : state.wifi.rssi > -75 ? "ok" : "weak");
+      setText("[data-metric='rssi_quality']", state.wifi.rssi > -60 ? "강함" : state.wifi.rssi > -75 ? "보통" : "약함");
       setText("[data-metric='uptime']", formatUptime(state.metrics.uptime_sec));
       setText("[data-metric='heap_free_kb']", Math.round(state.metrics.heap_free / 1024));
-      setText("[data-metric='heap_hint']", `${Math.round((state.metrics.heap_free / state.metrics.heap_total) * 100)}% free`);
+      setText("[data-metric='heap_hint']", `${Math.round((state.metrics.heap_free / state.metrics.heap_total) * 100)}% 여유`);
       setText("[data-metric='tcp_clients']", state.tcp.clients);
       setText("[data-metric='max_clients']", state.tcp.max_clients);
       setText("[data-metric='rx_packets']", Number(state.metrics.rx_packets).toLocaleString());
@@ -1461,7 +1485,7 @@
       setText("[data-metric='rx_rate']", state.metrics.rx_rate);
       setText("[data-metric='tx_rate']", state.metrics.tx_rate);
       setText("[data-metric='queue_usage']", state.metrics.queue_usage);
-      setText("[data-metric='queue_hint']", state.metrics.queue_usage > 75 ? "queue pressure" : "RX queue ok");
+      setText("[data-metric='queue_hint']", state.metrics.queue_usage > 75 ? "큐 포화 주의" : "RX 큐 정상");
       setText("[data-metric='uart_overflow']", state.metrics.uart_overflow);
       setText("[data-metric='queue_overflow']", state.metrics.queue_overflow);
       setText("[data-metric='dropped_packets']", state.metrics.dropped_packets);
@@ -1470,6 +1494,11 @@
       setText("[data-field='ip']", state.wifi.ip);
       setText("[data-field='rssi']", state.wifi.rssi);
       setText("[data-field='mac']", state.wifi.mac);
+      const wifiStatus = $("[data-status='wifi']");
+      if (wifiStatus) {
+        wifiStatus.textContent = state.wifi.connected ? "연결됨" : "AP 모드";
+        wifiStatus.className = state.wifi.connected ? "pill ok" : "pill warn";
+      }
       setText("[data-field='baud']", state.uart.baud);
       setText("[data-field='baud_pill']", `${state.uart.baud} bps`);
       setText("[data-field='uart_format']", uartFormat());
@@ -1477,7 +1506,7 @@
       setText("[data-field='tcp_mode']", state.tcp.mode);
       setText("[data-field='tcp_host']", state.tcp.host);
       setText("[data-field='tcp_port']", state.tcp.port);
-      setText("[data-field='tcp_state']", state.tcp.mode === "server" ? "Listening" : "Client");
+      setText("[data-field='tcp_state']", state.tcp.mode === "server" ? "수신 대기" : "클라이언트");
       setText("[data-field='device_name']", state.device.name);
       setText("[data-field='version']", state.device.version);
       setText("[data-field='board']", state.device.board);
@@ -1534,7 +1563,7 @@
       $("#cfgMaxClients").value = state.tcp.max_clients || 2;
       $("#cfgDeviceName").value = state.device.name || "bridge";
       $("#cfgConsoleLimit").value = state.console.limit || MAX_CONSOLE_LINES;
-      $("#settingsNote").textContent = "no changes";
+      $("#settingsNote").textContent = "변경 없음";
     }
 
     async function loadStatus() {
@@ -1550,7 +1579,8 @@
         if (LOCAL_DEMO) tickDemoState();
       }
       renderDashboard();
-      if (isProvisioningMode() && activeRoute !== "provisioning") navigate("provisioning");
+      if (isProvisioningMode() && activeRoute !== "provisioning" && activeRoute !== "rebooting") navigate("provisioning");
+      if (!isProvisioningMode() && activeRoute === "provisioning") navigate("dashboard");
     }
 
     async function loadConfig() {
@@ -1562,13 +1592,13 @@
         mergeDefined(state.tcp, normalized.tcp);
         mergeDefined(state.device, normalized.device);
         fillSettings();
-        toast("Config loaded", "ok");
+        toast("설정을 불러왔습니다", "ok");
       } catch (_) {
         if (LOCAL_DEMO) {
           fillSettings();
-          toast("Using local demo config", "warn");
+          toast("로컬 데모 설정을 사용합니다", "warn");
         } else {
-          toast("Config load failed", "err");
+          toast("설정 불러오기에 실패했습니다", "err");
         }
       }
     }
@@ -1597,17 +1627,17 @@
 
       try {
         await api("/api/config", { method: "POST", body: JSON.stringify(payload) });
-        toast("Settings saved. Rebooting...", "ok");
+        toast("설정을 저장했습니다. 재부팅합니다...", "ok");
       } catch (_) {
         if (LOCAL_DEMO) {
           applyConfigPayload(payload);
-          toast("Demo save applied locally", "warn");
+          toast("데모 모드: 설정을 로컬에 반영했습니다", "warn");
         } else {
-          toast("Settings save failed", "err");
+          toast("설정 저장에 실패했습니다", "err");
           return;
         }
       }
-      $("#settingsNote").textContent = "saved - waiting for reboot";
+      $("#settingsNote").textContent = "저장됨 - 재부팅 대기";
       renderDashboard();
     }
 
@@ -1688,7 +1718,7 @@
           : line.kind.toUpperCase();
         return `<div class="console-line ${line.kind}"><span class="ts">${escapeHtml(line.ts)}</span><span class="tag">${escapeHtml(tag)}</span><span class="body">${highlightHex(line.body, q)}</span></div>`;
       }).join("");
-      $("#consoleOutput").innerHTML = html || `<div class="note" style="padding: 14px 12px;">No frames match the current filter.</div>`;
+      $("#consoleOutput").innerHTML = html || `<div class="note" style="padding: 14px 12px;">현재 필터와 일치하는 프레임이 없습니다.</div>`;
       if ($("#autoScroll").checked) $("#consoleOutput").scrollTop = $("#consoleOutput").scrollHeight;
     }
 
@@ -1710,11 +1740,11 @@
       const parsed = parseHexInput(input.value);
       if (!parsed.ok) {
         input.classList.add("invalid");
-        toast(`HEX TX rejected: ${parsed.error}`, "err");
+        toast(`HEX TX 거부됨: ${parsed.error}`, "err");
         return;
       }
       input.classList.remove("invalid");
-      if ($("#txConfirm").checked && !confirm(`Send ${parsed.bytes.length} bytes to RS485?`)) return;
+      if ($("#txConfirm").checked && !confirm(`${parsed.bytes.length}바이트를 RS485로 전송할까요?`)) return;
 
       try {
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1724,13 +1754,13 @@
         }
         state.metrics.tx_packets += 1;
         addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
-        toast(`TX ${parsed.bytes.length}B queued`, "ok");
+        toast(`TX ${parsed.bytes.length}B 큐에 추가됨`, "ok");
       } catch (_) {
         if (LOCAL_DEMO) {
           addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
-          toast(`Demo TX ${parsed.bytes.length}B`, "warn");
+          toast(`데모 TX ${parsed.bytes.length}B`, "warn");
         } else {
-          toast("TX request failed", "err");
+          toast("TX 요청에 실패했습니다", "err");
         }
       }
       renderDashboard();
@@ -1747,8 +1777,8 @@
         return;
       }
       socket.addEventListener("open", () => {
-        addConsolePacket({ kind: "system", body: "WebSocket console connected" });
-        toast("WebSocket connected", "ok");
+        addConsolePacket({ kind: "system", body: "WebSocket 콘솔 연결됨" });
+        toast("WebSocket 연결됨", "ok");
       });
       socket.addEventListener("message", (event) => {
         try {
@@ -1768,7 +1798,7 @@
         }
       });
       socket.addEventListener("close", () => {
-        addConsolePacket({ kind: "system", body: LOCAL_DEMO ? "WebSocket disconnected - demo stream active" : "WebSocket disconnected" });
+        addConsolePacket({ kind: "system", body: LOCAL_DEMO ? "WebSocket 연결 끊김 - 데모 스트림 사용 중" : "WebSocket 연결 끊김" });
       });
     }
 
@@ -1785,8 +1815,8 @@
         const r = Math.random();
         if (r < 0.58) addConsolePacket({ kind: "rx", body: samples[Math.floor(Math.random() * samples.length)] });
         else if (r < 0.78) addConsolePacket({ kind: "tx", body: "AA 55 01 03 00 FF" });
-        else if (r < 0.94) addConsolePacket({ kind: "system", body: "TCP keepalive - bridge monitor ok" });
-        else addConsolePacket({ kind: "err", body: "CRC mismatch - packet dropped" });
+        else if (r < 0.94) addConsolePacket({ kind: "system", body: "TCP keepalive - 브리지 감시 정상" });
+        else addConsolePacket({ kind: "err", body: "CRC 불일치 - 패킷 드롭" });
       }, 260);
     }
 
@@ -1796,26 +1826,26 @@
       const step = Number($("#scanStep").value);
       const sample_ms = Number($("#scanSample").value);
       if (start < 300 || end > 921600 || end <= start || step <= 0) {
-        toast("Invalid scanner range", "err");
+        toast("스캐너 범위가 올바르지 않습니다", "err");
         return;
       }
       $("#startScan").disabled = true;
       $("#stopScan").disabled = false;
-      $("#scannerPhase").textContent = "Scanning";
+      $("#scannerPhase").textContent = "스캔 중";
       $("#scannerPhase").className = "pill warn";
       scanResults = [];
       renderScannerRows();
       try {
         await api("/api/scanner/start", { method: "POST", body: JSON.stringify({ start, end, step, sample_ms }) });
-        toast("Scanner started on device", "ok");
+        toast("장치에서 스캐너를 시작했습니다", "ok");
         pollDeviceScan();
       } catch (_) {
         if (!LOCAL_DEMO) {
-          toast("Scanner start failed", "err");
+          toast("스캐너 시작에 실패했습니다", "err");
           finishScan();
           return;
         }
-        toast("Demo scanner active", "warn");
+        toast("데모 스캐너가 동작 중입니다", "warn");
         driveDemoScan(start, end, step, sample_ms);
       }
     }
@@ -1830,7 +1860,7 @@
         const cursor = Number(data.cursor || start);
         const span = Math.max(1, end - start);
         const pct = end > start ? Math.max(0, Math.min(100, Math.round(((cursor - start) / span) * 100))) : 0;
-        $("#scanCursor").textContent = cursor ? `${cursor} bps` : "-";
+        $("#scanCurrent").textContent = cursor ? `${cursor} bps` : "-";
         $("#scanProgress").style.width = `${pct}%`;
         $("#scanProgressLabel").textContent = `${pct}%`;
         $("#scanSamples").textContent = scanResults.length;
@@ -1842,7 +1872,7 @@
           finishScan();
         }
       } catch (_) {
-        toast("Scanner result polling failed", "err");
+        toast("스캐너 결과 조회에 실패했습니다", "err");
         finishScan();
       }
     }
@@ -1864,7 +1894,7 @@
         scanResults.push({ baud: cursor, score, bytes });
         index += 1;
         const pct = Math.round((index / total) * 100);
-        $("#scanCursor").textContent = `${cursor} bps`;
+        $("#scanCurrent").textContent = `${cursor} bps`;
         $("#scanProgress").style.width = `${pct}%`;
         $("#scanProgressLabel").textContent = `${pct}%`;
         $("#scanSamples").textContent = scanResults.length;
@@ -1889,7 +1919,7 @@
       scanTimer = null;
       $("#startScan").disabled = false;
       $("#stopScan").disabled = true;
-      $("#scannerPhase").textContent = "Done";
+      $("#scannerPhase").textContent = "완료";
       $("#scannerPhase").className = "pill ok";
       $("#scanProgress").style.width = "100%";
       $("#scanProgressLabel").textContent = "100%";
@@ -1900,7 +1930,7 @@
 
     function renderScannerRows() {
       const ranked = [...scanResults].sort((a, b) => b.score - a.score).slice(0, 8);
-      $("#candidateCount").textContent = `${ranked.length} rows`;
+      $("#candidateCount").textContent = `${ranked.length}행`;
       $("#scanTop").textContent = ranked[0] ? `${ranked[0].baud} bps` : "-";
       $("#scannerRows").innerHTML = ranked.map((row, idx) => `
         <div class="scanner-row">
@@ -1909,15 +1939,15 @@
           <span class="bar"><i style="width: ${row.score}%"></i></span>
           <span>${row.score}</span>
           <span>${row.bytes} B</span>
-          <button class="btn ghost" type="button" data-apply-baud="${row.baud}">Apply</button>
+          <button class="btn ghost" type="button" data-apply-baud="${row.baud}">적용</button>
         </div>
-      `).join("") || `<div class="note" style="padding: 12px;">Run a scan to see candidates.</div>`;
+      `).join("") || `<div class="note" style="padding: 12px;">스캔을 시작하면 후보가 표시됩니다.</div>`;
     }
 
     function applyScannerBaud(baud) {
       state.uart.baud = Number(baud);
       $("#cfgBaud").value = String(baud);
-      toast(`Baud ${baud} applied locally`, "ok");
+      toast(`Baud ${baud}를 화면에 적용했습니다`, "ok");
       renderDashboard();
     }
 
@@ -1925,12 +1955,12 @@
       const list = $("#ssidList");
       if (!list) return;
       if (phase === "scanning") {
-        list.innerHTML = `<div class="ssid-row empty">Scanning Wi-Fi networks...</div>`;
+        list.innerHTML = `<div class="ssid-row empty">Wi-Fi 네트워크를 스캔 중입니다...</div>`;
         return;
       }
       const normalized = normalizeNetworks(networks);
       if (!normalized.length) {
-        list.innerHTML = `<div class="ssid-row empty">No networks detected. Use Refresh to scan again.</div>`;
+        list.innerHTML = `<div class="ssid-row empty">감지된 네트워크가 없습니다. 새로고침으로 다시 스캔하세요.</div>`;
         list.dataset.scanned = "1";
         return;
       }
@@ -2004,30 +2034,36 @@
       const payload = formPayload(event.currentTarget);
       try {
         await api("/api/config", { method: "POST", body: JSON.stringify({ ssid: payload.ssid, wifi_password: payload.password }) });
-        toast("Wi-Fi saved. Rebooting...", "ok");
+        showRebooting("Wi-Fi 설정을 저장했습니다. 장치가 재부팅되고 저장한 네트워크로 접속을 시도합니다.");
       } catch (_) {
         if (LOCAL_DEMO) {
           state.wifi.ssid = payload.ssid;
           state.wifi.connected = true;
-          toast("Demo provisioning saved", "warn");
+          showRebooting("데모 모드: Wi-Fi 설정 저장 후 재부팅 화면입니다.");
         } else {
-          toast("Provisioning save failed", "err");
+          toast("프로비저닝 저장에 실패했습니다", "err");
           return;
         }
       }
       renderDashboard();
     }
 
+    function showRebooting(message) {
+      $("#rebootMessage").textContent = message;
+      $("#provisionForm").querySelectorAll("input, button").forEach((el) => { el.disabled = true; });
+      navigate("rebooting");
+    }
+
     function selectOtaFile(file) {
       if (!file) return;
       if (!file.name.toLowerCase().endsWith(".bin")) {
-        toast("Only .bin firmware files are accepted", "err");
+        toast(".bin 파일만 업로드할 수 있습니다", "err");
         return;
       }
       selectedOtaFile = file;
       $("#otaFileName").textContent = `${file.name} (${file.size.toLocaleString()} B)`;
       $("#otaUpload").disabled = false;
-      $("#otaPhase").textContent = "Ready";
+      $("#otaPhase").textContent = "준비됨";
       $("#otaPhase").className = "pill info";
     }
 
@@ -2035,7 +2071,7 @@
       event.preventDefault();
       if (!selectedOtaFile) return;
       $("#otaUpload").disabled = true;
-      $("#otaPhase").textContent = "Uploading";
+      $("#otaPhase").textContent = "업로드 중";
       $("#otaPhase").className = "pill info";
       const form = new FormData();
       form.append("firmware", selectedOtaFile, selectedOtaFile.name);
@@ -2051,9 +2087,9 @@
       xhr.onload = () => {
         $("#otaProgress").style.width = "100%";
         $("#otaProgressText").textContent = "100%";
-        $("#otaPhase").textContent = xhr.status >= 200 && xhr.status < 300 ? "Rebooting" : "Failed";
+        $("#otaPhase").textContent = xhr.status >= 200 && xhr.status < 300 ? "재부팅 중" : "실패";
         $("#otaPhase").className = xhr.status >= 200 && xhr.status < 300 ? "pill warn" : "pill err";
-        toast(xhr.status >= 200 && xhr.status < 300 ? "Firmware uploaded. Rebooting..." : "OTA upload failed", xhr.status >= 200 && xhr.status < 300 ? "ok" : "err");
+        toast(xhr.status >= 200 && xhr.status < 300 ? "업로드 완료. 재부팅합니다..." : "OTA 업로드에 실패했습니다", xhr.status >= 200 && xhr.status < 300 ? "ok" : "err");
       };
       xhr.onerror = () => {
         if (LOCAL_DEMO) {
@@ -2061,9 +2097,9 @@
           return;
         }
         $("#otaUpload").disabled = false;
-        $("#otaPhase").textContent = "Failed";
+        $("#otaPhase").textContent = "실패";
         $("#otaPhase").className = "pill err";
-        toast("OTA upload failed", "err");
+        toast("OTA 업로드에 실패했습니다", "err");
       };
       try {
         xhr.send(form);
@@ -2071,9 +2107,9 @@
         if (LOCAL_DEMO) demoOtaProgress();
         else {
           $("#otaUpload").disabled = false;
-          $("#otaPhase").textContent = "Failed";
+          $("#otaPhase").textContent = "실패";
           $("#otaPhase").className = "pill err";
-          toast("OTA upload failed", "err");
+          toast("OTA 업로드에 실패했습니다", "err");
         }
       }
     }
@@ -2085,9 +2121,9 @@
         if (pct >= 100) {
           pct = 100;
           clearInterval(id);
-          $("#otaPhase").textContent = "Rebooting";
+          $("#otaPhase").textContent = "재부팅 중";
           $("#otaPhase").className = "pill warn";
-          toast("Demo OTA complete", "warn");
+          toast("데모 OTA 완료", "warn");
         }
         $("#otaProgress").style.width = `${pct}%`;
         $("#otaProgressText").textContent = `${pct}%`;
@@ -2095,31 +2131,39 @@
     }
 
     async function factoryReset() {
-      if (!confirm("Factory Reset clears NVS, Wi-Fi, UART, TCP, and console settings. Continue?")) return;
+      if (!confirm("공장 초기화를 실행하면 NVS, Wi-Fi, UART, TCP, 콘솔 설정이 삭제됩니다. 계속할까요?")) return;
       try {
         await api("/api/factory-reset", { method: "POST", body: "{}" });
-        toast("Factory Reset requested. Rebooting...", "ok");
+        toast("공장 초기화를 요청했습니다. 재부팅합니다...", "ok");
       } catch (_) {
         if (LOCAL_DEMO) {
           state.wifi.connected = false;
           state.wifi.ip = "192.168.4.1";
           state.tcp.clients = 0;
-          toast("Demo Factory Reset entered AP mode", "warn");
+          toast("데모 모드: AP 모드로 전환되었습니다", "warn");
           navigate("provisioning");
         } else {
-          toast("Factory Reset request failed", "err");
+          toast("공장 초기화 요청에 실패했습니다", "err");
         }
       }
       renderDashboard();
     }
 
-    function navigate(route) {
-      activeRoute = isProvisioningMode() ? "provisioning" : (route || "dashboard");
+    function navigate(route, push = true) {
+      const requested = route || "dashboard";
+      if (isProvisioningMode() && requested !== "rebooting") {
+        activeRoute = "provisioning";
+      } else if (!isProvisioningMode() && requested === "provisioning") {
+        activeRoute = "dashboard";
+      } else {
+        activeRoute = requested;
+      }
       $$(".page").forEach((page) => { page.hidden = page.dataset.route !== activeRoute; });
       $$(".nav-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.route === activeRoute));
-      if (location.hash.replace("#", "") !== activeRoute) location.hash = activeRoute;
       if (activeRoute === "provisioning") startNetworkPolling();
       else stopNetworkPolling();
+      const nextPath = pathForRoute(activeRoute);
+      if (push && location.pathname !== nextPath) history.pushState({ route: activeRoute }, "", nextPath);
       syncShellMode();
       renderLed();
     }
@@ -2134,8 +2178,8 @@
 
     function bindEvents() {
       $$(".nav-tabs button").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.route)));
-      window.addEventListener("hashchange", () => navigate(location.hash.replace("#", "") || "dashboard"));
-      $("#settingsForm").addEventListener("input", () => { $("#settingsNote").textContent = "unsaved changes"; });
+      window.addEventListener("popstate", () => navigate(routeFromPath(), false));
+      $("#settingsForm").addEventListener("input", () => { $("#settingsNote").textContent = "저장되지 않은 변경"; });
       $("#settingsForm").addEventListener("submit", saveConfig);
       $("#reloadConfig").addEventListener("click", loadConfig);
       $("#factoryReset").addEventListener("click", factoryReset);
@@ -2148,17 +2192,17 @@
       $("#pauseConsole").addEventListener("click", () => {
         consolePaused = !consolePaused;
         $("#pauseConsole").textContent = consolePaused ? ">" : "||";
-        toast(consolePaused ? "Console paused" : "Console resumed", "info");
+        toast(consolePaused ? "콘솔 일시정지" : "콘솔 재개", "info");
       });
       $("#clearConsole").addEventListener("click", () => {
         consoleLines.splice(0, consoleLines.length);
         renderConsole();
-        toast("Console cleared", "info");
+        toast("콘솔을 지웠습니다", "info");
       });
       $("#copyConsole").addEventListener("click", () => {
         const text = consoleLines.map((line) => `${line.ts} ${line.kind.toUpperCase()} ${line.body}`).join("\n");
         navigator.clipboard && navigator.clipboard.writeText(text);
-        toast(`Copied ${consoleLines.length} lines`, "info");
+        toast(`${consoleLines.length}줄을 복사했습니다`, "info");
       });
       $$("[data-filter]").forEach((button) => button.addEventListener("click", () => {
         const key = button.dataset.filter;
@@ -2186,11 +2230,11 @@
       $("#otaClear").addEventListener("click", () => {
         selectedOtaFile = null;
         $("#otaFile").value = "";
-        $("#otaFileName").textContent = "none";
+        $("#otaFileName").textContent = "없음";
         $("#otaProgress").style.width = "0";
         $("#otaProgressText").textContent = "0%";
         $("#otaUpload").disabled = true;
-        $("#otaPhase").textContent = "Waiting";
+        $("#otaPhase").textContent = "대기";
         $("#otaPhase").className = "pill";
       });
       const drop = $("#otaDrop");
@@ -2213,14 +2257,14 @@
       renderDashboard();
       renderConsole();
       renderScannerRows();
-      addConsolePacket({ kind: "system", body: "Bridge ready - 115200 8N1 - TCP 0.0.0.0:502" });
+      addConsolePacket({ kind: "system", body: "브리지 준비 - 115200 8N1 - TCP 0.0.0.0:502" });
       addConsolePacket({ kind: "rx", body: "AA 55 01 03 00 FF 7C 10" });
       connectConsoleSocket();
       startDemoConsole();
       flushConsoleBatch();
       loadStatus();
       setInterval(loadStatus, STATUS_POLL_MS);
-      navigate(initialRoute());
+      navigate(initialRoute(), false);
     }
 
     document.addEventListener("DOMContentLoaded", init);
