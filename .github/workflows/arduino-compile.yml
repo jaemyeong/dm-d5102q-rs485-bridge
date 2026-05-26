@@ -22,7 +22,7 @@ jobs:
             fqbn: m5stack:esp32:m5stack_atom
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare secrets placeholder
         run: |
           if [ -f "${{ matrix.board.sketch }}/secrets.h.example" ] && [ ! -f "${{ matrix.board.sketch }}/secrets.h" ]; then
