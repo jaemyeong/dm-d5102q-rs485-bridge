@@ -14,7 +14,6 @@ void OtaManager::begin(AsyncWebServer& server, DeviceStatus&) {
     },
     [](AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final) {
       if (index == 0) {
-        Update.runAsync(true);
         if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
           Update.printError(Serial);
         }

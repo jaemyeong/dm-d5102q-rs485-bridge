@@ -16,7 +16,7 @@ class TcpBridge {
   void setTxSink(TxSink sink, void* ctx);
   void poll();
   void broadcast(const Packet& packet);
-  uint8_t clientCount() const;
+  uint8_t clientCount();
   void stop();
 
  private:

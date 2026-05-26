@@ -16,10 +16,10 @@ jobs:
         board:
           - name: atoms3-lite
             sketch: firmware/atoms3-lite
-            fqbn: esp32:esp32:m5stack_atoms3
+            fqbn: m5stack:esp32:m5stack_atoms3
           - name: atom-lite
             sketch: firmware/atom-lite
-            fqbn: esp32:esp32:m5stack-atom
+            fqbn: m5stack:esp32:m5stack_atom
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,12 +45,11 @@ jobs:
           sketch-paths: |
             ${{ matrix.board.sketch }}
           platforms: |
-            - name: esp32:esp32
-              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+            - name: m5stack:esp32
+              source-url: https://static-cdn.m5stack.com/resource/arduino/package_m5stack_index.json
           libraries: |
             - name: M5Atom
             - name: M5AtomS3
-            - name: ESPAsyncWebServer
-            - name: AsyncTCP
+            - name: ESP Async WebServer
+            - name: Async TCP
             - name: ArduinoJson
-            - name: ElegantOTA

@@ -35,7 +35,7 @@ void TcpBridge::broadcast(const Packet& packet) {
   }
 }
 
-uint8_t TcpBridge::clientCount() const {
+uint8_t TcpBridge::clientCount() {
   if (config_.tcp.mode == "client") return outbound_.connected() ? 1 : 0;
   uint8_t count = 0;
   for (uint8_t i = 0; i < config_.tcp.maxClients && i < 4; ++i) {
