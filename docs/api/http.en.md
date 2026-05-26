@@ -12,17 +12,21 @@
 
 ## Draft Endpoints
 
-| Method | Path | Purpose | Auth |
+> Every endpoint requires Basic Auth. Unauthenticated requests are rejected with [401 Unauthorized](#401-unauthorized).
+
+| Method | Path | Purpose | Auth Required |
 |---|---|---|---|
-| GET | `/api/status` | RSSI, uptime, heap, queue, overflow | TODO |
-| GET | `/api/config` | Read current settings | TODO |
-| POST | `/api/config` | Save settings | TODO |
-| POST | `/api/tx` | Send HEX frame | Required |
-| GET | `/api/scanner/result` | Read baud scanner results | TODO |
-| POST | `/api/scanner/start` | Start baud scanner | Required |
-| POST | `/api/scanner/stop` | Stop baud scanner | Required |
-| POST | `/api/factory-reset` | Clear NVS and reboot | Required |
-| GET/POST | `/update` | ElegantOTA endpoints | Required |
+| GET | `/api/status` | RSSI, uptime, heap, queue, overflow | ✓ |
+| GET | `/api/config` | Read current settings | ✓ |
+| POST | `/api/config` | Save settings | ✓ |
+| GET | `/api/wifi/scan` | List nearby Wi-Fi scan results | ✓ |
+| POST | `/api/tx` | Send HEX frame | ✓ |
+| GET | `/api/scanner/result` | Read baud scanner results | ✓ |
+| POST | `/api/scanner/start` | Start baud scanner | ✓ |
+| POST | `/api/scanner/stop` | Stop baud scanner | ✓ |
+| POST | `/api/factory-reset/settings` | Reset settings only, then reboot | ✓ |
+| POST | `/api/factory-reset/all` | Wipe the entire NVS, then reboot | ✓ |
+| POST | `/update` | ElegantOTA firmware upload | ✓ |
 
 ## Request/Response Schema Placeholder
 
@@ -33,6 +37,16 @@
   "error": null
 }
 ```
+
+## Common Errors
+
+### 401 Unauthorized
+
+Returned when the request lacks valid Basic Auth credentials.
+
+Response header: `WWW-Authenticate: Basic realm="DM-D5102Q Bridge"`
+
+The body matches the ESPAsyncWebServer default message (`Authentication required`).
 
 ## Draft Error Codes
 
@@ -47,5 +61,4 @@
 ## TODO
 
 - Finalize request/response schemas for every endpoint.
-- Reflect the chosen Basic Auth scope.
 - Align OTA paths with actual ElegantOTA behavior.
