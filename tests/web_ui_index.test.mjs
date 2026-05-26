@@ -10,6 +10,9 @@ assert.match(html, /<title>DM-D5102Q RS485 TCP 브리지<\/title>/);
 assert.doesNotMatch(html, /https?:\/\//);
 assert.doesNotMatch(html, /type="text\/babel"/);
 assert.doesNotMatch(html, /react/i);
+assert.doesNotMatch(html, /name="basic_auth"/);
+assert.doesNotMatch(html, /id="cfgBasicAuth"/);
+assert.doesNotMatch(html, /basic_auth\s*:/);
 assert.match(html, /id="app"/);
 
 for (const route of [

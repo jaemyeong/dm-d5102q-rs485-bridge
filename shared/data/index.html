@@ -1193,7 +1193,6 @@
                 <div class="field"><label for="cfgDeviceName">장치 이름</label><input id="cfgDeviceName" name="device_name" value="bridge"></div>
                 <div class="field"><label for="cfgConsoleLimit">콘솔 라인</label><input id="cfgConsoleLimit" name="console_limit" type="number" min="50" max="500" value="300"></div>
                 <div class="field"><label for="cfgApPassword">AP 비밀번호</label><input id="cfgApPassword" name="ap_password" type="password" autocomplete="new-password" placeholder="선택 사항"></div>
-                <div class="field"><label for="cfgBasicAuth">Basic Auth</label><select id="cfgBasicAuth" name="basic_auth"><option value="enabled">활성</option><option value="disabled">비활성</option></select></div>
               </div>
               <div class="card-body" style="border-top: 1px solid var(--border);">
                 <button id="factoryResetSettings" class="btn danger" type="button">설정 초기화</button>
@@ -1342,7 +1341,7 @@
       uart: { baud: 3840, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20, rx_buffer_bytes: 2048 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
-      security: { basic_auth: true, username: "admin" },
+      security: { username: "admin" },
       device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.8", build: "local" },
       log_server: { enabled: true, port: 8898, max_clients: 2, heartbeat_ms: 2000 },
       metrics: {
@@ -1495,7 +1494,6 @@
           limit: data.console_limit
         }),
         security: Object.assign({}, state.security, data.security || {
-          basic_auth: data.basic_auth,
           username: data.auth_user
         }),
         log_server: Object.assign({}, state.log_server, data.log_server || {
@@ -1623,7 +1621,6 @@
       $("#cfgMaxClients").value = state.tcp.max_clients || 2;
       $("#cfgDeviceName").value = state.device.name || "bridge";
       $("#cfgConsoleLimit").value = state.console.limit || MAX_CONSOLE_LINES;
-      $("#cfgBasicAuth").value = state.security.basic_auth === false ? "disabled" : "enabled";
       const log = state.log_server || {};
       $("#cfgLogEnabled").value = log.enabled === false ? "disabled" : "enabled";
       $("#cfgLogPort").value = log.port || 8898;
@@ -1745,7 +1742,6 @@
         max_clients: payload.max_clients
       });
       mergeDefined(state.console, { limit: payload.console_limit });
-      mergeDefined(state.security, { basic_auth: payload.basic_auth !== "disabled" });
       mergeDefined(state.device, { name: payload.device_name });
       mergeDefined(state.log_server, {
         enabled: payload.log_enabled,
