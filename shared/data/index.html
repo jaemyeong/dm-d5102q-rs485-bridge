@@ -675,7 +675,7 @@
     }
 
     .ssid-list {
-      max-height: 176px;
+      height: 176px;
       overflow: auto;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
@@ -1134,7 +1134,11 @@
             <article class="card">
               <div class="card-head"><span class="eyebrow">RS485 UART</span><span class="pill info">8N1</span></div>
               <div class="card-body form-grid">
-                <div class="field"><label for="cfgBaud">Baud Rate</label><select id="cfgBaud" name="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select></div>
+                <div class="field">
+                  <label for="cfgBaud">Baud Rate</label>
+                  <input id="cfgBaud" name="baud" type="number" min="300" max="921600" step="1" list="baudPresets" inputmode="numeric" value="115200">
+                  <datalist id="baudPresets"><option value="9600"></option><option value="19200"></option><option value="38400"></option><option value="57600"></option><option value="115200"></option></datalist>
+                </div>
                 <div class="field"><label for="cfgDataBits">Data Bits</label><select id="cfgDataBits" name="data_bits"><option>7</option><option>8</option></select></div>
                 <div class="field"><label for="cfgStopBits">Stop Bits</label><select id="cfgStopBits" name="stop_bits"><option>1</option><option>2</option></select></div>
                 <div class="field"><label for="cfgParity">Parity</label><select id="cfgParity" name="parity"><option value="none">none</option><option value="even">even</option><option value="odd">odd</option></select></div>
@@ -1279,7 +1283,7 @@
     const MAX_TX_BYTES = 256;
     const CONSOLE_BATCH_MS = 50;
     const STATUS_POLL_MS = 1500;
-    const WIFI_SCAN_POLL_MS = 4000;
+    const WIFI_SCAN_RETRY_MS = 1200;
     const LOCAL_DEMO_HOSTS = new Set(["", "127.0.0.1", "localhost"]);
     const LOCAL_DEMO = LOCAL_DEMO_HOSTS.has(location.hostname);
 
@@ -1314,7 +1318,7 @@
     let selectedOtaFile = null;
     let scanTimer = null;
     let scanResults = [];
-    let networkTimer = null;
+    let networkScanTimer = null;
     let networkScanInFlight = false;
 
     const $ = (selector, root = document) => root.querySelector(selector);
@@ -1543,7 +1547,7 @@
         mergeDefined(state.device, normalized.device);
         mergeDefined(state.metrics, normalized.metrics);
       } catch (_) {
-        tickDemoState();
+        if (LOCAL_DEMO) tickDemoState();
       }
       renderDashboard();
       if (isProvisioningMode() && activeRoute !== "provisioning") navigate("provisioning");
@@ -1560,8 +1564,12 @@
         fillSettings();
         toast("Config loaded", "ok");
       } catch (_) {
-        fillSettings();
-        toast("Using local demo config", "warn");
+        if (LOCAL_DEMO) {
+          fillSettings();
+          toast("Using local demo config", "warn");
+        } else {
+          toast("Config load failed", "err");
+        }
       }
     }
 
@@ -1591,8 +1599,13 @@
         await api("/api/config", { method: "POST", body: JSON.stringify(payload) });
         toast("Settings saved. Rebooting...", "ok");
       } catch (_) {
-        applyConfigPayload(payload);
-        toast("Demo save applied locally", "warn");
+        if (LOCAL_DEMO) {
+          applyConfigPayload(payload);
+          toast("Demo save applied locally", "warn");
+        } else {
+          toast("Settings save failed", "err");
+          return;
+        }
       }
       $("#settingsNote").textContent = "saved - waiting for reboot";
       renderDashboard();
@@ -1713,8 +1726,12 @@
         addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
         toast(`TX ${parsed.bytes.length}B queued`, "ok");
       } catch (_) {
-        addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
-        toast(`Demo TX ${parsed.bytes.length}B`, "warn");
+        if (LOCAL_DEMO) {
+          addConsolePacket({ kind: "tx", body: parsed.hex, length: parsed.bytes.length });
+          toast(`Demo TX ${parsed.bytes.length}B`, "warn");
+        } else {
+          toast("TX request failed", "err");
+        }
       }
       renderDashboard();
     }
@@ -1751,11 +1768,12 @@
         }
       });
       socket.addEventListener("close", () => {
-        addConsolePacket({ kind: "system", body: "WebSocket disconnected - demo stream active" });
+        addConsolePacket({ kind: "system", body: LOCAL_DEMO ? "WebSocket disconnected - demo stream active" : "WebSocket disconnected" });
       });
     }
 
     function startDemoConsole() {
+      if (!LOCAL_DEMO) return;
       const samples = [
         "AA 55 01 03 00 FF 7C 10",
         "AA 55 02 04 12 01 6E 31",
@@ -1790,10 +1808,43 @@
       try {
         await api("/api/scanner/start", { method: "POST", body: JSON.stringify({ start, end, step, sample_ms }) });
         toast("Scanner started on device", "ok");
+        pollDeviceScan();
       } catch (_) {
+        if (!LOCAL_DEMO) {
+          toast("Scanner start failed", "err");
+          finishScan();
+          return;
+        }
         toast("Demo scanner active", "warn");
+        driveDemoScan(start, end, step, sample_ms);
       }
-      driveDemoScan(start, end, step, sample_ms);
+    }
+
+    async function pollDeviceScan() {
+      try {
+        const payload = await api("/api/scanner/result");
+        const data = payload && payload.data ? payload.data : {};
+        scanResults = Array.isArray(data.results) ? data.results : [];
+        const start = Number(data.start || 0);
+        const end = Number(data.end || 0);
+        const cursor = Number(data.cursor || start);
+        const span = Math.max(1, end - start);
+        const pct = end > start ? Math.max(0, Math.min(100, Math.round(((cursor - start) / span) * 100))) : 0;
+        $("#scanCursor").textContent = cursor ? `${cursor} bps` : "-";
+        $("#scanProgress").style.width = `${pct}%`;
+        $("#scanProgressLabel").textContent = `${pct}%`;
+        $("#scanSamples").textContent = scanResults.length;
+        renderScannerRows();
+        if (data.running) {
+          clearTimeout(scanTimer);
+          scanTimer = setTimeout(pollDeviceScan, Math.max(250, Number($("#scanSample").value) || 500));
+        } else {
+          finishScan();
+        }
+      } catch (_) {
+        toast("Scanner result polling failed", "err");
+        finishScan();
+      }
     }
 
     function driveDemoScan(start, end, step, sampleMs) {
@@ -1824,6 +1875,7 @@
 
     async function stopScan() {
       clearInterval(scanTimer);
+      clearTimeout(scanTimer);
       scanTimer = null;
       try {
         await api("/api/scanner/stop", { method: "POST", body: "{}" });
@@ -1833,6 +1885,7 @@
 
     function finishScan() {
       clearInterval(scanTimer);
+      clearTimeout(scanTimer);
       scanTimer = null;
       $("#startScan").disabled = false;
       $("#stopScan").disabled = true;
@@ -1875,17 +1928,37 @@
         list.innerHTML = `<div class="ssid-row empty">Scanning Wi-Fi networks...</div>`;
         return;
       }
-      if (!networks.length) {
+      const normalized = normalizeNetworks(networks);
+      if (!normalized.length) {
         list.innerHTML = `<div class="ssid-row empty">No networks detected. Use Refresh to scan again.</div>`;
+        list.dataset.scanned = "1";
         return;
       }
-      list.innerHTML = networks.map((net) => `
-        <div class="ssid-row" data-ssid="${escapeHtml(net.ssid)}">
+      const selected = $("#provSsid").value;
+      list.innerHTML = normalized.map((net) => `
+        <div class="ssid-row${net.ssid === selected ? " selected" : ""}" data-ssid="${escapeHtml(net.ssid)}">
           <span>${net.encrypted ? "*" : "-"}</span>
           <span>${escapeHtml(net.ssid)}</span>
           <span>${net.rssi} dBm</span>
         </div>
       `).join("");
+      list.dataset.scanned = "1";
+    }
+
+    function normalizeNetworks(networks) {
+      const bestBySsid = new Map();
+      for (const net of networks) {
+        const ssid = String(net.ssid || "").trim();
+        if (!ssid) continue;
+        const item = {
+          ssid,
+          rssi: Number(net.rssi || -127),
+          encrypted: Boolean(net.encrypted)
+        };
+        const existing = bestBySsid.get(ssid);
+        if (!existing || item.rssi > existing.rssi) bestBySsid.set(ssid, item);
+      }
+      return Array.from(bestBySsid.values()).sort((a, b) => b.rssi - a.rssi);
     }
 
     function demoNetworks() {
@@ -1898,12 +1971,17 @@
 
     async function loadWifiNetworks(force = false) {
       if (networkScanInFlight) return;
+      clearTimeout(networkScanTimer);
+      networkScanTimer = null;
       networkScanInFlight = true;
       if (force) renderNetworks([], "scanning");
       try {
         const payload = await api("/api/wifi/scan");
         const data = payload && payload.data ? payload.data : {};
         renderNetworks(data.networks || [], data.phase || "done");
+        if (data.phase === "scanning" && activeRoute === "provisioning") {
+          networkScanTimer = setTimeout(() => loadWifiNetworks(false), WIFI_SCAN_RETRY_MS);
+        }
       } catch (_) {
         renderNetworks(LOCAL_DEMO ? demoNetworks() : [], LOCAL_DEMO ? "done" : "failed");
       } finally {
@@ -1912,17 +1990,13 @@
     }
 
     function startNetworkPolling() {
-      if (networkTimer) return;
-      loadWifiNetworks(true);
-      networkTimer = setInterval(() => {
-        if (activeRoute === "provisioning") loadWifiNetworks();
-      }, WIFI_SCAN_POLL_MS);
+      const list = $("#ssidList");
+      if (!list || list.dataset.scanned !== "1") loadWifiNetworks(true);
     }
 
     function stopNetworkPolling() {
-      if (!networkTimer) return;
-      clearInterval(networkTimer);
-      networkTimer = null;
+      clearTimeout(networkScanTimer);
+      networkScanTimer = null;
     }
 
     async function saveProvisioning(event) {
@@ -1932,9 +2006,14 @@
         await api("/api/config", { method: "POST", body: JSON.stringify({ ssid: payload.ssid, wifi_password: payload.password }) });
         toast("Wi-Fi saved. Rebooting...", "ok");
       } catch (_) {
-        state.wifi.ssid = payload.ssid;
-        state.wifi.connected = true;
-        toast("Demo provisioning saved", "warn");
+        if (LOCAL_DEMO) {
+          state.wifi.ssid = payload.ssid;
+          state.wifi.connected = true;
+          toast("Demo provisioning saved", "warn");
+        } else {
+          toast("Provisioning save failed", "err");
+          return;
+        }
       }
       renderDashboard();
     }
@@ -1976,11 +2055,26 @@
         $("#otaPhase").className = xhr.status >= 200 && xhr.status < 300 ? "pill warn" : "pill err";
         toast(xhr.status >= 200 && xhr.status < 300 ? "Firmware uploaded. Rebooting..." : "OTA upload failed", xhr.status >= 200 && xhr.status < 300 ? "ok" : "err");
       };
-      xhr.onerror = () => demoOtaProgress();
+      xhr.onerror = () => {
+        if (LOCAL_DEMO) {
+          demoOtaProgress();
+          return;
+        }
+        $("#otaUpload").disabled = false;
+        $("#otaPhase").textContent = "Failed";
+        $("#otaPhase").className = "pill err";
+        toast("OTA upload failed", "err");
+      };
       try {
         xhr.send(form);
       } catch (_) {
-        demoOtaProgress();
+        if (LOCAL_DEMO) demoOtaProgress();
+        else {
+          $("#otaUpload").disabled = false;
+          $("#otaPhase").textContent = "Failed";
+          $("#otaPhase").className = "pill err";
+          toast("OTA upload failed", "err");
+        }
       }
     }
 
@@ -2006,11 +2100,15 @@
         await api("/api/factory-reset", { method: "POST", body: "{}" });
         toast("Factory Reset requested. Rebooting...", "ok");
       } catch (_) {
-        state.wifi.connected = false;
-        state.wifi.ip = "192.168.4.1";
-        state.tcp.clients = 0;
-        toast("Demo Factory Reset entered AP mode", "warn");
-        navigate("provisioning");
+        if (LOCAL_DEMO) {
+          state.wifi.connected = false;
+          state.wifi.ip = "192.168.4.1";
+          state.tcp.clients = 0;
+          toast("Demo Factory Reset entered AP mode", "warn");
+          navigate("provisioning");
+        } else {
+          toast("Factory Reset request failed", "err");
+        }
       }
       renderDashboard();
     }
