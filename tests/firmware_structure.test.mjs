@@ -35,6 +35,7 @@ const requiredFiles = [
   "shared/src/web/web_server.cpp",
   "shared/src/web/ota_manager.h",
   "shared/src/web/ota_manager.cpp",
+  "shared/src/web/admin_ui.h",
   "firmware/atoms3-lite/atoms3-lite.ino",
   "firmware/atoms3-lite/board_config.h",
   "firmware/atoms3-lite/secrets.h.example",
@@ -79,10 +80,13 @@ for (const symbol of [
   "/api/factory-reset",
   "/ws/console",
   "/update",
-  "U_LITTLEFS",
-  "0.1.1",
+  "kAdminIndexHtmlGz",
+  "kAdminIndexHtmlGzLen",
+  "beginResponse_P",
+  "Content-Encoding",
+  "gzip",
+  "0.1.2",
   "Preferences",
-  "LittleFS",
   "Update",
   "WiFiServer",
   "WiFi.scanNetworks",
@@ -96,13 +100,10 @@ for (const board of ["atoms3-lite", "atom-lite"]) {
   assert.ok(existsSync(join(root, `firmware/${board}/src/app/firmware_app.cpp`)), `missing synced shared src for ${board}`);
   assert.ok(existsSync(join(root, `firmware/${board}/data/index.html`)), `missing synced index.html for ${board}`);
 
-  const partitions = readFileSync(join(root, `firmware/${board}/partitions.csv`), "utf8");
-  assert.match(partitions, /^littlefs,\s*data,\s*littlefs,/m, `${board} must define a littlefs data partition`);
+  assert.ok(existsSync(join(root, `firmware/${board}/src/web/admin_ui.h`)), `missing synced embedded admin UI for ${board}`);
 }
 
 const webServer = readFileSync(join(root, "shared/src/web/web_server.cpp"), "utf8");
-assert.match(
-  webServer,
-  /LittleFS\.begin\(\s*true\s*,\s*"\/littlefs"\s*,\s*10\s*,\s*"littlefs"\s*\)/,
-  "LittleFS must mount the explicit littlefs partition label used by partitions.csv",
-);
+const otaManager = readFileSync(join(root, "shared/src/web/ota_manager.cpp"), "utf8");
+assert.doesNotMatch(webServer, /LittleFS\.begin|serveStatic/, "web UI must be embedded in firmware, not served from LittleFS");
+assert.doesNotMatch(otaManager, /U_LITTLEFS|LittleFS/, "OTA must flash a single firmware image only");

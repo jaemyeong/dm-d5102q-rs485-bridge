@@ -1,7 +1,7 @@
 #include "web_server.h"
 
-#include <LittleFS.h>
 #include <WiFi.h>
+#include "admin_ui.h"
 #include "../utils/hex.h"
 
 namespace dm {
@@ -14,6 +14,13 @@ String jsonString(JsonDocument& doc) {
   return out;
 }
 
+void sendAdminUi(AsyncWebServerRequest* request) {
+  AsyncWebServerResponse* response = request->beginResponse_P(200, "text/html", kAdminIndexHtmlGz, kAdminIndexHtmlGzLen);
+  response->addHeader("Content-Encoding", "gzip");
+  response->addHeader("Cache-Control", "no-cache");
+  request->send(response);
+}
+
 }  // namespace
 
 void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& status, BaudScanner& scanner) {
@@ -22,17 +29,15 @@ void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& st
   status_ = &status;
   scanner_ = &scanner;
 
-  LittleFS.begin(true, "/littlefs", 10, "littlefs");
   ws_.onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {
     handleWsEvent(server, client, type, arg, data, len);
   });
   server_.addHandler(&ws_);
   registerRoutes();
   ota_.begin(server_, status);
-  server_.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   server_.onNotFound([](AsyncWebServerRequest* request) {
     if (request->method() == HTTP_GET && !request->url().startsWith("/api/")) {
-      request->send(LittleFS, "/index.html", "text/html");
+      sendAdminUi(request);
       return;
     }
     request->send(404, "application/json", "{\"ok\":false,\"error\":\"not_found\"}");

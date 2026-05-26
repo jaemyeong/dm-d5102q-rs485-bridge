@@ -5,6 +5,18 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-26
+
+### Added
+
+- Embedded gzip admin UI in firmware for single firmware-bin OTA distribution
+- Detected Wi-Fi network list and SSID selection on the settings page
+- Automatic page reload scheduling after successful OTA upload
+
+### Changed
+
+- OTA upload now flashes only one firmware image
+
 ## [0.1.1] - 2026-05-26
 
 ### Added

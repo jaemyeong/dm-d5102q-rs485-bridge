@@ -680,6 +680,11 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       background: var(--bg);
+      margin-top: 8px;
+    }
+
+    .ssid-list.compact {
+      height: 132px;
     }
 
     .ssid-row {
@@ -1014,7 +1019,7 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">시스템</span>
-              <span class="pill" data-field="version">0.1.1</span>
+              <span class="pill" data-field="version">0.1.2</span>
             </div>
             <div class="card-body kv">
               <span class="k">장치</span><span class="v" data-field="device_name">bridge</span>
@@ -1128,6 +1133,13 @@
                 <div class="field"><label for="cfgSsid">SSID</label><input id="cfgSsid" name="ssid" autocomplete="username"></div>
                 <div class="field"><label for="cfgWifiPass">비밀번호</label><input id="cfgWifiPass" name="wifi_password" type="password" autocomplete="current-password" placeholder="unchanged"></div>
               </div>
+              <div class="card-body" style="border-top: 1px solid var(--border);">
+                <div class="field-head">
+                  <span class="label">감지된 네트워크</span>
+                  <button id="refreshSettingsNetworks" class="btn ghost small" type="button">새로고침</button>
+                </div>
+                <div class="ssid-list compact" id="settingsSsidList"></div>
+              </div>
             </article>
 
             <article class="card">
@@ -1238,8 +1250,8 @@
           <div class="card-body">
             <form id="otaForm">
               <label class="drop" id="otaDrop" for="otaFile">
-                <strong>firmware.bin 또는 littlefs.bin을 여기에 놓기</strong>
-                <span>.bin 파일 - 펌웨어 또는 littlefs 웹 UI - /update 전송</span>
+                <strong>firmware.bin을 여기에 놓기</strong>
+                <span>.bin 파일 - 펌웨어와 관리자 페이지 포함 - /update 전송</span>
                 <input id="otaFile" type="file" accept=".bin" hidden>
               </label>
               <div class="kv" style="margin-top: 12px;">
@@ -1280,7 +1292,7 @@
             <div class="card-body kv">
               <span class="k">MCU</span><span class="v">ESP32-S3</span>
               <span class="k">인터페이스</span><span class="v">Atom RS485</span>
-              <span class="k">저장소</span><span class="v">Preferences NVS + LittleFS 웹 자산</span>
+              <span class="k">저장소</span><span class="v">Preferences NVS + 펌웨어 내장 웹 UI</span>
               <span class="k">콘솔</span><span class="v">WebSocket 배칭, 20-100 ms 목표</span>
             </div>
           </article>
@@ -1299,6 +1311,7 @@
     const CONSOLE_BATCH_MS = 50;
     const STATUS_POLL_MS = 1500;
     const WIFI_SCAN_RETRY_MS = 1200;
+    const OTA_RELOAD_DELAY_MS = 12000;
     const LOCAL_DEMO_HOSTS = new Set(["", "127.0.0.1", "localhost"]);
     const LOCAL_DEMO = LOCAL_DEMO_HOSTS.has(location.hostname);
 
@@ -1307,7 +1320,7 @@
       uart: { baud: 115200, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
-      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.1", build: "local" },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.2", build: "local" },
       metrics: {
         uptime_sec: 8049,
         heap_free: 192512,
@@ -1335,6 +1348,8 @@
     let scanResults = [];
     let networkScanTimer = null;
     let networkScanInFlight = false;
+    let lastNetworks = [];
+    let networkScanPhase = "idle";
 
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -1951,8 +1966,7 @@
       renderDashboard();
     }
 
-    function renderNetworks(networks = [], phase = "idle") {
-      const list = $("#ssidList");
+    function renderNetworkList(list, input, networks = [], phase = "idle") {
       if (!list) return;
       if (phase === "scanning") {
         list.innerHTML = `<div class="ssid-row empty">Wi-Fi 네트워크를 스캔 중입니다...</div>`;
@@ -1964,7 +1978,7 @@
         list.dataset.scanned = "1";
         return;
       }
-      const selected = $("#provSsid").value;
+      const selected = input ? input.value : "";
       list.innerHTML = normalized.map((net) => `
         <div class="ssid-row${net.ssid === selected ? " selected" : ""}" data-ssid="${escapeHtml(net.ssid)}">
           <span>${net.encrypted ? "*" : "-"}</span>
@@ -1973,6 +1987,11 @@
         </div>
       `).join("");
       list.dataset.scanned = "1";
+    }
+
+    function renderNetworks(networks = lastNetworks, phase = networkScanPhase) {
+      renderNetworkList($("#ssidList"), $("#provSsid"), networks, phase);
+      renderNetworkList($("#settingsSsidList"), $("#cfgSsid"), networks, phase);
     }
 
     function normalizeNetworks(networks) {
@@ -2004,16 +2023,23 @@
       clearTimeout(networkScanTimer);
       networkScanTimer = null;
       networkScanInFlight = true;
-      if (force) renderNetworks([], "scanning");
+      if (force) {
+        networkScanPhase = "scanning";
+        renderNetworks([], networkScanPhase);
+      }
       try {
         const payload = await api("/api/wifi/scan");
         const data = payload && payload.data ? payload.data : {};
-        renderNetworks(data.networks || [], data.phase || "done");
-        if (data.phase === "scanning" && activeRoute === "provisioning") {
+        lastNetworks = data.networks || [];
+        networkScanPhase = data.phase || "done";
+        renderNetworks(lastNetworks, networkScanPhase);
+        if (networkScanPhase === "scanning" && (activeRoute === "provisioning" || activeRoute === "settings")) {
           networkScanTimer = setTimeout(() => loadWifiNetworks(false), WIFI_SCAN_RETRY_MS);
         }
       } catch (_) {
-        renderNetworks(LOCAL_DEMO ? demoNetworks() : [], LOCAL_DEMO ? "done" : "failed");
+        lastNetworks = LOCAL_DEMO ? demoNetworks() : [];
+        networkScanPhase = LOCAL_DEMO ? "done" : "failed";
+        renderNetworks(lastNetworks, networkScanPhase);
       } finally {
         networkScanInFlight = false;
       }
@@ -2022,6 +2048,12 @@
     function startNetworkPolling() {
       const list = $("#ssidList");
       if (!list || list.dataset.scanned !== "1") loadWifiNetworks(true);
+    }
+
+    function refreshSettingsNetworks(force = true) {
+      const list = $("#settingsSsidList");
+      if (!list) return;
+      if (force || list.dataset.scanned !== "1") loadWifiNetworks(true);
     }
 
     function stopNetworkPolling() {
@@ -2067,6 +2099,12 @@
       $("#otaPhase").className = "pill info";
     }
 
+    function scheduleOtaReload() {
+      $("#otaPhase").textContent = "재부팅 중";
+      toast("장치 재부팅 후 페이지를 자동 새로고침합니다", "info");
+      setTimeout(() => window.location.reload(), OTA_RELOAD_DELAY_MS);
+    }
+
     function uploadFirmware(event) {
       event.preventDefault();
       if (!selectedOtaFile) return;
@@ -2090,6 +2128,7 @@
         $("#otaPhase").textContent = xhr.status >= 200 && xhr.status < 300 ? "재부팅 중" : "실패";
         $("#otaPhase").className = xhr.status >= 200 && xhr.status < 300 ? "pill warn" : "pill err";
         toast(xhr.status >= 200 && xhr.status < 300 ? "업로드 완료. 재부팅합니다..." : "OTA 업로드에 실패했습니다", xhr.status >= 200 && xhr.status < 300 ? "ok" : "err");
+        if (xhr.status >= 200 && xhr.status < 300) scheduleOtaReload();
       };
       xhr.onerror = () => {
         if (LOCAL_DEMO) {
@@ -2124,6 +2163,7 @@
           $("#otaPhase").textContent = "재부팅 중";
           $("#otaPhase").className = "pill warn";
           toast("데모 OTA 완료", "warn");
+          scheduleOtaReload();
         }
         $("#otaProgress").style.width = `${pct}%`;
         $("#otaProgressText").textContent = `${pct}%`;
@@ -2161,6 +2201,7 @@
       $$(".page").forEach((page) => { page.hidden = page.dataset.route !== activeRoute; });
       $$(".nav-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.route === activeRoute));
       if (activeRoute === "provisioning") startNetworkPolling();
+      else if (activeRoute === "settings") refreshSettingsNetworks(false);
       else stopNetworkPolling();
       const nextPath = pathForRoute(activeRoute);
       if (push && location.pathname !== nextPath) history.pushState({ route: activeRoute }, "", nextPath);
@@ -2224,6 +2265,15 @@
         $$(".ssid-row").forEach((item) => item.classList.remove("selected"));
         row.classList.add("selected");
         $("#provSsid").value = row.dataset.ssid;
+      });
+      $("#refreshSettingsNetworks").addEventListener("click", () => refreshSettingsNetworks(true));
+      $("#settingsSsidList").addEventListener("click", (event) => {
+        const row = event.target.closest("[data-ssid]");
+        if (!row) return;
+        $$("#settingsSsidList .ssid-row").forEach((item) => item.classList.remove("selected"));
+        row.classList.add("selected");
+        $("#cfgSsid").value = row.dataset.ssid;
+        $("#settingsNote").textContent = "저장되지 않은 변경";
       });
       $("#otaFile").addEventListener("change", (event) => selectOtaFile(event.target.files[0]));
       $("#otaForm").addEventListener("submit", uploadFirmware);

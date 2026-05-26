@@ -5,7 +5,7 @@ This project is a debugging and self-diagnostics tool for user-owned IoT equipme
 
 ## Status
 
-- Current version: 0.1.1 (Unreleased)
+- Current version: 0.1.2 (Unreleased)
 - Build system: Arduino IDE 2.x
 - Target boards: M5Stack AtomS3-Lite and M5Stack Atom-Lite
 - Firmware layout: separate `firmware/atoms3-lite/` and `firmware/atom-lite/` directories
@@ -27,7 +27,7 @@ This project is a debugging and self-diagnostics tool for user-owned IoT equipme
 1. Install Arduino IDE 2.x and the ESP32 board package.
 2. Install the recommended libraries: `M5Atom`, `M5AtomS3`, `ESPAsyncWebServer`, `AsyncTCP`, `Preferences`, `ElegantOTA`, and `ArduinoJson`.
 3. In the target board directory, copy `secrets.h.example` to `secrets.h` and configure Wi-Fi/AP values. These files will be added in a later implementation phase.
-4. Upload LittleFS data, then compile and upload the board-specific sketch.
+4. Compile and upload the board-specific sketch. The admin page is embedded in the firmware.
 5. On first boot, connect through AP mode or configured Wi-Fi and open the web console and status dashboard.
 
 ## Architecture at a Glance

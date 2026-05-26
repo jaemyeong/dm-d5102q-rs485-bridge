@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOARDS=("atoms3-lite" "atom-lite")
 
+node "$ROOT/tools/embed_web_ui.mjs"
+
 for board in "${BOARDS[@]}"; do
   mkdir -p "$ROOT/firmware/$board/src" "$ROOT/firmware/$board/data"
   rsync -a --delete "$ROOT/shared/src/" "$ROOT/firmware/$board/src/"
