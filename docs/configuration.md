@@ -22,7 +22,6 @@
 | `uart` | `data_bits` | uint8 | `8` | 7 또는 8 TODO |
 | `uart` | `stop_bits` | enum | `1` | 1 또는 2 |
 | `uart` | `parity` | enum | `none` | none/even/odd |
-| `web` | `basic_auth` | bool | `true` | 적용 범위 TODO |
 | `led` | `brightness` | uint8 | `32` | 0-255 |
 | `replay` | `count` | uint16 | TBD | RAM 예산 기반 |
 

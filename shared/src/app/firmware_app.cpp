@@ -100,14 +100,21 @@ void FirmwareApp::tickStatusTask(void* ctx) {
 void FirmwareApp::checkFactoryResetButton() {
   bool pressed = digitalRead(FACTORY_RESET_BTN_PIN) == LOW;
   if (!pressed) {
+    if (resetHoldStartMs_ != 0 && !resetTriggered_) {
+      uint32_t held = millis() - resetHoldStartMs_;
+      if (held >= 8000) {
+        resetTriggered_ = true;
+        factoryResetAll();
+      } else if (held >= 5000) {
+        resetTriggered_ = true;
+        factoryResetSettings();
+      }
+      // held < 5000: cancel, no action
+    }
     resetHoldStartMs_ = 0;
     return;
   }
   if (resetHoldStartMs_ == 0) resetHoldStartMs_ = millis();
-  if (!resetTriggered_ && millis() - resetHoldStartMs_ >= 5000) {
-    resetTriggered_ = true;
-    factoryResetAll();
-  }
 }
 
 void FirmwareApp::processPackets() {
@@ -137,8 +144,15 @@ void FirmwareApp::updateStatusLed() {
     return ((now / intervalMs) % 2U) == 0U;
   };
 
-  if (resetHoldStartMs_ != 0) {
-    blink(125) ? statusLed_.setRgb(255, 0, 0) : statusLed_.off();
+  if (resetHoldStartMs_ != 0 && !resetTriggered_) {
+    uint32_t held = now - resetHoldStartMs_;
+    if (held >= 8000) {
+      statusLed_.setRgb(255, 0, 0);
+    } else if (held >= 5000) {
+      statusLed_.setRgb(255, 200, 0);
+    } else {
+      blink(200) ? statusLed_.setRgb(255, 120, 0) : statusLed_.off();
+    }
     return;
   }
 
