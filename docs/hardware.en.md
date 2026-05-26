@@ -8,7 +8,7 @@
 | AtomS3-Lite | Atom RS485 Base | estimated 8MB | Primary target |
 | Atom-Lite | Atom RS485 Base | estimated 4MB | Primary target |
 
-## Atom RS485 Base Connections
+## Tail485 Connections
 
 | Signal | Description | Notes |
 |---|---|---|
@@ -21,12 +21,12 @@
 
 | Macro | AtomS3-Lite | Atom-Lite | Status |
 |---|---|---|---|
-| `RS485_UART_NUM` | 2 | 2 | Estimated |
-| `RS485_RX_PIN` | G5 | G22 | Needs measurement |
-| `RS485_TX_PIN` | G6 | G19 | Needs measurement |
-| `RS485_DE_PIN` | G7 | G23 | Needs measurement |
-| `STATUS_LED_PIN` | G35 | G27 | Needs measurement |
-| `FACTORY_RESET_BTN_PIN` | G41 | G39 | Needs measurement |
+| `RS485_UART_NUM` | 2 | 2 | Configured value |
+| `RS485_RX_PIN` | G2 | G26 | Reads Tail485 TX |
+| `RS485_TX_PIN` | G1 | G32 | Drives Tail485 RX |
+| `RS485_DE_PIN` | -1 | -1 | Tail485 handles direction |
+| `STATUS_LED_PIN` | G35 | G27 | Built-in RGB |
+| `FACTORY_RESET_BTN_PIN` | G41 | G39 | BtnA |
 
 ## Termination Resistor
 
@@ -42,5 +42,4 @@
 
 ## TODO
 
-- Confirm pin maps per Atom RS485 Base revision.
 - Add measured photos and wiring diagrams.

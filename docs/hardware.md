@@ -8,7 +8,7 @@
 | AtomS3-Lite | Atom RS485 Base | 8MB 추정 | 1차 대상 |
 | Atom-Lite | Atom RS485 Base | 4MB 추정 | 1차 대상 |
 
-## Atom RS485 Base 연결
+## Tail485 연결
 
 | 신호 | 설명 | 메모 |
 |---|---|---|
@@ -21,12 +21,12 @@
 
 | 매크로 | AtomS3-Lite | Atom-Lite | 상태 |
 |---|---|---|---|
-| `RS485_UART_NUM` | 2 | 2 | 추정 |
-| `RS485_RX_PIN` | G5 | G22 | 실측 필요 |
-| `RS485_TX_PIN` | G6 | G19 | 실측 필요 |
-| `RS485_DE_PIN` | G7 | G23 | 실측 필요 |
-| `STATUS_LED_PIN` | G35 | G27 | 실측 필요 |
-| `FACTORY_RESET_BTN_PIN` | G41 | G39 | 실측 필요 |
+| `RS485_UART_NUM` | 2 | 2 | 설정값 |
+| `RS485_RX_PIN` | G2 | G26 | Tail485 TX 수신 |
+| `RS485_TX_PIN` | G1 | G32 | Tail485 RX 구동 |
+| `RS485_DE_PIN` | -1 | -1 | Tail485 자체 제어 |
+| `STATUS_LED_PIN` | G35 | G27 | 내장 RGB |
+| `FACTORY_RESET_BTN_PIN` | G41 | G39 | BtnA |
 
 ## 종단저항
 
@@ -42,5 +42,4 @@
 
 ## TODO
 
-- Atom RS485 Base 리비전별 핀맵 확인
 - 실측 사진과 배선도 추가

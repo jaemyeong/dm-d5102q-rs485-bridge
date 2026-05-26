@@ -5,11 +5,11 @@
 #endif
 
 #ifndef RS485_RX_PIN
-#define RS485_RX_PIN 32
+#define RS485_RX_PIN 26
 #endif
 
 #ifndef RS485_TX_PIN
-#define RS485_TX_PIN 26
+#define RS485_TX_PIN 32
 #endif
 
 #ifndef RS485_DE_PIN
