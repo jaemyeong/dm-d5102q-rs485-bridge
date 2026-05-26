@@ -5,6 +5,17 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-05-27
+
+### Changed
+- Web admin and provisioning screens now require HTTP Basic Auth on every route (static HTML, `/api/*`, `/update` OTA, `/ws/console` WebSocket).
+- Removed the `basic_auth` toggle field from the configuration schema and the admin UI — authentication is always enforced.
+
+### Security
+- `/update` OTA upload endpoint is now authenticated; previously accessible without credentials.
+- `/ws/console` WebSocket handshake is now authenticated.
+- All GET endpoints (`/api/status`, `/api/config`, `/api/wifi/scan`, `/api/scanner/result`) now require credentials.
+
 ## [0.1.2] - 2026-05-26
 
 ### Added

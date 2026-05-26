@@ -41,6 +41,15 @@ Install these libraries through Library Manager or ZIP packages.
 4. On first boot, the device enters AP mode when no saved Wi-Fi credentials exist.
 5. Open the web browser and check the settings form, console, and dashboard.
 
+## First login
+
+Starting with 0.1.9, every web access is protected with HTTP Basic Auth.
+
+1. After connecting to the AP, opening `http://192.168.4.1/` triggers a browser auth prompt (`realm: "DM-D5102Q Bridge"`).
+2. Default credentials are username `admin`, password `admin`. If `secrets.h` defines `BRIDGE_DEFAULT_WEB_USER` and `BRIDGE_DEFAULT_WEB_PASSWORD`, those values apply instead.
+3. After logging in, change the password immediately in the Admin UI > Settings > Security section.
+4. After switching to STA mode, the new IP will prompt for credentials again.
+
 ## Safety Notes
 
 - Confirm wall pad power and common ground before connecting RS485 A/B/GND.

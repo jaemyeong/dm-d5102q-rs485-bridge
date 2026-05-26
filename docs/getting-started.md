@@ -41,6 +41,15 @@
 4. 첫 부팅에서 저장된 Wi-Fi가 없으면 AP 모드로 진입합니다.
 5. 웹 브라우저에서 설정 폼, Console, Dashboard를 확인합니다.
 
+## 첫 로그인
+
+0.1.9부터 모든 웹 접근은 HTTP Basic Auth로 보호됩니다.
+
+1. AP 모드에서 `http://192.168.4.1/`에 접속하면 브라우저가 즉시 인증 팝업을 표시합니다(`realm: "DM-D5102Q Bridge"`).
+2. 기본 자격증명은 사용자 이름 `admin`, 비밀번호 `admin`입니다. `secrets.h`에서 `BRIDGE_DEFAULT_WEB_USER` / `BRIDGE_DEFAULT_WEB_PASSWORD`를 정의한 경우 그 값을 사용합니다.
+3. 로그인 후 어드민 UI > 설정 > 보안 섹션에서 비밀번호를 즉시 변경하세요.
+4. STA 모드로 전환되면 새 IP에서 다시 인증을 요구합니다.
+
 ## 안전 메모
 
 - RS485 A/B/GND 배선을 연결하기 전에 월패드 전원과 공통 접지를 확인합니다.

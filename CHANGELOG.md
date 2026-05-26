@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-05-27
+
+### Changed
+- 웹 어드민과 프로비저닝 화면이 모든 경로(정적 HTML, `/api/*`, `/update` OTA, `/ws/console` WebSocket)에서 HTTP Basic Auth를 강제합니다.
+- 설정 스키마와 어드민 UI에서 `basic_auth` 토글 필드를 제거했습니다. 인증은 항상 적용됩니다.
+
+### Security
+- `/update` OTA 업로드 엔드포인트가 이제 인증을 요구합니다(이전에는 자격증명 없이 접근 가능).
+- `/ws/console` WebSocket 핸드셰이크가 이제 인증을 요구합니다.
+- 모든 GET 엔드포인트(`/api/status`, `/api/config`, `/api/wifi/scan`, `/api/scanner/result`)가 이제 인증을 요구합니다.
+
 ## [0.1.2] - 2026-05-26
 
 ### Added

@@ -205,7 +205,7 @@ void FirmwareApp::applyConfig(const DeviceConfig& config) {
 }
 
 void FirmwareApp::emitBootLog() {
-  log_.log("[boot] dm-d5102q-bridge v0.1.8 build=%s %s", __DATE__, __TIME__);
+  log_.log("[boot] dm-d5102q-bridge v0.1.9 build=%s %s", __DATE__, __TIME__);
   log_.log("[boot] device=\"%s\" board=%s", config_.deviceName.c_str(), ARDUINO_BOARD);
   const char parity = config_.uart.parity == "even" ? 'E'
                     : config_.uart.parity == "odd"  ? 'O'
