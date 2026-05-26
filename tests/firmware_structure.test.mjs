@@ -91,4 +91,14 @@ for (const symbol of [
 for (const board of ["atoms3-lite", "atom-lite"]) {
   assert.ok(existsSync(join(root, `firmware/${board}/src/app/firmware_app.cpp`)), `missing synced shared src for ${board}`);
   assert.ok(existsSync(join(root, `firmware/${board}/data/index.html`)), `missing synced index.html for ${board}`);
+
+  const partitions = readFileSync(join(root, `firmware/${board}/partitions.csv`), "utf8");
+  assert.match(partitions, /^littlefs,\s*data,\s*littlefs,/m, `${board} must define a littlefs data partition`);
 }
+
+const webServer = readFileSync(join(root, "shared/src/web/web_server.cpp"), "utf8");
+assert.match(
+  webServer,
+  /LittleFS\.begin\(\s*true\s*,\s*"\/littlefs"\s*,\s*10\s*,\s*"littlefs"\s*\)/,
+  "LittleFS must mount the explicit littlefs partition label used by partitions.csv",
+);

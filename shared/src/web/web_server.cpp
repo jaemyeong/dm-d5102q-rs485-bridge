@@ -21,7 +21,7 @@ void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& st
   status_ = &status;
   scanner_ = &scanner;
 
-  LittleFS.begin(true);
+  LittleFS.begin(true, "/littlefs", 10, "littlefs");
   ws_.onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {
     handleWsEvent(server, client, type, arg, data, len);
   });
