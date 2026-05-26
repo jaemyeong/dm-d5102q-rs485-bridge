@@ -11,10 +11,10 @@ void FirmwareApp::begin() {
   configStore_.begin();
   config_ = configStore_.load();
   status_.begin();
+  statusLed_.begin();
+  statusLed_.setRgb(18, 18, 18);
 
   pinMode(FACTORY_RESET_BTN_PIN, INPUT_PULLUP);
-  pinMode(STATUS_LED_PIN, OUTPUT);
-  digitalWrite(STATUS_LED_PIN, LOW);
   checkFactoryResetButton();
 
   bool forceAp = resetTriggered_ || !configStore_.hasWifiCredentials(config_);
@@ -37,6 +37,7 @@ void FirmwareApp::loop() {
   scanner_.poll();
   web_.poll();
   processPackets();
+  updateStatusLed();
   scheduler_.poll();
 }
 
@@ -99,7 +100,61 @@ void FirmwareApp::tickStatus() {
     queueUsage = static_cast<uint16_t>((rxQueue_.size() * 100UL) / rxQueue_.capacity());
   }
   status_.tick(config_, tcp_.clientCount(), queueUsage);
-  digitalWrite(STATUS_LED_PIN, wifi_.apMode() ? (millis() / 500) % 2 : HIGH);
+}
+
+void FirmwareApp::updateStatusLed() {
+  const uint32_t now = millis();
+  auto blink = [now](uint16_t intervalMs) {
+    return ((now / intervalMs) % 2U) == 0U;
+  };
+
+  if (resetHoldStartMs_ != 0) {
+    blink(125) ? statusLed_.setRgb(255, 0, 0) : statusLed_.off();
+    return;
+  }
+
+  if (web_.ota().updating() || web_.ota().rebootPending()) {
+    blink(180) ? statusLed_.setRgb(140, 0, 255) : statusLed_.off();
+    return;
+  }
+
+  const RuntimeMetrics metrics = status_.metrics();
+  if (metrics.uartOverflow > 0 || metrics.queueOverflow > 0 || metrics.droppedPackets > 0) {
+    blink(250) ? statusLed_.setRgb(255, 0, 0) : statusLed_.off();
+    return;
+  }
+
+  if (now - metrics.lastTxMs < 120) {
+    statusLed_.setRgb(0, 64, 255);
+    return;
+  }
+
+  if (now - metrics.lastRxMs < 120) {
+    statusLed_.setRgb(0, 255, 40);
+    return;
+  }
+
+  if (wifi_.apMode()) {
+    blink(500) ? statusLed_.setRgb(0, 64, 255) : statusLed_.off();
+    return;
+  }
+
+  if (wifi_.state() == WifiState::Connecting) {
+    blink(250) ? statusLed_.setRgb(255, 120, 0) : statusLed_.off();
+    return;
+  }
+
+  if (tcp_.clientCount() > 0) {
+    statusLed_.setRgb(0, 180, 180);
+    return;
+  }
+
+  if (wifi_.state() == WifiState::Connected) {
+    statusLed_.setRgb(0, 100, 20);
+    return;
+  }
+
+  statusLed_.setRgb(8, 8, 8);
 }
 
 void FirmwareApp::applyConfig(const DeviceConfig& config) {

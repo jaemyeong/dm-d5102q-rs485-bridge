@@ -48,6 +48,7 @@ for (const requiredText of [
   "오버플로",
   "공장 초기화",
   "재부팅 중입니다",
+  "Wi-Fi 설정 없이 펌웨어 업데이트",
 ]) {
   assert.match(html, new RegExp(requiredText));
 }
@@ -65,6 +66,8 @@ assert.match(html, /function startScan/);
 assert.match(html, /function loadWifiNetworks/);
 assert.match(html, /function normalizeNetworks/);
 assert.match(html, /function isProvisioningMode/);
+assert.match(html, /function isProvisioningAllowedRoute/);
+assert.match(html, /isProvisioningAllowedRoute\(requested\)/);
 assert.match(html, /function routeFromPath/);
 assert.match(html, /history\.pushState/);
 assert.match(html, /window\.addEventListener\("popstate"/);

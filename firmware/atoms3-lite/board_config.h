@@ -20,6 +20,14 @@
 #define STATUS_LED_PIN 35
 #endif
 
+#ifndef STATUS_LED_COUNT
+#define STATUS_LED_COUNT 1
+#endif
+
+#ifndef STATUS_LED_BRIGHTNESS
+#define STATUS_LED_BRIGHTNESS 32
+#endif
+
 #ifndef FACTORY_RESET_BTN_PIN
 #define FACTORY_RESET_BTN_PIN 41
 #endif

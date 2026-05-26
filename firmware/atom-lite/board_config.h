@@ -5,19 +5,27 @@
 #endif
 
 #ifndef RS485_RX_PIN
-#define RS485_RX_PIN 22
+#define RS485_RX_PIN 32
 #endif
 
 #ifndef RS485_TX_PIN
-#define RS485_TX_PIN 19
+#define RS485_TX_PIN 26
 #endif
 
 #ifndef RS485_DE_PIN
-#define RS485_DE_PIN 23
+#define RS485_DE_PIN -1
 #endif
 
 #ifndef STATUS_LED_PIN
 #define STATUS_LED_PIN 27
+#endif
+
+#ifndef STATUS_LED_COUNT
+#define STATUS_LED_COUNT 1
+#endif
+
+#ifndef STATUS_LED_BRIGHTNESS
+#define STATUS_LED_BRIGHTNESS 32
 #endif
 
 #ifndef FACTORY_RESET_BTN_PIN

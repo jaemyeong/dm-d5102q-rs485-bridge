@@ -12,8 +12,10 @@ bool Rs485Driver::begin(HardwareSerial& serial, const DeviceConfig& config, Pack
   status_ = &status;
   config_ = config;
 
+#if RS485_DE_PIN >= 0
   pinMode(RS485_DE_PIN, OUTPUT);
   setTransmit(false);
+#endif
   serial_->begin(config_.uart.baud, serialMode(config_.uart), RS485_RX_PIN, RS485_TX_PIN);
   parser_.configure(framingModeFromString(config_.uart.framing), config_.uart.idleGapMs);
   return true;
@@ -108,7 +110,11 @@ void Rs485Driver::processTx() {
 }
 
 void Rs485Driver::setTransmit(bool enabled) {
+#if RS485_DE_PIN >= 0
   digitalWrite(RS485_DE_PIN, enabled ? HIGH : LOW);
+#else
+  (void)enabled;
+#endif
 }
 
 }  // namespace dm

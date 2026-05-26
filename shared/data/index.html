@@ -148,6 +148,14 @@
       justify-content: center;
     }
 
+    .provisioning-action {
+      display: none;
+    }
+
+    body.provisioning-only .provisioning-action {
+      display: inline-flex;
+    }
+
     .top-state {
       display: flex;
       align-items: center;
@@ -1213,6 +1221,7 @@
               </div>
               <div class="actions">
                 <span class="note">저장 -> NVS -> ESP.restart() -> STA 재연결</span>
+                <button class="btn ghost" id="openProvisioningOta" type="button">Wi-Fi 설정 없이 펌웨어 업데이트</button>
                 <button class="btn primary" type="submit">저장 후 재부팅</button>
               </div>
             </form>
@@ -1261,6 +1270,7 @@
               <div class="progress" style="margin-top: 10px;"><i id="otaProgress"></i></div>
               <div class="actions">
                 <span class="note warn">검증된 플래시 후 장치가 자동 재부팅됩니다.</span>
+                <button class="btn ghost provisioning-action" type="button" id="backToProvisioning">Wi-Fi 설정으로 돌아가기</button>
                 <button class="btn ghost" type="button" id="otaClear">취소</button>
                 <button class="btn primary" type="submit" id="otaUpload" disabled>업로드 및 플래시</button>
               </div>
@@ -1414,13 +1424,18 @@
       return ["dashboard", "console", "scanner", "settings", "ota", "about", "provisioning", "rebooting"].includes(route) ? route : "dashboard";
     }
 
+    function isProvisioningAllowedRoute(route) {
+      return route === "provisioning" || route === "ota" || route === "rebooting";
+    }
+
     function pathForRoute(route) {
       return route === "dashboard" ? "/" : `/${route}`;
     }
 
     function initialRoute() {
-      if (isApHost()) return "provisioning";
-      return routeFromPath();
+      const route = routeFromPath();
+      if (isProvisioningMode()) return isProvisioningAllowedRoute(route) ? route : "provisioning";
+      return route;
     }
 
     function syncShellMode() {
@@ -1594,7 +1609,7 @@
         if (LOCAL_DEMO) tickDemoState();
       }
       renderDashboard();
-      if (isProvisioningMode() && activeRoute !== "provisioning" && activeRoute !== "rebooting") navigate("provisioning");
+      if (isProvisioningMode() && !isProvisioningAllowedRoute(activeRoute)) navigate("provisioning");
       if (!isProvisioningMode() && activeRoute === "provisioning") navigate("dashboard");
     }
 
@@ -2191,7 +2206,7 @@
 
     function navigate(route, push = true) {
       const requested = route || "dashboard";
-      if (isProvisioningMode() && requested !== "rebooting") {
+      if (isProvisioningMode() && !isProvisioningAllowedRoute(requested)) {
         activeRoute = "provisioning";
       } else if (!isProvisioningMode() && requested === "provisioning") {
         activeRoute = "dashboard";
@@ -2258,6 +2273,7 @@
         if (button) applyScannerBaud(button.dataset.applyBaud);
       });
       $("#provisionForm").addEventListener("submit", saveProvisioning);
+      $("#openProvisioningOta").addEventListener("click", () => navigate("ota"));
       $("#refreshNetworks").addEventListener("click", () => loadWifiNetworks(true));
       $("#ssidList").addEventListener("click", (event) => {
         const row = event.target.closest("[data-ssid]");
@@ -2277,6 +2293,7 @@
       });
       $("#otaFile").addEventListener("change", (event) => selectOtaFile(event.target.files[0]));
       $("#otaForm").addEventListener("submit", uploadFirmware);
+      $("#backToProvisioning").addEventListener("click", () => navigate("provisioning"));
       $("#otaClear").addEventListener("click", () => {
         selectedOtaFile = null;
         $("#otaFile").value = "";

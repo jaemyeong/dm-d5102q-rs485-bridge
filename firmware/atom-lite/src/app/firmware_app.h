@@ -7,6 +7,7 @@
 #include "../rs485/rs485_driver.h"
 #include "../scanner/baud_scanner.h"
 #include "../status/device_status.h"
+#include "../status/status_led.h"
 #include "../storage/config_store.h"
 #include "../web/web_server.h"
 #include "scheduler.h"
@@ -29,11 +30,13 @@ class FirmwareApp {
   void checkFactoryResetButton();
   void processPackets();
   void tickStatus();
+  void updateStatusLed();
   void applyConfig(const DeviceConfig& config);
 
   ConfigStore configStore_;
   DeviceConfig config_;
   DeviceStatus status_;
+  StatusLed statusLed_;
   BridgeWifiManager wifi_;
   PacketQueue rxQueue_{48};
   PacketQueue txQueue_{32};

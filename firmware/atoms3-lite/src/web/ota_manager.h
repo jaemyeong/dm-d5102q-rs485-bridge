@@ -11,9 +11,11 @@ class OtaManager {
  public:
   void begin(AsyncWebServer& server, DeviceStatus& status);
   bool rebootPending() const;
+  bool updating() const;
   void poll();
 
  private:
+  bool updating_ = false;
   bool rebootPending_ = false;
   uint32_t rebootAtMs_ = 0;
 };
