@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this project for diagnostics or research, please cite it using this metadata."
+title: "DM-D5102Q RS485 TCP Bridge"
+version: "0.1.0"
+license: MIT
+type: software
+authors:
+  - family-names: Jin
+    given-names: Jaemyeong
+    email: jaemyeong@me.com
+repository-code: "https://github.com/jaemyeong/dm-d5102q-rs485-bridge"
+keywords:
+  - rs485
+  - esp32
+  - m5stack
+  - atom-lite
+  - atoms3-lite
+  - dm-d5102q
+  - wall-pad
+  - diagnostics
+  - tcp-bridge
+  - websocket
