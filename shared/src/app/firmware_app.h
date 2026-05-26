@@ -55,6 +55,8 @@ class FirmwareApp {
   Scheduler scheduler_;
   uint32_t resetHoldStartMs_ = 0;
   bool resetTriggered_ = false;
+  uint32_t pendingResetAtMs_ = 0;
+  bool pendingResetFullWipe_ = false;
   WifiState lastWifiState_ = WifiState::Idle;
   uint8_t lastTcpClients_ = 0;
   bool lastOtaUpdating_ = false;

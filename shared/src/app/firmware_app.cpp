@@ -44,6 +44,20 @@ void FirmwareApp::loop() {
   emitStateTransitions();
   updateStatusLed();
   scheduler_.poll();
+  if (pendingResetAtMs_ != 0 && millis() >= pendingResetAtMs_) {
+    pendingResetAtMs_ = 0;
+    if (pendingResetFullWipe_) {
+      log_.log("[factory-reset] executing eraseAll now");
+      delay(20);
+      configStore_.eraseAll();
+    } else {
+      log_.log("[factory-reset] executing resetExceptWifi now");
+      delay(20);
+      configStore_.resetExceptWifi();
+    }
+    delay(150);
+    ESP.restart();
+  }
 }
 
 bool FirmwareApp::queueTx(const uint8_t* data, size_t length) {
@@ -51,19 +65,15 @@ bool FirmwareApp::queueTx(const uint8_t* data, size_t length) {
 }
 
 void FirmwareApp::factoryResetSettings() {
-  log_.log("[factory-reset] settings only (wifi credentials preserved)");
-  delay(50);
-  configStore_.resetExceptWifi();
-  delay(150);
-  ESP.restart();
+  log_.log("[factory-reset] settings-only scheduled (wifi kept), wipe in 600ms");
+  pendingResetFullWipe_ = false;
+  pendingResetAtMs_ = millis() + 600;
 }
 
 void FirmwareApp::factoryResetAll() {
-  log_.log("[factory-reset] full NVS wipe (all namespaces)");
-  delay(50);
-  configStore_.eraseAll();
-  delay(150);
-  ESP.restart();
+  log_.log("[factory-reset] full NVS wipe scheduled, in 600ms");
+  pendingResetFullWipe_ = true;
+  pendingResetAtMs_ = millis() + 600;
 }
 
 bool FirmwareApp::txSink(const uint8_t* data, size_t length, void* ctx) {
@@ -132,6 +142,11 @@ void FirmwareApp::updateStatusLed() {
     return;
   }
 
+  if (pendingResetAtMs_ != 0) {
+    blink(80) ? statusLed_.setRgb(255, 0, 0) : statusLed_.off();
+    return;
+  }
+
   if (web_.ota().updating() || web_.ota().rebootPending()) {
     blink(180) ? statusLed_.setRgb(140, 0, 255) : statusLed_.off();
     return;
@@ -190,7 +205,7 @@ void FirmwareApp::applyConfig(const DeviceConfig& config) {
 }
 
 void FirmwareApp::emitBootLog() {
-  log_.log("[boot] dm-d5102q-bridge v0.1.7 build=%s %s", __DATE__, __TIME__);
+  log_.log("[boot] dm-d5102q-bridge v0.1.8 build=%s %s", __DATE__, __TIME__);
   log_.log("[boot] device=\"%s\" board=%s", config_.deviceName.c_str(), ARDUINO_BOARD);
   const char parity = config_.uart.parity == "even" ? 'E'
                     : config_.uart.parity == "odd"  ? 'O'

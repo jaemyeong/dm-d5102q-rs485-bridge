@@ -1027,7 +1027,7 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">시스템</span>
-              <span class="pill" data-field="version">0.1.7</span>
+              <span class="pill" data-field="version">0.1.8</span>
             </div>
             <div class="card-body kv">
               <span class="k">장치</span><span class="v" data-field="device_name">bridge</span>
@@ -1343,7 +1343,7 @@
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
       security: { basic_auth: true, username: "admin" },
-      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.7", build: "local" },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.8", build: "local" },
       log_server: { enabled: true, port: 8898, max_clients: 2, heartbeat_ms: 2000 },
       metrics: {
         uptime_sec: 8049,
@@ -2253,7 +2253,8 @@
       if (!confirm("설정을 초기화합니다. Wi-Fi 자격증명은 유지되고 그 외 UART/TCP/콘솔/로그 설정이 default로 돌아갑니다. 계속할까요?")) return;
       try {
         await api("/api/factory-reset/settings", { method: "POST", body: "{}" });
-        toast("설정 초기화를 요청했습니다. 재부팅합니다...", "ok");
+        toast("설정 초기화를 요청했습니다. 잠시 후 재부팅합니다...", "ok");
+        setTimeout(() => window.location.reload(), OTA_RELOAD_DELAY_MS);
       } catch (_) {
         if (LOCAL_DEMO) toast("데모 모드: 설정 초기화 시뮬레이션", "warn");
         else toast("설정 초기화 요청에 실패했습니다", "err");
@@ -2264,7 +2265,13 @@
       if (!confirm("전체 NVS 파티션을 wipe합니다. Wi-Fi 자격증명, UART, TCP, 콘솔, 로그, 보안 설정 모두 사라집니다. 재부팅 후 provisioning AP 모드로 진입합니다. 계속할까요?")) return;
       try {
         await api("/api/factory-reset/all", { method: "POST", body: "{}" });
-        toast("전체 초기화를 요청했습니다. 재부팅합니다...", "ok");
+        toast("전체 초기화를 요청했습니다. 재부팅 후 AP 모드(192.168.4.1)로 전환됩니다.", "ok");
+        setTimeout(() => {
+          state.wifi.connected = false;
+          state.wifi.ip = "192.168.4.1";
+          state.tcp.clients = 0;
+          navigate("provisioning");
+        }, 1500);
       } catch (_) {
         if (LOCAL_DEMO) {
           state.wifi.connected = false;
