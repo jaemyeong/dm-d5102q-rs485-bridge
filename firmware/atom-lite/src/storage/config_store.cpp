@@ -107,7 +107,7 @@ DeviceConfig ConfigStore::defaults() const {
 void ConfigStore::validate(DeviceConfig& config) const {
   config.deviceName.trim();
   if (config.deviceName.length() == 0) config.deviceName = "bridge";
-  if (config.uart.baud < 300 || config.uart.baud > 921600) config.uart.baud = 115200;
+  if (config.uart.baud < 300 || config.uart.baud > 921600) config.uart.baud = 3840;
   if (config.uart.dataBits != 7 && config.uart.dataBits != 8) config.uart.dataBits = 8;
   if (config.uart.stopBits != 1 && config.uart.stopBits != 2) config.uart.stopBits = 1;
   if (config.uart.parity != "none" && config.uart.parity != "even" && config.uart.parity != "odd") config.uart.parity = "none";

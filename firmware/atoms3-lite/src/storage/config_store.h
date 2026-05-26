@@ -15,7 +15,7 @@ struct WifiConfig {
 };
 
 struct UartConfig {
-  uint32_t baud = 115200;
+  uint32_t baud = 3840;
   uint8_t dataBits = 8;
   uint8_t stopBits = 1;
   String parity = "none";

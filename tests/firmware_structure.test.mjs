@@ -86,6 +86,7 @@ for (const symbol of [
   "Content-Encoding",
   "gzip",
   "0.1.2",
+  "uint32_t baud = 3840",
   "Preferences",
   "Update",
   "WiFiServer",

@@ -993,10 +993,10 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">RS485</span>
-              <span class="pill info" data-field="baud_pill">115200 bps</span>
+              <span class="pill info" data-field="baud_pill">3840 bps</span>
             </div>
             <div class="card-body kv">
-              <span class="k">Baud</span><span class="v" data-field="baud">115200</span>
+              <span class="k">Baud</span><span class="v" data-field="baud">3840</span>
               <span class="k">형식</span><span class="v" data-field="uart_format">8N1</span>
               <span class="k">프레이밍</span><span class="v" data-field="framing">inter-byte, 20 ms</span>
               <span class="k">반이중 제어</span><span class="v">TX enable, flush wait, RX restore</span>
@@ -1147,8 +1147,8 @@
               <div class="card-body form-grid">
                 <div class="field">
                   <label for="cfgBaud">Baud Rate</label>
-                  <input id="cfgBaud" name="baud" type="number" min="300" max="921600" step="1" list="baudPresets" inputmode="numeric" value="115200">
-                  <datalist id="baudPresets"><option value="9600"></option><option value="19200"></option><option value="38400"></option><option value="57600"></option><option value="115200"></option></datalist>
+                  <input id="cfgBaud" name="baud" type="number" min="300" max="921600" step="1" list="baudPresets" inputmode="numeric" value="3840">
+                  <datalist id="baudPresets"><option value="3840"></option><option value="9600"></option><option value="19200"></option><option value="38400"></option><option value="57600"></option><option value="115200"></option></datalist>
                 </div>
                 <div class="field"><label for="cfgDataBits">데이터 비트</label><select id="cfgDataBits" name="data_bits"><option>7</option><option>8</option></select></div>
                 <div class="field"><label for="cfgStopBits">정지 비트</label><select id="cfgStopBits" name="stop_bits"><option>1</option><option>2</option></select></div>
@@ -1317,7 +1317,7 @@
 
     const demoState = {
       wifi: { ssid: "atom-lab-5g", ip: "192.168.4.18", mac: "8C:4F:00:1A:B2:C0", rssi: -54, connected: true, mode: "sta" },
-      uart: { baud: 115200, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
+      uart: { baud: 3840, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
       device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.2", build: "local" },
@@ -1566,7 +1566,7 @@
 
     function fillSettings() {
       $("#cfgSsid").value = state.wifi.ssid || "";
-      $("#cfgBaud").value = String(state.uart.baud || 115200);
+      $("#cfgBaud").value = String(state.uart.baud || 3840);
       $("#cfgDataBits").value = String(state.uart.data_bits || 8);
       $("#cfgStopBits").value = String(state.uart.stop_bits || 1);
       $("#cfgParity").value = state.uart.parity || "none";
@@ -2307,7 +2307,7 @@
       renderDashboard();
       renderConsole();
       renderScannerRows();
-      addConsolePacket({ kind: "system", body: "브리지 준비 - 115200 8N1 - TCP 0.0.0.0:502" });
+      addConsolePacket({ kind: "system", body: "브리지 준비 - 3840 8N1 - TCP 0.0.0.0:502" });
       addConsolePacket({ kind: "rx", body: "AA 55 01 03 00 FF 7C 10" });
       connectConsoleSocket();
       startDemoConsole();
