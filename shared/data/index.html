@@ -1330,6 +1330,7 @@
       uart: { baud: 3840, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
+      security: { basic_auth: true, username: "admin" },
       device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.2", build: "local" },
       metrics: {
         uptime_sec: 8049,
@@ -1360,6 +1361,7 @@
     let networkScanInFlight = false;
     let lastNetworks = [];
     let networkScanPhase = "idle";
+    let settingsDirty = false;
 
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -1474,6 +1476,13 @@
           board: data.board,
           version: data.version,
           build: data.build
+        }),
+        console: Object.assign({}, state.console, data.console || {
+          limit: data.console_limit
+        }),
+        security: Object.assign({}, state.security, data.security || {
+          basic_auth: data.basic_auth,
+          username: data.auth_user
         }),
         metrics: Object.assign({}, state.metrics, data.metrics || {
           uptime_sec: data.uptime_sec,
@@ -1593,7 +1602,13 @@
       $("#cfgMaxClients").value = state.tcp.max_clients || 2;
       $("#cfgDeviceName").value = state.device.name || "bridge";
       $("#cfgConsoleLimit").value = state.console.limit || MAX_CONSOLE_LINES;
+      $("#cfgBasicAuth").value = state.security.basic_auth === false ? "disabled" : "enabled";
       $("#settingsNote").textContent = "변경 없음";
+      settingsDirty = false;
+    }
+
+    function refreshSettingsFromState() {
+      if (activeRoute === "settings" && !settingsDirty) fillSettings();
     }
 
     async function loadStatus() {
@@ -1604,11 +1619,14 @@
         mergeDefined(state.uart, normalized.uart);
         mergeDefined(state.tcp, normalized.tcp);
         mergeDefined(state.device, normalized.device);
+        mergeDefined(state.console, normalized.console);
+        mergeDefined(state.security, normalized.security);
         mergeDefined(state.metrics, normalized.metrics);
       } catch (_) {
         if (LOCAL_DEMO) tickDemoState();
       }
       renderDashboard();
+      refreshSettingsFromState();
       if (isProvisioningMode() && !isProvisioningAllowedRoute(activeRoute)) navigate("provisioning");
       if (!isProvisioningMode() && activeRoute === "provisioning") navigate("dashboard");
     }
@@ -1621,6 +1639,8 @@
         mergeDefined(state.uart, normalized.uart);
         mergeDefined(state.tcp, normalized.tcp);
         mergeDefined(state.device, normalized.device);
+        mergeDefined(state.console, normalized.console);
+        mergeDefined(state.security, normalized.security);
         fillSettings();
         toast("설정을 불러왔습니다", "ok");
       } catch (_) {
@@ -1657,10 +1677,13 @@
 
       try {
         await api("/api/config", { method: "POST", body: JSON.stringify(payload) });
+        applyConfigPayload(payload);
+        settingsDirty = false;
         toast("설정을 저장했습니다. 재부팅합니다...", "ok");
       } catch (_) {
         if (LOCAL_DEMO) {
           applyConfigPayload(payload);
+          settingsDirty = false;
           toast("데모 모드: 설정을 로컬에 반영했습니다", "warn");
         } else {
           toast("설정 저장에 실패했습니다", "err");
@@ -1688,6 +1711,7 @@
         max_clients: payload.max_clients
       });
       mergeDefined(state.console, { limit: payload.console_limit });
+      mergeDefined(state.security, { basic_auth: payload.basic_auth !== "disabled" });
       mergeDefined(state.device, { name: payload.device_name });
     }
 
@@ -2216,7 +2240,10 @@
       $$(".page").forEach((page) => { page.hidden = page.dataset.route !== activeRoute; });
       $$(".nav-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.route === activeRoute));
       if (activeRoute === "provisioning") startNetworkPolling();
-      else if (activeRoute === "settings") refreshSettingsNetworks(false);
+      else if (activeRoute === "settings") {
+        loadConfig();
+        refreshSettingsNetworks(false);
+      }
       else stopNetworkPolling();
       const nextPath = pathForRoute(activeRoute);
       if (push && location.pathname !== nextPath) history.pushState({ route: activeRoute }, "", nextPath);
@@ -2235,7 +2262,10 @@
     function bindEvents() {
       $$(".nav-tabs button").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.route)));
       window.addEventListener("popstate", () => navigate(routeFromPath(), false));
-      $("#settingsForm").addEventListener("input", () => { $("#settingsNote").textContent = "저장되지 않은 변경"; });
+      $("#settingsForm").addEventListener("input", () => {
+        settingsDirty = true;
+        $("#settingsNote").textContent = "저장되지 않은 변경";
+      });
       $("#settingsForm").addEventListener("submit", saveConfig);
       $("#reloadConfig").addEventListener("click", loadConfig);
       $("#factoryReset").addEventListener("click", factoryReset);
@@ -2320,7 +2350,6 @@
     function init() {
       bindEvents();
       renderNetworks([], "scanning");
-      fillSettings();
       renderDashboard();
       renderConsole();
       renderScannerRows();

@@ -114,9 +114,13 @@ const webServer = readFileSync(join(root, "shared/src/web/web_server.cpp"), "utf
 const otaManager = readFileSync(join(root, "shared/src/web/ota_manager.cpp"), "utf8");
 const rs485Driver = readFileSync(join(root, "shared/src/rs485/rs485_driver.cpp"), "utf8");
 const atomLiteBoard = readFileSync(join(root, "firmware/atom-lite/board_config.h"), "utf8");
+const atomS3LiteBoard = readFileSync(join(root, "firmware/atoms3-lite/board_config.h"), "utf8");
 assert.doesNotMatch(webServer, /LittleFS\.begin|serveStatic/, "web UI must be embedded in firmware, not served from LittleFS");
 assert.doesNotMatch(otaManager, /U_LITTLEFS|LittleFS/, "OTA must flash a single firmware image only");
 assert.match(rs485Driver, /RS485_DE_PIN\s*>=\s*0/, "RS485 DE pin must be optional for Tail485");
 assert.match(atomLiteBoard, /#define RS485_RX_PIN 32/, "Atom Lite Tail485 RX must use GPIO32");
 assert.match(atomLiteBoard, /#define RS485_TX_PIN 26/, "Atom Lite Tail485 TX must use GPIO26");
 assert.match(atomLiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin");
+assert.match(atomS3LiteBoard, /#define RS485_RX_PIN 1/, "AtomS3 Lite Tail485 RX must use PORT.CUSTOM GPIO1");
+assert.match(atomS3LiteBoard, /#define RS485_TX_PIN 2/, "AtomS3 Lite Tail485 TX must use PORT.CUSTOM GPIO2");
+assert.match(atomS3LiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin on AtomS3 Lite");

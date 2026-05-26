@@ -81,6 +81,15 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   device["version"] = "0.1.2";
   device["build"] = __DATE__ " " __TIME__;
 
+  JsonObject console = data["console"].to<JsonObject>();
+  console["limit"] = config.console.lineLimit;
+  console["replay_packets"] = config.console.replayPackets;
+  console["confirm_tx"] = config.console.confirmTx;
+
+  JsonObject security = data["security"].to<JsonObject>();
+  security["basic_auth"] = config.security.basicAuth;
+  security["username"] = config.security.username;
+
   JsonObject metrics = data["metrics"].to<JsonObject>();
   metrics["uptime_sec"] = (millis() - metrics_.bootMs) / 1000UL;
   metrics["uptime"] = uptimeString((millis() - metrics_.bootMs) / 1000UL);
