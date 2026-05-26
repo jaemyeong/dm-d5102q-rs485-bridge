@@ -121,6 +121,6 @@ assert.match(rs485Driver, /RS485_DE_PIN\s*>=\s*0/, "RS485 DE pin must be optiona
 assert.match(atomLiteBoard, /#define RS485_RX_PIN 32/, "Atom Lite Tail485 RX must use GPIO32");
 assert.match(atomLiteBoard, /#define RS485_TX_PIN 26/, "Atom Lite Tail485 TX must use GPIO26");
 assert.match(atomLiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin");
-assert.match(atomS3LiteBoard, /#define RS485_RX_PIN 1/, "AtomS3 Lite Tail485 RX must use PORT.CUSTOM GPIO1");
-assert.match(atomS3LiteBoard, /#define RS485_TX_PIN 2/, "AtomS3 Lite Tail485 TX must use PORT.CUSTOM GPIO2");
+assert.match(atomS3LiteBoard, /#define RS485_RX_PIN 2/, "AtomS3 Lite Tail485 RX must read Tail485 TX on PORT.CUSTOM GPIO2");
+assert.match(atomS3LiteBoard, /#define RS485_TX_PIN 1/, "AtomS3 Lite Tail485 TX must drive Tail485 RX on PORT.CUSTOM GPIO1");
 assert.match(atomS3LiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin on AtomS3 Lite");
