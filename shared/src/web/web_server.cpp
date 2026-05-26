@@ -1,6 +1,7 @@
 #include "web_server.h"
 
 #include <LittleFS.h>
+#include <WiFi.h>
 #include "../utils/hex.h"
 
 namespace dm {
@@ -100,6 +101,10 @@ void WebServer::registerRoutes() {
     JsonDocument doc;
     status_->writeJson(doc, *config_);
     sendJson(request, doc);
+  });
+
+  server_.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest* request) {
+    handleWifiScan(request);
   });
 
   server_.on("/api/config", HTTP_POST,
@@ -227,6 +232,43 @@ void WebServer::handleScannerStartBody(AsyncWebServerRequest* request, const Str
     response["error"] = "invalid_scan_range";
   }
   sendJson(request, response, ok ? 200 : 400);
+}
+
+void WebServer::handleWifiScan(AsyncWebServerRequest* request) {
+  if (!authenticate(request, false)) return;
+
+  JsonDocument doc;
+  doc["ok"] = true;
+  JsonObject data = doc["data"].to<JsonObject>();
+  JsonArray networks = data["networks"].to<JsonArray>();
+
+  int result = WiFi.scanComplete();
+  if (result == WIFI_SCAN_RUNNING) {
+    data["phase"] = "scanning";
+    sendJson(request, doc);
+    return;
+  }
+
+  if (result == WIFI_SCAN_FAILED) {
+    WiFi.scanDelete();
+    int started = WiFi.scanNetworks(true, true);
+    data["phase"] = started == WIFI_SCAN_RUNNING ? "scanning" : "failed";
+    sendJson(request, doc, started == WIFI_SCAN_RUNNING ? 202 : 503);
+    return;
+  }
+
+  data["phase"] = "done";
+  data["count"] = result;
+  const int limit = min(result, 20);
+  for (int i = 0; i < limit; ++i) {
+    JsonObject item = networks.add<JsonObject>();
+    item["ssid"] = WiFi.SSID(i);
+    item["rssi"] = WiFi.RSSI(i);
+    item["channel"] = WiFi.channel(i);
+    item["encrypted"] = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+  }
+  WiFi.scanDelete();
+  sendJson(request, doc);
 }
 
 void WebServer::handleWsEvent(AsyncWebSocket*, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {

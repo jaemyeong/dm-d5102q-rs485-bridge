@@ -63,8 +63,8 @@ void BridgeWifiManager::startStation() {
 }
 
 void BridgeWifiManager::startAccessPoint() {
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_AP);
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.disconnect(false);
   if (config_.wifi.apPassword.length() >= 8) {
     WiFi.softAP(config_.wifi.apSsid.c_str(), config_.wifi.apPassword.c_str());
   } else {

@@ -51,11 +51,13 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   doc["ok"] = true;
   JsonObject data = doc["data"].to<JsonObject>();
   JsonObject wifi = data["wifi"].to<JsonObject>();
+  const bool connected = WiFi.isConnected();
   wifi["ssid"] = config.wifi.ssid;
-  wifi["ip"] = WiFi.isConnected() ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-  wifi["mac"] = WiFi.macAddress();
+  wifi["ip"] = connected ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+  wifi["mac"] = connected ? WiFi.macAddress() : WiFi.softAPmacAddress();
   wifi["rssi"] = metrics_.rssi;
-  wifi["connected"] = WiFi.isConnected();
+  wifi["connected"] = connected;
+  wifi["mode"] = connected ? "sta" : "ap";
 
   JsonObject uart = data["uart"].to<JsonObject>();
   uart["baud"] = config.uart.baud;

@@ -72,6 +72,7 @@ for (const symbol of [
   "bytesToHex",
   "/api/status",
   "/api/config",
+  "/api/wifi/scan",
   "/api/tx",
   "/api/scanner/start",
   "/api/scanner/stop",
@@ -82,6 +83,7 @@ for (const symbol of [
   "LittleFS",
   "Update",
   "WiFiServer",
+  "WiFi.scanNetworks",
   "AsyncWebSocket",
   "HardwareSerial",
 ]) {

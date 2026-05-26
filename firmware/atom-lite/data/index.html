@@ -139,6 +139,15 @@
       border-bottom-color: var(--tx);
     }
 
+    body.provisioning-only .nav-tabs,
+    body.provisioning-only .top-state {
+      display: none;
+    }
+
+    body.provisioning-only .topbar {
+      justify-content: center;
+    }
+
     .top-state {
       display: flex;
       align-items: center;
@@ -405,6 +414,12 @@
       font-weight: 700;
     }
 
+    .btn.small {
+      min-height: 24px;
+      padding: 0 8px;
+      font-size: 11px;
+    }
+
     .btn.primary {
       color: #fff;
       background: var(--tx);
@@ -436,6 +451,13 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+    }
+
+    .field-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     input,
@@ -681,6 +703,17 @@
     .ssid-row.selected {
       background: var(--tx-soft);
       color: var(--fg);
+    }
+
+    .ssid-row.empty {
+      grid-template-columns: 1fr;
+      cursor: default;
+      color: var(--fg-faint);
+    }
+
+    .ssid-row.empty:hover {
+      background: transparent;
+      color: var(--fg-faint);
     }
 
     .drop {
@@ -1153,7 +1186,10 @@
             <p class="note" style="margin-bottom: 14px;">Use when saved Wi-Fi is missing, connection timeout occurs, or Factory Reset clears NVS.</p>
             <form id="provisionForm">
               <div class="field" style="margin-bottom: 10px;">
-                <span class="label">Detected Networks</span>
+                <div class="field-head">
+                  <span class="label">Detected Networks</span>
+                  <button id="refreshNetworks" class="btn ghost small" type="button">Refresh</button>
+                </div>
                 <div class="ssid-list" id="ssidList"></div>
               </div>
               <div class="form-grid">
@@ -1243,11 +1279,12 @@
     const MAX_TX_BYTES = 256;
     const CONSOLE_BATCH_MS = 50;
     const STATUS_POLL_MS = 1500;
+    const WIFI_SCAN_POLL_MS = 4000;
     const LOCAL_DEMO_HOSTS = new Set(["", "127.0.0.1", "localhost"]);
     const LOCAL_DEMO = LOCAL_DEMO_HOSTS.has(location.hostname);
 
     const demoState = {
-      wifi: { ssid: "atom-lab-5g", ip: "192.168.4.18", mac: "8C:4F:00:1A:B2:C0", rssi: -54, connected: true },
+      wifi: { ssid: "atom-lab-5g", ip: "192.168.4.18", mac: "8C:4F:00:1A:B2:C0", rssi: -54, connected: true, mode: "sta" },
       uart: { baud: 115200, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
@@ -1277,6 +1314,8 @@
     let selectedOtaFile = null;
     let scanTimer = null;
     let scanResults = [];
+    let networkTimer = null;
+    let networkScanInFlight = false;
 
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -1328,6 +1367,23 @@
       }
     }
 
+    function isApHost() {
+      return location.hostname === "192.168.4.1";
+    }
+
+    function isProvisioningMode() {
+      return state.wifi.mode === "ap" || isApHost() || (!state.wifi.connected && state.wifi.ip === "192.168.4.1");
+    }
+
+    function initialRoute() {
+      if (isApHost()) return "provisioning";
+      return location.hash.replace("#", "") || "dashboard";
+    }
+
+    function syncShellMode() {
+      document.body.classList.toggle("provisioning-only", isProvisioningMode());
+    }
+
     function normalizeStatus(payload) {
       const data = payload && payload.data ? payload.data : payload || {};
       return {
@@ -1336,7 +1392,8 @@
           ip: data.ip,
           mac: data.mac,
           rssi: data.rssi,
-          connected: data.wifi_connected
+          connected: data.wifi_connected,
+          mode: data.wifi_mode
         }),
         uart: Object.assign({}, state.uart, data.uart || {
           baud: data.baud,
@@ -1425,6 +1482,7 @@
       setText("#navIp", state.wifi.ip);
       setText("#navRssi", `${state.wifi.rssi} dBm`);
       setText("#navUptime", formatUptime(state.metrics.uptime_sec));
+      syncShellMode();
       renderLed();
     }
 
@@ -1488,6 +1546,7 @@
         tickDemoState();
       }
       renderDashboard();
+      if (isProvisioningMode() && activeRoute !== "provisioning") navigate("provisioning");
     }
 
     async function loadConfig() {
@@ -1809,20 +1868,61 @@
       renderDashboard();
     }
 
-    function renderNetworks() {
-      const networks = [
-        { ssid: "atom-lab-5g", rssi: -54, locked: true },
-        { ssid: "office-iot", rssi: -62, locked: true },
-        { ssid: "guest", rssi: -70, locked: false },
-        { ssid: "DIRECT-7C-HP", rssi: -78, locked: true }
-      ];
-      $("#ssidList").innerHTML = networks.map((net) => `
+    function renderNetworks(networks = [], phase = "idle") {
+      const list = $("#ssidList");
+      if (!list) return;
+      if (phase === "scanning") {
+        list.innerHTML = `<div class="ssid-row empty">Scanning Wi-Fi networks...</div>`;
+        return;
+      }
+      if (!networks.length) {
+        list.innerHTML = `<div class="ssid-row empty">No networks detected. Use Refresh to scan again.</div>`;
+        return;
+      }
+      list.innerHTML = networks.map((net) => `
         <div class="ssid-row" data-ssid="${escapeHtml(net.ssid)}">
-          <span>${net.locked ? "*" : "-"}</span>
+          <span>${net.encrypted ? "*" : "-"}</span>
           <span>${escapeHtml(net.ssid)}</span>
           <span>${net.rssi} dBm</span>
         </div>
       `).join("");
+    }
+
+    function demoNetworks() {
+      return [
+        { ssid: "atom-lab-5g", rssi: -54, encrypted: true },
+        { ssid: "office-iot", rssi: -62, encrypted: true },
+        { ssid: "guest", rssi: -70, encrypted: false }
+      ];
+    }
+
+    async function loadWifiNetworks(force = false) {
+      if (networkScanInFlight) return;
+      networkScanInFlight = true;
+      if (force) renderNetworks([], "scanning");
+      try {
+        const payload = await api("/api/wifi/scan");
+        const data = payload && payload.data ? payload.data : {};
+        renderNetworks(data.networks || [], data.phase || "done");
+      } catch (_) {
+        renderNetworks(LOCAL_DEMO ? demoNetworks() : [], LOCAL_DEMO ? "done" : "failed");
+      } finally {
+        networkScanInFlight = false;
+      }
+    }
+
+    function startNetworkPolling() {
+      if (networkTimer) return;
+      loadWifiNetworks(true);
+      networkTimer = setInterval(() => {
+        if (activeRoute === "provisioning") loadWifiNetworks();
+      }, WIFI_SCAN_POLL_MS);
+    }
+
+    function stopNetworkPolling() {
+      if (!networkTimer) return;
+      clearInterval(networkTimer);
+      networkTimer = null;
     }
 
     async function saveProvisioning(event) {
@@ -1916,10 +2016,13 @@
     }
 
     function navigate(route) {
-      activeRoute = route || "dashboard";
+      activeRoute = isProvisioningMode() ? "provisioning" : (route || "dashboard");
       $$(".page").forEach((page) => { page.hidden = page.dataset.route !== activeRoute; });
       $$(".nav-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.route === activeRoute));
       if (location.hash.replace("#", "") !== activeRoute) location.hash = activeRoute;
+      if (activeRoute === "provisioning") startNetworkPolling();
+      else stopNetworkPolling();
+      syncShellMode();
       renderLed();
     }
 
@@ -1972,6 +2075,7 @@
         if (button) applyScannerBaud(button.dataset.applyBaud);
       });
       $("#provisionForm").addEventListener("submit", saveProvisioning);
+      $("#refreshNetworks").addEventListener("click", () => loadWifiNetworks(true));
       $("#ssidList").addEventListener("click", (event) => {
         const row = event.target.closest("[data-ssid]");
         if (!row) return;
@@ -2006,7 +2110,7 @@
 
     function init() {
       bindEvents();
-      renderNetworks();
+      renderNetworks([], "scanning");
       fillSettings();
       renderDashboard();
       renderConsole();
@@ -2018,7 +2122,7 @@
       flushConsoleBatch();
       loadStatus();
       setInterval(loadStatus, STATUS_POLL_MS);
-      navigate(location.hash.replace("#", "") || "dashboard");
+      navigate(initialRoute());
     }
 
     document.addEventListener("DOMContentLoaded", init);

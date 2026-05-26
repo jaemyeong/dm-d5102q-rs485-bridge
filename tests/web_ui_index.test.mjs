@@ -28,6 +28,7 @@ for (const endpoint of [
   "/ws/console",
   "/api/status",
   "/api/config",
+  "/api/wifi/scan",
   "/api/tx",
   "/api/scanner/start",
   "/api/scanner/stop",
@@ -58,3 +59,7 @@ assert.match(html, /function connectConsoleSocket/);
 assert.match(html, /function saveConfig/);
 assert.match(html, /function uploadFirmware/);
 assert.match(html, /function startScan/);
+assert.match(html, /function loadWifiNetworks/);
+assert.match(html, /function isProvisioningMode/);
+assert.match(html, /body\.provisioning-only/);
+assert.doesNotMatch(html, /DIRECT-7C-HP/);
