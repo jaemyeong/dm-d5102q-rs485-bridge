@@ -178,15 +178,16 @@ void FirmwareApp::applyConfig(const DeviceConfig& config) {
 }
 
 void FirmwareApp::emitBootLog() {
-  log_.log("[boot] dm-d5102q-bridge v0.1.5 build=%s %s", __DATE__, __TIME__);
+  log_.log("[boot] dm-d5102q-bridge v0.1.6 build=%s %s", __DATE__, __TIME__);
   log_.log("[boot] device=\"%s\" board=%s", config_.deviceName.c_str(), ARDUINO_BOARD);
   const char parity = config_.uart.parity == "even" ? 'E'
                     : config_.uart.parity == "odd"  ? 'O'
                     : 'N';
-  log_.log("[boot] uart RX=GPIO%d TX=GPIO%d baud=%u %u%c%u framing=%s idleGapMs=%u rxBuf=2048 avail=%d",
+  log_.log("[boot] uart RX=GPIO%d TX=GPIO%d baud=%u %u%c%u framing=%s idleGapMs=%u rxBuf=%u avail=%d",
            RS485_RX_PIN, RS485_TX_PIN, config_.uart.baud,
            config_.uart.dataBits, parity, config_.uart.stopBits,
            config_.uart.framing.c_str(), config_.uart.idleGapMs,
+           static_cast<unsigned>(config_.uart.rxBufferBytes),
            Serial2.available());
   log_.log("[boot] tcp mode=%s host=%s port=%u maxClients=%u",
            config_.tcp.mode.c_str(), config_.tcp.host.c_str(),

@@ -75,6 +75,7 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   uart["parity"] = config.uart.parity;
   uart["framing"] = config.uart.framing;
   uart["idle_gap_ms"] = config.uart.idleGapMs;
+  uart["rx_buffer_bytes"] = config.uart.rxBufferBytes;
 
   JsonObject tcp = data["tcp"].to<JsonObject>();
   tcp["mode"] = config.tcp.mode;
@@ -87,7 +88,7 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   JsonObject device = data["device"].to<JsonObject>();
   device["name"] = config.deviceName;
   device["board"] = ARDUINO_BOARD;
-  device["version"] = "0.1.5";
+  device["version"] = "0.1.6";
   device["build"] = __DATE__ " " __TIME__;
 
   JsonObject console = data["console"].to<JsonObject>();

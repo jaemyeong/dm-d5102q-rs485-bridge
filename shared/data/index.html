@@ -1027,7 +1027,7 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">시스템</span>
-              <span class="pill" data-field="version">0.1.5</span>
+              <span class="pill" data-field="version">0.1.6</span>
             </div>
             <div class="card-body kv">
               <span class="k">장치</span><span class="v" data-field="device_name">bridge</span>
@@ -1163,6 +1163,7 @@
                 <div class="field"><label for="cfgParity">패리티</label><select id="cfgParity" name="parity"><option value="none">없음</option><option value="even">짝수</option><option value="odd">홀수</option></select></div>
                 <div class="field"><label for="cfgFraming">패킷 프레이밍</label><select id="cfgFraming" name="framing"><option value="inter-byte">바이트 간격</option><option value="delimiter">구분자</option><option value="length">길이 기반</option></select></div>
                 <div class="field"><label for="cfgIdleGap">유휴 간격 ms</label><input id="cfgIdleGap" name="idle_gap_ms" type="number" min="1" max="1000" value="20"><span class="hint">기본 패킷 분리: 20 ms</span></div>
+                <div class="field"><label for="cfgRxBuffer">RX 버퍼 바이트</label><input id="cfgRxBuffer" name="uart_rx_buffer" type="number" min="256" max="8192" step="256" value="2048"><span class="hint">권장 2048 (약 5초), 범위 256-8192</span></div>
               </div>
             </article>
 
@@ -1337,11 +1338,11 @@
 
     const demoState = {
       wifi: { ssid: "atom-lab-5g", ip: "192.168.4.18", mac: "8C:4F:00:1A:B2:C0", rssi: -54, connected: true, mode: "sta" },
-      uart: { baud: 3840, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20 },
+      uart: { baud: 3840, data_bits: 8, stop_bits: 1, parity: "none", framing: "inter-byte", idle_gap_ms: 20, rx_buffer_bytes: 2048 },
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
       security: { basic_auth: true, username: "admin" },
-      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.5", build: "local" },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.6", build: "local" },
       log_server: { enabled: true, port: 8898, max_clients: 2, heartbeat_ms: 2000 },
       metrics: {
         uptime_sec: 8049,
@@ -1472,7 +1473,8 @@
           stop_bits: data.stop_bits,
           parity: data.parity,
           framing: data.framing,
-          idle_gap_ms: data.idle_gap_ms
+          idle_gap_ms: data.idle_gap_ms,
+          rx_buffer_bytes: data.rx_buffer_bytes
         }),
         tcp: Object.assign({}, state.tcp, data.tcp || {
           mode: data.tcp_mode,
@@ -1613,6 +1615,7 @@
       $("#cfgParity").value = state.uart.parity || "none";
       $("#cfgFraming").value = state.uart.framing || "inter-byte";
       $("#cfgIdleGap").value = state.uart.idle_gap_ms || 20;
+      $("#cfgRxBuffer").value = state.uart.rx_buffer_bytes || 2048;
       $("#cfgTcpMode").value = state.tcp.mode || "server";
       $("#cfgTcpHost").value = state.tcp.host || "0.0.0.0";
       $("#cfgTcpPort").value = state.tcp.port || 502;
@@ -1695,6 +1698,7 @@
       payload.data_bits = Number(payload.data_bits);
       payload.stop_bits = Number(payload.stop_bits);
       payload.idle_gap_ms = Number(payload.idle_gap_ms);
+      payload.uart_rx_buffer = Math.max(256, Math.min(8192, Number(payload.uart_rx_buffer) || 2048));
       payload.tcp_port = Number(payload.tcp_port);
       payload.max_clients = Math.max(1, Math.min(4, Number(payload.max_clients)));
       payload.console_limit = Math.max(50, Math.min(500, Number(payload.console_limit)));
@@ -1730,7 +1734,8 @@
         stop_bits: payload.stop_bits,
         parity: payload.parity,
         framing: payload.framing,
-        idle_gap_ms: payload.idle_gap_ms
+        idle_gap_ms: payload.idle_gap_ms,
+        rx_buffer_bytes: payload.uart_rx_buffer
       });
       mergeDefined(state.tcp, {
         mode: payload.tcp_mode,

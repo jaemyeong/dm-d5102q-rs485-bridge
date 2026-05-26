@@ -30,6 +30,7 @@ DeviceConfig ConfigStore::load() {
   config.uart.parity = prefs_.getString("uart_parity", config.uart.parity);
   config.uart.framing = prefs_.getString("framing", config.uart.framing);
   config.uart.idleGapMs = prefs_.getUShort("idle_gap", config.uart.idleGapMs);
+  config.uart.rxBufferBytes = prefs_.getUShort("uart_rxbuf", config.uart.rxBufferBytes);
   config.tcp.mode = prefs_.getString("tcp_mode", config.tcp.mode);
   config.tcp.host = prefs_.getString("tcp_host", config.tcp.host);
   config.tcp.port = prefs_.getUShort("tcp_port", config.tcp.port);
@@ -67,6 +68,7 @@ bool ConfigStore::save(const DeviceConfig& input) {
   prefs_.putString("uart_parity", config.uart.parity);
   prefs_.putString("framing", config.uart.framing);
   prefs_.putUShort("idle_gap", config.uart.idleGapMs);
+  prefs_.putUShort("uart_rxbuf", config.uart.rxBufferBytes);
   prefs_.putString("tcp_mode", config.tcp.mode);
   prefs_.putString("tcp_host", config.tcp.host);
   prefs_.putUShort("tcp_port", config.tcp.port);
@@ -121,6 +123,7 @@ void ConfigStore::validate(DeviceConfig& config) const {
   if (config.uart.parity != "none" && config.uart.parity != "even" && config.uart.parity != "odd") config.uart.parity = "none";
   if (config.uart.framing != "inter-byte" && config.uart.framing != "delimiter" && config.uart.framing != "length") config.uart.framing = "inter-byte";
   if (config.uart.idleGapMs == 0 || config.uart.idleGapMs > 1000) config.uart.idleGapMs = 20;
+  if (config.uart.rxBufferBytes < 256 || config.uart.rxBufferBytes > 8192) config.uart.rxBufferBytes = 2048;
   if (config.tcp.mode != "server" && config.tcp.mode != "client") config.tcp.mode = "server";
   if (config.tcp.port == 0) config.tcp.port = 502;
   config.tcp.maxClients = constrain(config.tcp.maxClients, static_cast<uint8_t>(1), static_cast<uint8_t>(4));

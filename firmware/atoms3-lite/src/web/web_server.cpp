@@ -186,6 +186,7 @@ void WebServer::handleConfigBody(AsyncWebServerRequest* request, const String& b
   if (doc["parity"].is<const char*>()) next.uart.parity = doc["parity"].as<String>();
   if (doc["framing"].is<const char*>()) next.uart.framing = doc["framing"].as<String>();
   if (doc["idle_gap_ms"].is<uint16_t>()) next.uart.idleGapMs = doc["idle_gap_ms"].as<uint16_t>();
+  if (doc["uart_rx_buffer"].is<uint16_t>()) next.uart.rxBufferBytes = doc["uart_rx_buffer"].as<uint16_t>();
   if (doc["tcp_mode"].is<const char*>()) next.tcp.mode = doc["tcp_mode"].as<String>();
   if (doc["tcp_host"].is<const char*>()) next.tcp.host = doc["tcp_host"].as<String>();
   if (doc["tcp_port"].is<uint16_t>()) next.tcp.port = doc["tcp_port"].as<uint16_t>();

@@ -83,7 +83,7 @@ assert.match(html, /id="refreshSettingsNetworks"/);
 assert.match(html, /function refreshSettingsNetworks/);
 assert.match(html, /window\.location\.reload/);
 assert.match(html, /if \(!LOCAL_DEMO\) return;\s*const samples/);
-assert.match(html, /version: "0\.1\.5"/);
+assert.match(html, /version: "0\.1\.6"/);
 assert.match(html, /baud: 3840/);
 assert.doesNotMatch(html, /DIRECT-7C-HP/);
 assert.doesNotMatch(html, /<select id="cfgBaud"/);

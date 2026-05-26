@@ -21,6 +21,7 @@ struct UartConfig {
   String parity = "none";
   String framing = "inter-byte";
   uint16_t idleGapMs = 20;
+  uint16_t rxBufferBytes = 2048;
 };
 
 struct TcpConfig {
