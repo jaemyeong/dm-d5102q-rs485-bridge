@@ -26,10 +26,12 @@ class WebServer {
   void broadcastPacket(const Packet& packet);
   OtaManager& ota();
 
+ public:
+  void updateCredentials(const SecurityConfig& security);
+
  private:
   using BodyHandler = void (*)(WebServer*, AsyncWebServerRequest*, const String&);
 
-  bool authenticate(AsyncWebServerRequest* request, bool required);
   void sendJson(AsyncWebServerRequest* request, JsonDocument& doc, int status = 200);
   void sendError(AsyncWebServerRequest* request, int status, const char* code);
   void registerRoutes();
@@ -54,6 +56,7 @@ class WebServer {
   FactoryResetHandler resetHandler_ = nullptr;
   void* resetCtx_ = nullptr;
   OtaManager ota_;
+  AsyncAuthenticationMiddleware authMiddleware_;
 };
 
 }  // namespace dm

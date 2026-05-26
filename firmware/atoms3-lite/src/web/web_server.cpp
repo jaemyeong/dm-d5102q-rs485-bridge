@@ -29,6 +29,15 @@ void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& st
   status_ = &status;
   scanner_ = &scanner;
 
+  authMiddleware_.setAuthType(AsyncAuthType::AUTH_BASIC);
+  authMiddleware_.setRealm("DM-D5102Q Bridge");
+  authMiddleware_.setAuthFailureMessage("Authentication required");
+  authMiddleware_.setUsername(config_->security.username.c_str());
+  authMiddleware_.setPassword(config_->security.password.c_str());
+  authMiddleware_.generateHash();
+  server_.addMiddleware(&authMiddleware_);
+  ws_.addMiddleware(&authMiddleware_);
+
   ws_.onEvent([this](AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len) {
     handleWsEvent(server, client, type, arg, data, len);
   });
@@ -60,6 +69,12 @@ void WebServer::setFactoryResetHandler(FactoryResetHandler handler, void* ctx) {
   resetCtx_ = ctx;
 }
 
+void WebServer::updateCredentials(const SecurityConfig& security) {
+  authMiddleware_.setUsername(security.username.c_str());
+  authMiddleware_.setPassword(security.password.c_str());
+  authMiddleware_.generateHash();
+}
+
 void WebServer::poll() {
   ws_.cleanupClients(2);
   ota_.poll();
@@ -78,13 +93,6 @@ void WebServer::broadcastPacket(const Packet& packet) {
 
 OtaManager& WebServer::ota() {
   return ota_;
-}
-
-bool WebServer::authenticate(AsyncWebServerRequest* request, bool required) {
-  if (!required || !config_) return true;
-  if (request->authenticate(config_->security.username.c_str(), config_->security.password.c_str())) return true;
-  request->requestAuthentication();
-  return false;
 }
 
 void WebServer::sendJson(AsyncWebServerRequest* request, JsonDocument& doc, int status) {
@@ -106,7 +114,6 @@ void WebServer::registerRoutes() {
   });
 
   server_.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
-    if (!authenticate(request, false)) return;
     JsonDocument doc;
     status_->writeJson(doc, *config_);
     sendJson(request, doc);
@@ -150,7 +157,6 @@ void WebServer::registerRoutes() {
     });
 
   server_.on("/api/scanner/stop", HTTP_POST, [this](AsyncWebServerRequest* request) {
-    if (!authenticate(request, true)) return;
     scanner_->stop();
     JsonDocument doc;
     scanner_->writeJson(doc);
@@ -158,7 +164,6 @@ void WebServer::registerRoutes() {
   });
 
   server_.on("/api/factory-reset/settings", HTTP_POST, [this](AsyncWebServerRequest* request) {
-    if (!authenticate(request, true)) return;
     JsonDocument doc;
     doc["ok"] = true;
     doc["data"]["reboot"] = true;
@@ -168,7 +173,6 @@ void WebServer::registerRoutes() {
   });
 
   server_.on("/api/factory-reset/all", HTTP_POST, [this](AsyncWebServerRequest* request) {
-    if (!authenticate(request, true)) return;
     JsonDocument doc;
     doc["ok"] = true;
     doc["data"]["reboot"] = true;
@@ -179,7 +183,6 @@ void WebServer::registerRoutes() {
 }
 
 void WebServer::handleConfigBody(AsyncWebServerRequest* request, const String& body) {
-  if (!authenticate(request, true)) return;
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, body);
   if (err) {
@@ -212,6 +215,7 @@ void WebServer::handleConfigBody(AsyncWebServerRequest* request, const String& b
   bool ok = store_->save(next);
   if (ok) {
     *config_ = next;
+    updateCredentials(next.security);
     if (saveHandler_) saveHandler_(next, saveCtx_);
   }
   JsonDocument response;
@@ -221,7 +225,6 @@ void WebServer::handleConfigBody(AsyncWebServerRequest* request, const String& b
 }
 
 void WebServer::handleTxBody(AsyncWebServerRequest* request, const String& body) {
-  if (!authenticate(request, true)) return;
   JsonDocument doc;
   if (deserializeJson(doc, body)) {
     sendError(request, 400, "invalid_json");
@@ -242,7 +245,6 @@ void WebServer::handleTxBody(AsyncWebServerRequest* request, const String& body)
 }
 
 void WebServer::handleScannerStartBody(AsyncWebServerRequest* request, const String& body) {
-  if (!authenticate(request, true)) return;
   JsonDocument doc;
   if (deserializeJson(doc, body)) {
     sendError(request, 400, "invalid_json");
@@ -259,8 +261,6 @@ void WebServer::handleScannerStartBody(AsyncWebServerRequest* request, const Str
 }
 
 void WebServer::handleWifiScan(AsyncWebServerRequest* request) {
-  if (!authenticate(request, false)) return;
-
   JsonDocument doc;
   doc["ok"] = true;
   JsonObject data = doc["data"].to<JsonObject>();
