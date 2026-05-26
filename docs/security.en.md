@@ -21,14 +21,20 @@ This device is an RS485 debugging and self-diagnostics tool used on a local netw
 - The default AP password will be decided during implementation.
 - Open AP mode should be limited to development builds if allowed at all.
 
-## Basic Auth Scope
+## Web Authentication Policy
 
-This is still undecided.
+Starting with 0.1.9, every web access requires HTTP Basic Auth. The gate covers:
 
-| Option | Description | Notes |
-|---|---|---|
-| All pages | Protect every HTTP/WS entry point | Simple and safer default |
-| Risky actions only | Protect OTA, scanner, HEX TX, and similar actions | Better usability, higher miss risk |
+- Static admin UI (`/`, `/dashboard`, `/console`, `/ota`, `/about`, and any other undefined GET path)
+- All `/api/*` endpoints (read and write alike)
+- OTA firmware upload (`/update`)
+- WebSocket (`/ws/console`) handshake
+
+Unauthenticated requests receive `401 Unauthorized` with the header `WWW-Authenticate: Basic realm="DM-D5102Q Bridge"`.
+
+Default credentials resolve in this order: value stored in NVS → `BRIDGE_DEFAULT_WEB_USER` / `BRIDGE_DEFAULT_WEB_PASSWORD` macros in `secrets.h` → compiled defaults `admin` / `admin`. Change the password immediately after first boot.
+
+If credentials are lost, hold the boot button for 5 seconds to wipe settings only (WiFi credentials preserved) or 8+ seconds for a full NVS wipe.
 
 ## Internet Exposure Recommendations
 
@@ -38,6 +44,5 @@ This is still undecided.
 
 ## TODO
 
-- Decide Basic Auth scope.
 - Decide whether HEX TX needs separate authorization.
 - Decide AP password default and strength rules.

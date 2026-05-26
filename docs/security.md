@@ -21,14 +21,20 @@
 - 기본 AP 비밀번호는 후속 구현에서 확정합니다.
 - 빈 비밀번호 AP는 개발 빌드에서만 허용하는 방향을 검토합니다.
 
-## Basic Auth 적용 범위
+## 웹 인증 정책
 
-선택지가 남아 있습니다.
+0.1.9부터 모든 웹 접근에 HTTP Basic Auth가 강제됩니다. 적용 범위는 다음과 같습니다.
 
-| 옵션 | 설명 | 메모 |
-|---|---|---|
-| 전 페이지 | 모든 HTTP/WS 진입점 보호 | 단순하고 안전한 기본값 |
-| 위험 작업만 | OTA, Scanner, HEX TX 등만 보호 | 사용성은 좋지만 누락 위험 |
+- 정적 어드민 UI(`/`, `/dashboard`, `/console`, `/ota`, `/about`, 기타 미정의 경로)
+- 모든 `/api/*` 엔드포인트(읽기/쓰기 무관)
+- OTA 펌웨어 업로드(`/update`)
+- WebSocket(`/ws/console`) 핸드셰이크
+
+인증되지 않은 요청은 `401 Unauthorized`와 `WWW-Authenticate: Basic realm="DM-D5102Q Bridge"` 헤더를 받습니다.
+
+기본 자격증명은 NVS에 저장된 값 → `secrets.h`의 `BRIDGE_DEFAULT_WEB_USER` / `BRIDGE_DEFAULT_WEB_PASSWORD` → 컴파일 기본값 `admin/admin` 순서로 적용됩니다. 첫 부팅 후 즉시 비밀번호를 변경하세요.
+
+자격증명을 잊으면 부팅 시 버튼 5초 홀드로 설정만 초기화하거나(WiFi 정보 유지) 8초 이상 홀드로 NVS 전체 초기화로 복구합니다.
 
 ## 인터넷 노출 시 권장 사항
 
@@ -38,6 +44,5 @@
 
 ## TODO
 
-- Basic Auth 적용 범위 확정
 - HEX TX 권한 분리 여부 결정
 - AP 비밀번호 기본값과 강도 규칙 확정
