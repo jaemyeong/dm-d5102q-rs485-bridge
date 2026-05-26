@@ -40,7 +40,6 @@ DeviceConfig ConfigStore::load() {
   config.console.lineLimit = prefs_.getUShort("con_lines", config.console.lineLimit);
   config.console.replayPackets = prefs_.getUShort("replay", config.console.replayPackets);
   config.console.confirmTx = prefs_.getBool("confirm_tx", config.console.confirmTx);
-  config.security.basicAuth = prefs_.getBool("basic_auth", config.security.basicAuth);
   config.security.username = prefs_.getString("auth_user", config.security.username);
   config.security.password = prefs_.getString("auth_pass", config.security.password);
   config.log.enabled = prefs_.getBool("log_on", config.log.enabled);
@@ -78,7 +77,6 @@ bool ConfigStore::save(const DeviceConfig& input) {
   prefs_.putUShort("con_lines", config.console.lineLimit);
   prefs_.putUShort("replay", config.console.replayPackets);
   prefs_.putBool("confirm_tx", config.console.confirmTx);
-  prefs_.putBool("basic_auth", config.security.basicAuth);
   prefs_.putString("auth_user", config.security.username);
   prefs_.putString("auth_pass", config.security.password);
   prefs_.putBool("log_on", config.log.enabled);

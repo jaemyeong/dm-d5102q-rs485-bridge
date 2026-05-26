@@ -40,7 +40,6 @@ struct ConsoleConfig {
 };
 
 struct SecurityConfig {
-  bool basicAuth = true;
   String username = "admin";
   String password = "admin";
 };

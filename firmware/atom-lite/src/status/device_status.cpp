@@ -97,7 +97,6 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   console["confirm_tx"] = config.console.confirmTx;
 
   JsonObject security = data["security"].to<JsonObject>();
-  security["basic_auth"] = config.security.basicAuth;
   security["username"] = config.security.username;
 
   JsonObject metrics = data["metrics"].to<JsonObject>();
