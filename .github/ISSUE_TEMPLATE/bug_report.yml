@@ -1,0 +1,61 @@
+name: "🐛 버그 신고 / Bug Report"
+description: "재현 가능한 버그를 신고합니다. / Report a reproducible bug."
+title: "[Bug]: "
+labels:
+  - "🐛 버그 신고 / Bug Report"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        사용자 본인 소유 장비의 디버깅 환경에서 발생한 문제만 신고해 주세요.
+        Please report issues observed in diagnostics for equipment you own.
+  - type: dropdown
+    id: board
+    attributes:
+      label: "보드 / Board"
+      options:
+        - AtomS3-Lite
+        - Atom-Lite
+        - Unknown / 확인 필요
+    validations:
+      required: true
+  - type: input
+    id: firmware_version
+    attributes:
+      label: "펌웨어 버전 / FW_VERSION"
+      placeholder: "0.1.0-dev"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "재현 절차 / Steps to Reproduce"
+      description: "문제를 재현하는 최소 절차를 적어 주세요. / Provide the minimal steps."
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "기대 결과 / Expected Behavior"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: "실제 결과 / Actual Behavior"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "로그와 HEX 캡처 / Logs and HEX Capture"
+      render: text
+  - type: textarea
+    id: environment
+    attributes:
+      label: "환경 / Environment"
+      placeholder: "Arduino IDE, ESP32 core version, library versions, wiring notes"

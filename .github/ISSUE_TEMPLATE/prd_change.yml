@@ -1,0 +1,35 @@
+name: "📋 PRD 변경 제안 / PRD Change"
+description: "외부 PRD 조항 변경을 제안합니다. / Propose a change to the external PRD."
+title: "[PRD]: "
+labels:
+  - "📋 PRD 변경 제안 / PRD Change"
+body:
+  - type: input
+    id: section
+    attributes:
+      label: "PRD 조항 / PRD Section"
+      placeholder: "§5.12 WebSocket"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: "현재 요구사항 / Current Requirement"
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: "제안 변경 / Proposed Change"
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: "근거 / Rationale"
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: "호환성 영향 / Compatibility Impact"

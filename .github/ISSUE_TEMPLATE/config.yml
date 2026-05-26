@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Discussions / 토론"
+    url: "https://github.com/jaemyeong/dm-d5102q-rs485-bridge/discussions"
+    about: "아이디어, 사용 경험, 일반 질문은 Discussions를 사용해 주세요. / Use Discussions for ideas, usage notes, and general questions."
+  - name: "Documentation / 문서"
+    url: "https://github.com/jaemyeong/dm-d5102q-rs485-bridge/tree/main/docs"
+    about: "먼저 문서에서 관련 내용을 확인해 주세요. / Check the documentation first."

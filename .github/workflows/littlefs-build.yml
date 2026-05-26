@@ -1,0 +1,35 @@
+name: LittleFS Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  littlefs:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - atoms3-lite
+          - atom-lite
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install mklittlefs
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mklittlefs"
+          curl -fsSL https://github.com/earlephilhower/mklittlefs/releases/download/4.0.2/x86_64-linux-gnu-mklittlefs-4.0.2-295fe9b.tar.gz             | tar -xz -C "$RUNNER_TEMP/mklittlefs"
+          echo "$RUNNER_TEMP/mklittlefs" >> "$GITHUB_PATH"
+      - name: Build LittleFS image
+        run: |
+          set -euo pipefail
+          data_dir="firmware/${{ matrix.board }}/data"
+          if [ ! -d "$data_dir" ]; then
+            echo "Missing $data_dir"
+            exit 1
+          fi
+          mklittlefs -c "$data_dir" -s 0x100000 "$RUNNER_TEMP/${{ matrix.board }}-littlefs.bin"

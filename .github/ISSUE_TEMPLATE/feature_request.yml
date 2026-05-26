@@ -1,0 +1,47 @@
+name: "✨ 기능 제안 / Feature Request"
+description: "새 기능이나 개선을 제안합니다. / Suggest a feature or improvement."
+title: "[Feature]: "
+labels:
+  - "✨ 기능 제안 / Feature Request"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        이 프로젝트는 사용자 본인 소유 IoT 장비의 RS485 디버깅·자가 진단 도구입니다.
+        This project is for RS485 debugging and self-diagnostics of user-owned IoT equipment.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "해결하려는 문제 / Problem"
+      placeholder: "현재 어떤 진단 흐름이 불편한가요? / What diagnostic workflow is difficult today?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "제안 / Proposal"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: "영역 / Area"
+      options:
+        - Wi-Fi / Provisioning
+        - RS485 RX/TX
+        - TCP Bridge
+        - Web Console / WebSocket
+        - Baud Scanner
+        - OTA / Dashboard
+        - Documentation
+        - Other / 기타
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "대안 / Alternatives"
+  - type: textarea
+    id: risks
+    attributes:
+      label: "위험과 보안 고려 / Risks and Security Considerations"

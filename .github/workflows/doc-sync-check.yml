@@ -1,0 +1,42 @@
+name: Documentation Sync Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  doc-sync-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check changed language pairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_ref="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+          changed=$(git diff --name-only "$base_ref" HEAD -- '*.md' '*.en.md' || true)
+          if [ -z "$changed" ]; then
+            echo "No Markdown changes."
+            exit 0
+          fi
+          missing=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              *.en.md) pair="${file%.en.md}.md" ;;
+              *.md) pair="${file%.md}.en.md" ;;
+            esac
+            if [ -f "$pair" ]; then
+              src_time=$(git log -1 --format=%ct -- "$file" || echo 0)
+              pair_time=$(git log -1 --format=%ct -- "$pair" || echo 0)
+              delta=$(( src_time > pair_time ? src_time - pair_time : pair_time - src_time ))
+              if [ "$delta" -gt 604800 ]; then
+                echo "Language pair may be stale: $file <-> $pair"
+                missing=1
+              fi
+            fi
+          done <<< "$changed"
+          exit "$missing"

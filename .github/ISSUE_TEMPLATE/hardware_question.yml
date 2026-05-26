@@ -1,0 +1,39 @@
+name: "🔌 하드웨어 질문 / Hardware Question"
+description: "배선, 핀, 전원, RS485 물리 계층 질문입니다. / Ask about wiring, pins, power, or RS485 physical layer."
+title: "[Hardware]: "
+labels:
+  - "🔌 하드웨어 질문 / Hardware Question"
+body:
+  - type: dropdown
+    id: board
+    attributes:
+      label: "보드 / Board"
+      options:
+        - AtomS3-Lite + Atom RS485 Base
+        - Atom-Lite + Atom RS485 Base
+        - Other / 기타
+    validations:
+      required: true
+  - type: textarea
+    id: wiring
+    attributes:
+      label: "배선 / Wiring"
+      description: "A/B/GND/VCC 연결과 종단저항 상태를 적어 주세요. / Include A/B/GND/VCC and termination status."
+    validations:
+      required: true
+  - type: textarea
+    id: power
+    attributes:
+      label: "전원 / Power"
+      placeholder: "USB, 5V input, shared ground, measured voltage"
+  - type: textarea
+    id: question
+    attributes:
+      label: "질문 / Question"
+    validations:
+      required: true
+  - type: textarea
+    id: photos
+    attributes:
+      label: "사진 또는 도면 / Photos or Diagrams"
+      description: "민감 정보가 보이지 않도록 확인해 주세요. / Remove sensitive details before attaching."
