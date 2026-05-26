@@ -1027,7 +1027,7 @@
           <article class="card">
             <div class="card-head">
               <span class="eyebrow">시스템</span>
-              <span class="pill" data-field="version">0.1.3</span>
+              <span class="pill" data-field="version">0.1.5</span>
             </div>
             <div class="card-body kv">
               <span class="k">장치</span><span class="v" data-field="device_name">bridge</span>
@@ -1173,6 +1173,16 @@
                 <div class="field"><label for="cfgTcpHost">호스트</label><input id="cfgTcpHost" name="tcp_host" value="0.0.0.0"></div>
                 <div class="field"><label for="cfgTcpPort">포트</label><input id="cfgTcpPort" name="tcp_port" type="number" min="1" max="65535" value="502"></div>
                 <div class="field"><label for="cfgMaxClients">최대 클라이언트</label><input id="cfgMaxClients" name="max_clients" type="number" min="1" max="4" value="2"><span class="hint">최소 1, 최대 4</span></div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head"><span class="eyebrow">로그 서버</span><span class="pill info">TCP 텍스트</span></div>
+              <div class="card-body form-grid">
+                <div class="field"><label for="cfgLogEnabled">활성화</label><select id="cfgLogEnabled" name="log_enabled"><option value="enabled">활성</option><option value="disabled">비활성</option></select></div>
+                <div class="field"><label for="cfgLogPort">포트</label><input id="cfgLogPort" name="log_port" type="number" min="1" max="65535" value="8898"></div>
+                <div class="field"><label for="cfgLogMaxClients">최대 클라이언트</label><input id="cfgLogMaxClients" name="log_max_clients" type="number" min="1" max="4" value="2"></div>
+                <div class="field"><label for="cfgLogHeartbeat">Heartbeat(ms)</label><input id="cfgLogHeartbeat" name="log_heartbeat_ms" type="number" min="500" max="60000" value="2000"><span class="hint">nc &lt;ip&gt; &lt;포트&gt; 로 진단 스트림 수신</span></div>
               </div>
             </article>
 
@@ -1331,7 +1341,8 @@
       tcp: { mode: "server", host: "0.0.0.0", port: 502, clients: 1, max_clients: 2, connected: true },
       console: { limit: 300 },
       security: { basic_auth: true, username: "admin" },
-      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.3", build: "local" },
+      device: { name: "bridge", board: "M5Stack AtomS3 Lite", version: "0.1.5", build: "local" },
+      log_server: { enabled: true, port: 8898, max_clients: 2, heartbeat_ms: 2000 },
       metrics: {
         uptime_sec: 8049,
         heap_free: 192512,
@@ -1484,6 +1495,12 @@
           basic_auth: data.basic_auth,
           username: data.auth_user
         }),
+        log_server: Object.assign({}, state.log_server, data.log_server || {
+          enabled: data.log_enabled,
+          port: data.log_port,
+          max_clients: data.log_max_clients,
+          heartbeat_ms: data.log_heartbeat_ms
+        }),
         metrics: Object.assign({}, state.metrics, data.metrics || {
           uptime_sec: data.uptime_sec,
           heap_free: data.heap_free,
@@ -1603,6 +1620,11 @@
       $("#cfgDeviceName").value = state.device.name || "bridge";
       $("#cfgConsoleLimit").value = state.console.limit || MAX_CONSOLE_LINES;
       $("#cfgBasicAuth").value = state.security.basic_auth === false ? "disabled" : "enabled";
+      const log = state.log_server || {};
+      $("#cfgLogEnabled").value = log.enabled === false ? "disabled" : "enabled";
+      $("#cfgLogPort").value = log.port || 8898;
+      $("#cfgLogMaxClients").value = log.max_clients || 2;
+      $("#cfgLogHeartbeat").value = log.heartbeat_ms || 2000;
       $("#settingsNote").textContent = "변경 없음";
       settingsDirty = false;
     }
@@ -1621,6 +1643,7 @@
         mergeDefined(state.device, normalized.device);
         mergeDefined(state.console, normalized.console);
         mergeDefined(state.security, normalized.security);
+        mergeDefined(state.log_server, normalized.log_server);
         mergeDefined(state.metrics, normalized.metrics);
       } catch (_) {
         if (LOCAL_DEMO) tickDemoState();
@@ -1641,6 +1664,7 @@
         mergeDefined(state.device, normalized.device);
         mergeDefined(state.console, normalized.console);
         mergeDefined(state.security, normalized.security);
+        mergeDefined(state.log_server, normalized.log_server);
         fillSettings();
         toast("설정을 불러왔습니다", "ok");
       } catch (_) {
@@ -1674,6 +1698,10 @@
       payload.tcp_port = Number(payload.tcp_port);
       payload.max_clients = Math.max(1, Math.min(4, Number(payload.max_clients)));
       payload.console_limit = Math.max(50, Math.min(500, Number(payload.console_limit)));
+      payload.log_enabled = payload.log_enabled !== "disabled";
+      payload.log_port = Math.max(1, Math.min(65535, Number(payload.log_port) || 8898));
+      payload.log_max_clients = Math.max(1, Math.min(4, Number(payload.log_max_clients) || 2));
+      payload.log_heartbeat_ms = Math.max(500, Math.min(60000, Number(payload.log_heartbeat_ms) || 2000));
 
       try {
         await api("/api/config", { method: "POST", body: JSON.stringify(payload) });
@@ -1713,6 +1741,12 @@
       mergeDefined(state.console, { limit: payload.console_limit });
       mergeDefined(state.security, { basic_auth: payload.basic_auth !== "disabled" });
       mergeDefined(state.device, { name: payload.device_name });
+      mergeDefined(state.log_server, {
+        enabled: payload.log_enabled,
+        port: payload.log_port,
+        max_clients: payload.log_max_clients,
+        heartbeat_ms: payload.log_heartbeat_ms
+      });
     }
 
     function tickDemoState() {

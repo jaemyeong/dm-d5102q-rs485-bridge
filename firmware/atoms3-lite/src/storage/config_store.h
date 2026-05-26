@@ -44,6 +44,13 @@ struct SecurityConfig {
   String password = "admin";
 };
 
+struct LogServerConfig {
+  bool enabled = true;
+  uint16_t port = 8898;
+  uint8_t maxClients = 2;
+  uint16_t heartbeatMs = 2000;
+};
+
 struct DeviceConfig {
   String deviceName = "bridge";
   WifiConfig wifi;
@@ -51,6 +58,7 @@ struct DeviceConfig {
   TcpConfig tcp;
   ConsoleConfig console;
   SecurityConfig security;
+  LogServerConfig log;
 };
 
 class ConfigStore {

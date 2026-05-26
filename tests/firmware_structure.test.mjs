@@ -88,7 +88,7 @@ for (const symbol of [
   "beginResponse_P",
   "Content-Encoding",
   "gzip",
-  "0.1.3",
+  "0.1.5",
   "uint32_t baud = 3840",
   "Preferences",
   "Update",

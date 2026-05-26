@@ -17,10 +17,19 @@ void DeviceStatus::tick(const DeviceConfig&, uint8_t tcpClients, uint16_t queueU
   metrics_.rssi = WiFi.isConnected() ? WiFi.RSSI() : 0;
 }
 
+void DeviceStatus::recordRawByte() {
+  metrics_.rawBytes++;
+  metrics_.lastRawByteMs = millis();
+}
+
 void DeviceStatus::recordRx(size_t bytes) {
   metrics_.rxPackets++;
   metrics_.rxBytes += bytes;
   metrics_.lastRxMs = millis();
+}
+
+void DeviceStatus::recordTcpRejected() {
+  metrics_.tcpRejected++;
 }
 
 void DeviceStatus::recordTx(size_t bytes) {
@@ -78,7 +87,7 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   JsonObject device = data["device"].to<JsonObject>();
   device["name"] = config.deviceName;
   device["board"] = ARDUINO_BOARD;
-  device["version"] = "0.1.3";
+  device["version"] = "0.1.5";
   device["build"] = __DATE__ " " __TIME__;
 
   JsonObject console = data["console"].to<JsonObject>();
@@ -105,6 +114,18 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   metrics["uart_overflow"] = metrics_.uartOverflow;
   metrics["queue_overflow"] = metrics_.queueOverflow;
   metrics["dropped_packets"] = metrics_.droppedPackets;
+  metrics["tcp_rejected"] = metrics_.tcpRejected;
+  metrics["raw_bytes"] = metrics_.rawBytes;
+  const uint32_t now = millis();
+  metrics["last_rx_ago_ms"] = metrics_.lastRxMs == 0 ? -1L : static_cast<long>(now - metrics_.lastRxMs);
+  metrics["last_raw_ago_ms"] = metrics_.lastRawByteMs == 0 ? -1L : static_cast<long>(now - metrics_.lastRawByteMs);
+  metrics["last_tx_ago_ms"] = metrics_.lastTxMs == 0 ? -1L : static_cast<long>(now - metrics_.lastTxMs);
+
+  JsonObject logServer = data["log_server"].to<JsonObject>();
+  logServer["enabled"] = config.log.enabled;
+  logServer["port"] = config.log.port;
+  logServer["max_clients"] = config.log.maxClients;
+  logServer["heartbeat_ms"] = config.log.heartbeatMs;
 }
 
 }  // namespace dm

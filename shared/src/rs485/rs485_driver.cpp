@@ -16,6 +16,7 @@ bool Rs485Driver::begin(HardwareSerial& serial, const DeviceConfig& config, Pack
   pinMode(RS485_DE_PIN, OUTPUT);
   setTransmit(false);
 #endif
+  serial_->setRxBufferSize(2048);
   serial_->begin(config_.uart.baud, serialMode(config_.uart), RS485_RX_PIN, RS485_TX_PIN);
   parser_.configure(framingModeFromString(config_.uart.framing), config_.uart.idleGapMs);
   return true;
@@ -25,6 +26,7 @@ void Rs485Driver::reconfigure(const DeviceConfig& config) {
   config_ = config;
   if (!serial_) return;
   serial_->end();
+  serial_->setRxBufferSize(2048);
   serial_->begin(config_.uart.baud, serialMode(config_.uart), RS485_RX_PIN, RS485_TX_PIN);
   parser_.configure(framingModeFromString(config_.uart.framing), config_.uart.idleGapMs);
 }
@@ -73,6 +75,7 @@ void Rs485Driver::processRx() {
   while (serial_->available() > 0) {
     int value = serial_->read();
     if (value < 0) break;
+    if (status_) status_->recordRawByte();
     Packet packet;
     if (parser_.pushByte(static_cast<uint8_t>(value), now, packet)) {
       if (!rxQueue_->push(packet)) {

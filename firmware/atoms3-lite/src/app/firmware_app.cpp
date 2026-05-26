@@ -26,7 +26,10 @@ void FirmwareApp::begin() {
   web_.setTxSink(&FirmwareApp::txSink, this);
   web_.setConfigSaveHandler(&FirmwareApp::saveConfigSink, this);
   web_.setFactoryResetHandler(&FirmwareApp::factoryResetSink, this);
+  if (config_.log.enabled) log_.begin(config_.log.port, config_.log.maxClients);
+  emitBootLog();
   scheduler_.every(1000, &FirmwareApp::tickStatusTask, this);
+  scheduler_.every(config_.log.heartbeatMs, &FirmwareApp::heartbeatTask, this);
 }
 
 void FirmwareApp::loop() {
@@ -36,7 +39,9 @@ void FirmwareApp::loop() {
   tcp_.poll();
   scanner_.poll();
   web_.poll();
+  log_.poll();
   processPackets();
+  emitStateTransitions();
   updateStatusLed();
   scheduler_.poll();
 }
@@ -46,6 +51,8 @@ bool FirmwareApp::queueTx(const uint8_t* data, size_t length) {
 }
 
 void FirmwareApp::factoryReset() {
+  log_.log("[factory-reset] clearing NVS and rebooting");
+  delay(50);
   configStore_.reset();
   delay(150);
   ESP.restart();
@@ -119,7 +126,7 @@ void FirmwareApp::updateStatusLed() {
   }
 
   const RuntimeMetrics metrics = status_.metrics();
-  if (metrics.uartOverflow > 0 || metrics.queueOverflow > 0 || metrics.droppedPackets > 0) {
+  if (metrics.uartOverflow > 0 || metrics.queueOverflow > 0) {
     blink(250) ? statusLed_.setRgb(255, 0, 0) : statusLed_.off();
     return;
   }
@@ -163,6 +170,99 @@ void FirmwareApp::applyConfig(const DeviceConfig& config) {
   tcp_.stop();
   tcp_.begin(config_, status_);
   tcp_.setTxSink(&FirmwareApp::txSink, this);
+  log_.stop();
+  if (config_.log.enabled) log_.begin(config_.log.port, config_.log.maxClients);
+  log_.log("[config] applied baud=%u tcpPort=%u logPort=%u logEnabled=%d",
+           config_.uart.baud, config_.tcp.port, config_.log.port,
+           config_.log.enabled ? 1 : 0);
+}
+
+void FirmwareApp::emitBootLog() {
+  log_.log("[boot] dm-d5102q-bridge v0.1.5 build=%s %s", __DATE__, __TIME__);
+  log_.log("[boot] device=\"%s\" board=%s", config_.deviceName.c_str(), ARDUINO_BOARD);
+  const char parity = config_.uart.parity == "even" ? 'E'
+                    : config_.uart.parity == "odd"  ? 'O'
+                    : 'N';
+  log_.log("[boot] uart RX=GPIO%d TX=GPIO%d baud=%u %u%c%u framing=%s idleGapMs=%u rxBuf=2048 avail=%d",
+           RS485_RX_PIN, RS485_TX_PIN, config_.uart.baud,
+           config_.uart.dataBits, parity, config_.uart.stopBits,
+           config_.uart.framing.c_str(), config_.uart.idleGapMs,
+           Serial2.available());
+  log_.log("[boot] tcp mode=%s host=%s port=%u maxClients=%u",
+           config_.tcp.mode.c_str(), config_.tcp.host.c_str(),
+           config_.tcp.port, config_.tcp.maxClients);
+  log_.log("[boot] log enabled=%d port=%u maxClients=%u heartbeatMs=%u",
+           config_.log.enabled ? 1 : 0, config_.log.port,
+           config_.log.maxClients, config_.log.heartbeatMs);
+  log_.log("[boot] wifi ssid=\"%s\" forceAp=%d ip=%s rssi=%d",
+           config_.wifi.ssid.c_str(), resetTriggered_ ? 1 : 0,
+           wifi_.ipAddress().c_str(), static_cast<int>(wifi_.rssi()));
+}
+
+void FirmwareApp::emitStateTransitions() {
+  WifiState s = wifi_.state();
+  if (s != lastWifiState_) {
+    lastWifiState_ = s;
+    const char* name = "?";
+    switch (s) {
+      case WifiState::Idle: name = "idle"; break;
+      case WifiState::Connecting: name = "connecting"; break;
+      case WifiState::Connected: name = "connected"; break;
+      case WifiState::AccessPoint: name = "ap"; break;
+    }
+    log_.log("[wifi] state=%s ip=%s rssi=%d", name,
+             wifi_.ipAddress().c_str(), static_cast<int>(wifi_.rssi()));
+  }
+  uint8_t tc = tcp_.clientCount();
+  if (tc != lastTcpClients_) {
+    log_.log("[tcp] clients %u -> %u", lastTcpClients_, tc);
+    lastTcpClients_ = tc;
+  }
+  bool ou = web_.ota().updating();
+  if (ou != lastOtaUpdating_) {
+    lastOtaUpdating_ = ou;
+    log_.log("[ota] updating=%d", ou ? 1 : 0);
+  }
+  bool rp = web_.ota().rebootPending();
+  if (rp != lastRebootPending_) {
+    lastRebootPending_ = rp;
+    log_.log("[ota] rebootPending=%d", rp ? 1 : 0);
+  }
+}
+
+void FirmwareApp::heartbeatTask(void* ctx) {
+  auto self = static_cast<FirmwareApp*>(ctx);
+  if (!self->log_.started()) return;
+  RuntimeMetrics m = self->status_.metrics();
+  uint32_t now = millis();
+  uint32_t lastRxAgo = (m.lastRxMs == 0) ? 0xFFFFFFFFu : (now - m.lastRxMs);
+  uint32_t lastTxAgo = (m.lastTxMs == 0) ? 0xFFFFFFFFu : (now - m.lastTxMs);
+  const char* wifiName = "?";
+  switch (self->wifi_.state()) {
+    case WifiState::Idle: wifiName = "idle"; break;
+    case WifiState::Connecting: wifiName = "connecting"; break;
+    case WifiState::Connected: wifiName = "connected"; break;
+    case WifiState::AccessPoint: wifiName = "ap"; break;
+  }
+  uint32_t lastRawAgo = (m.lastRawByteMs == 0) ? 0xFFFFFFFFu : (now - m.lastRawByteMs);
+  int s2avail = Serial2.available();
+  self->log_.log(
+    "[hb] up=%lus wifi=%s ip=%s rssi=%d tcp=%u log=%u rawB=%u rxB=%u txB=%u "
+    "rxP=%u txP=%u s2avail=%d qUse=%u qOf=%u uOf=%u drop=%u rej=%u "
+    "lastRawAgoMs=%lu lastRxAgoMs=%lu lastTxAgoMs=%lu heap=%u",
+    static_cast<unsigned long>((now - m.bootMs) / 1000UL),
+    wifiName, self->wifi_.ipAddress().c_str(), static_cast<int>(m.rssi),
+    static_cast<unsigned>(m.tcpClients), static_cast<unsigned>(self->log_.clientCount()),
+    static_cast<unsigned>(m.rawBytes),
+    static_cast<unsigned>(m.rxBytes), static_cast<unsigned>(m.txBytes),
+    static_cast<unsigned>(m.rxPackets), static_cast<unsigned>(m.txPackets),
+    s2avail,
+    static_cast<unsigned>(m.queueUsage), static_cast<unsigned>(m.queueOverflow),
+    static_cast<unsigned>(m.uartOverflow), static_cast<unsigned>(m.droppedPackets),
+    static_cast<unsigned>(m.tcpRejected),
+    static_cast<unsigned long>(lastRawAgo),
+    static_cast<unsigned long>(lastRxAgo), static_cast<unsigned long>(lastTxAgo),
+    static_cast<unsigned>(ESP.getFreeHeap()));
 }
 
 }  // namespace dm

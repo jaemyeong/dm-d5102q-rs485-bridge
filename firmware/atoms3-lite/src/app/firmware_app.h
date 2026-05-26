@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "../network/log_server.h"
 #include "../network/tcp_bridge.h"
 #include "../network/wifi_manager.h"
 #include "../rs485/packet_queue.h"
@@ -26,12 +27,15 @@ class FirmwareApp {
   static bool saveConfigSink(const DeviceConfig& config, void* ctx);
   static void factoryResetSink(void* ctx);
   static void tickStatusTask(void* ctx);
+  static void heartbeatTask(void* ctx);
 
   void checkFactoryResetButton();
   void processPackets();
   void tickStatus();
   void updateStatusLed();
   void applyConfig(const DeviceConfig& config);
+  void emitBootLog();
+  void emitStateTransitions();
 
   ConfigStore configStore_;
   DeviceConfig config_;
@@ -46,9 +50,14 @@ class FirmwareApp {
   TcpBridge tcp_;
   BaudScanner scanner_;
   WebServer web_;
+  LogServer log_;
   Scheduler scheduler_;
   uint32_t resetHoldStartMs_ = 0;
   bool resetTriggered_ = false;
+  WifiState lastWifiState_ = WifiState::Idle;
+  uint8_t lastTcpClients_ = 0;
+  bool lastOtaUpdating_ = false;
+  bool lastRebootPending_ = false;
 };
 
 }  // namespace dm

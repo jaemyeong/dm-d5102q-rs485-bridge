@@ -40,6 +40,10 @@ DeviceConfig ConfigStore::load() {
   config.security.basicAuth = prefs_.getBool("basic_auth", config.security.basicAuth);
   config.security.username = prefs_.getString("auth_user", config.security.username);
   config.security.password = prefs_.getString("auth_pass", config.security.password);
+  config.log.enabled = prefs_.getBool("log_on", config.log.enabled);
+  config.log.port = prefs_.getUShort("log_port", config.log.port);
+  config.log.maxClients = prefs_.getUChar("log_clients", config.log.maxClients);
+  config.log.heartbeatMs = prefs_.getUShort("log_hb_ms", config.log.heartbeatMs);
 
   validate(config);
   return config;
@@ -73,6 +77,10 @@ bool ConfigStore::save(const DeviceConfig& input) {
   prefs_.putBool("basic_auth", config.security.basicAuth);
   prefs_.putString("auth_user", config.security.username);
   prefs_.putString("auth_pass", config.security.password);
+  prefs_.putBool("log_on", config.log.enabled);
+  prefs_.putUShort("log_port", config.log.port);
+  prefs_.putUChar("log_clients", config.log.maxClients);
+  prefs_.putUShort("log_hb_ms", config.log.heartbeatMs);
   return ok;
 }
 
@@ -120,6 +128,9 @@ void ConfigStore::validate(DeviceConfig& config) const {
   config.console.replayPackets = constrain(config.console.replayPackets, static_cast<uint16_t>(8), static_cast<uint16_t>(128));
   if (config.security.username.length() == 0) config.security.username = "admin";
   if (config.security.password.length() == 0) config.security.password = "admin";
+  if (config.log.port == 0) config.log.port = 8898;
+  config.log.maxClients = constrain(config.log.maxClients, static_cast<uint8_t>(1), static_cast<uint8_t>(4));
+  if (config.log.heartbeatMs < 500 || config.log.heartbeatMs > 60000) config.log.heartbeatMs = 2000;
 }
 
 }  // namespace dm

@@ -193,6 +193,10 @@ void WebServer::handleConfigBody(AsyncWebServerRequest* request, const String& b
   if (doc["console_limit"].is<uint16_t>()) next.console.lineLimit = doc["console_limit"].as<uint16_t>();
   if (doc["device_name"].is<const char*>()) next.deviceName = doc["device_name"].as<String>();
   if (doc["basic_auth"].is<const char*>()) next.security.basicAuth = doc["basic_auth"].as<String>() != "disabled";
+  if (doc["log_enabled"].is<bool>()) next.log.enabled = doc["log_enabled"].as<bool>();
+  if (doc["log_port"].is<uint16_t>()) next.log.port = doc["log_port"].as<uint16_t>();
+  if (doc["log_max_clients"].is<uint8_t>()) next.log.maxClients = doc["log_max_clients"].as<uint8_t>();
+  if (doc["log_heartbeat_ms"].is<uint16_t>()) next.log.heartbeatMs = doc["log_heartbeat_ms"].as<uint16_t>();
 
   bool ok = store_->save(next);
   if (ok) {

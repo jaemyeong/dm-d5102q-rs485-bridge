@@ -81,7 +81,7 @@ void TcpBridge::acceptClients() {
     }
   }
   incoming.stop();
-  if (status_) status_->recordDroppedPacket();
+  if (status_) status_->recordTcpRejected();
 }
 
 void TcpBridge::readClient(WiFiClient& client) {

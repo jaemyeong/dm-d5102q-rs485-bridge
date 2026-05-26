@@ -6,6 +6,7 @@ void BridgeWifiManager::begin(const DeviceConfig& config, bool forceAp) {
   config_ = config;
   WiFi.persistent(false);
   WiFi.setAutoReconnect(true);
+  WiFi.setSleep(false);
   if (forceAp || config_.wifi.ssid.length() == 0) {
     startAccessPoint();
   } else {
