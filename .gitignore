@@ -66,3 +66,6 @@ ehthumbs.db
 .serena/cache/
 .serena/logs/
 .serena/project.local.yml
+
+# release artifacts
+releases/
