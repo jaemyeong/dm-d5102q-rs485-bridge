@@ -52,6 +52,11 @@ void DeviceStatus::recordDroppedPacket() {
   metrics_.droppedPackets++;
 }
 
+void DeviceStatus::recordAuthFailure() {
+  metrics_.authFailures++;
+  metrics_.lastAuthFailMs = millis();
+}
+
 RuntimeMetrics DeviceStatus::metrics() const {
   return metrics_;
 }
