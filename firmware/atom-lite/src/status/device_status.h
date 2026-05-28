@@ -17,6 +17,8 @@ struct RuntimeMetrics {
   uint32_t queueOverflow = 0;
   uint32_t droppedPackets = 0;
   uint32_t tcpRejected = 0;
+  uint32_t authFailures = 0;
+  uint32_t lastAuthFailMs = 0;
   uint16_t queueUsage = 0;
   uint8_t tcpClients = 0;
   int32_t rssi = 0;
@@ -36,6 +38,7 @@ class DeviceStatus {
   void recordQueueOverflow();
   void recordDroppedPacket();
   void recordTcpRejected();
+  void recordAuthFailure();
   RuntimeMetrics metrics() const;
   void writeJson(JsonDocument& doc, const DeviceConfig& config) const;
 

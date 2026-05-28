@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include "admin_ui.h"
 #include "../utils/hex.h"
+#include "../build_info.h"
 
 namespace dm {
 
@@ -23,6 +24,15 @@ void sendAdminUi(AsyncWebServerRequest* request) {
 
 }  // namespace
 
+void AuthMiddlewareWithCallback::run(AsyncWebServerRequest* request, ArMiddlewareNext next) {
+  if (allowed(request)) {
+    next();
+    return;
+  }
+  if (onFailure_) onFailure_();
+  request->requestAuthentication(authType(), realm().c_str(), authFailureMessage().c_str());
+}
+
 void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& status, BaudScanner& scanner) {
   config_ = &config;
   store_ = &store;
@@ -35,6 +45,9 @@ void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& st
   authMiddleware_.setUsername(config_->security.username.c_str());
   authMiddleware_.setPassword(config_->security.password.c_str());
   authMiddleware_.generateHash();
+  authMiddleware_.setOnFailure([this]() {
+    if (status_) status_->recordAuthFailure();
+  });
   server_.addMiddleware(&authMiddleware_);
   ws_.addMiddleware(&authMiddleware_);
 
@@ -113,6 +126,10 @@ void WebServer::registerRoutes() {
     sendJson(request, doc);
   });
 
+  server_.on("/api/info", HTTP_GET, [this](AsyncWebServerRequest* req) {
+    handleInfo(req);
+  });
+
   server_.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
     JsonDocument doc;
     status_->writeJson(doc, *config_);
@@ -162,6 +179,9 @@ void WebServer::registerRoutes() {
     scanner_->writeJson(doc);
     sendJson(request, doc);
   });
+
+  server_.on("/api/reboot", HTTP_POST,
+    [this](AsyncWebServerRequest* req) { handleReboot(req); });
 
   server_.on("/api/factory-reset/settings", HTTP_POST, [this](AsyncWebServerRequest* request) {
     JsonDocument doc;
@@ -343,6 +363,42 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
     request->_tempObject = nullptr;
     handler(self, request, complete);
   }
+}
+
+void WebServer::handleReboot(AsyncWebServerRequest* request) {
+  if (rebootScheduledMs_ != 0) {
+    request->send(409, "application/json",
+                  R"({"ok":false,"error":"reboot_in_progress"})");
+    return;
+  }
+  rebootScheduledMs_ = millis() + kRebootDelayMs;
+  JsonDocument doc;
+  doc["queued"] = true;
+  doc["scheduledMs"] = kRebootDelayMs;
+  sendJson(request, doc);
+}
+
+void WebServer::pollRebootDeadline() {
+  if (rebootScheduledMs_ == 0) return;
+  if (static_cast<int32_t>(millis() - rebootScheduledMs_) < 0) return;
+  ESP.restart();
+  // never returns
+}
+
+void WebServer::handleInfo(AsyncWebServerRequest* request) {
+  JsonDocument doc;
+  doc["ok"] = true;
+  JsonObject data = doc["data"].to<JsonObject>();
+  JsonObject fw = data["firmware"].to<JsonObject>();
+  fw["version"]  = "0.1.10";  // NOTE: version is intentionally duplicated with device_status.cpp; a shared FIRMWARE_VERSION macro is deferred to a follow-up refactor
+  fw["commit"]   = BUILD_COMMIT;
+  fw["built_at"] = BUILD_AT;
+  fw["board"]    = ARDUINO_BOARD;
+  JsonObject tcp = data["tcp"].to<JsonObject>();
+  tcp["max_clients"] = config_->tcp.maxClients;
+  JsonObject queue = data["queue"].to<JsonObject>();
+  queue["capacity"] = config_->uart.rxBufferBytes;  // NOTE: maps to the UART RX buffer size as a practical proxy for queue capacity; revisit once PacketQueue exposes its own capacity
+  sendJson(request, doc);
 }
 
 }  // namespace dm

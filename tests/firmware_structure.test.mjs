@@ -88,7 +88,7 @@ for (const symbol of [
   "beginResponse_P",
   "Content-Encoding",
   "gzip",
-  "0.1.9",
+  "0.1.10",
   "uint32_t baud = 3840",
   "Preferences",
   "Update",
@@ -124,3 +124,38 @@ assert.match(atomLiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete 
 assert.match(atomS3LiteBoard, /#define RS485_RX_PIN 1/, "AtomS3 Lite UART RX must use PORT.CUSTOM GPIO1 with Tail485");
 assert.match(atomS3LiteBoard, /#define RS485_TX_PIN 2/, "AtomS3 Lite UART TX must use PORT.CUSTOM GPIO2 with Tail485");
 assert.match(atomS3LiteBoard, /#define RS485_DE_PIN -1/, "Tail485 has no discrete DE pin on AtomS3 Lite");
+
+import { test } from "node:test";
+
+test("All targets declare DeviceStatus::recordAuthFailure", () => {
+  for (const path of [
+    "shared/src/status/device_status.cpp",
+    "firmware/atom-lite/src/status/device_status.cpp",
+    "firmware/atoms3-lite/src/status/device_status.cpp",
+  ]) {
+    const src = readFileSync(join(root, path), "utf8");
+    assert.match(src, /DeviceStatus::recordAuthFailure/, `${path} missing recordAuthFailure`);
+  }
+});
+
+test("All targets register POST /api/reboot", () => {
+  for (const path of [
+    "shared/src/web/web_server.cpp",
+    "firmware/atom-lite/src/web/web_server.cpp",
+    "firmware/atoms3-lite/src/web/web_server.cpp",
+  ]) {
+    const src = readFileSync(join(root, path), "utf8");
+    assert.match(src, /"\/api\/reboot"/, `${path} missing /api/reboot route`);
+  }
+});
+
+test("FirmwareApp polls reboot deadline", () => {
+  for (const path of [
+    "shared/src/app/firmware_app.cpp",
+    "firmware/atom-lite/src/app/firmware_app.cpp",
+    "firmware/atoms3-lite/src/app/firmware_app.cpp",
+  ]) {
+    const src = readFileSync(join(root, path), "utf8");
+    assert.match(src, /pollRebootDeadline/, `${path} missing pollRebootDeadline call`);
+  }
+});
