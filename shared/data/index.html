@@ -1537,6 +1537,51 @@
 
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
+  <script id="header-pure-fns">
+var _O = (typeof window !== "undefined" && window.constructor) || Object;
+
+function wrapDelta(curr, prev, max) {
+  max = max || 0xFFFFFFFF;
+  return curr >= prev ? (curr - prev) : ((max - prev) + curr + 1);
+}
+
+function deriveRates(prev, curr, dtSec) {
+  var r = new _O();
+  if (!prev || dtSec <= 0) {
+    r.rxPktRate = 0; r.rxByteRate = 0; r.txPktRate = 0; r.txByteRate = 0;
+    return r;
+  }
+  r.rxPktRate  = Math.round(wrapDelta(curr.rxPackets, prev.rxPackets) / dtSec);
+  r.rxByteRate = Math.round(wrapDelta(curr.rxBytes,   prev.rxBytes)   / dtSec);
+  r.txPktRate  = Math.round(wrapDelta(curr.txPackets, prev.txPackets) / dtSec);
+  r.txByteRate = Math.round(wrapDelta(curr.txBytes,   prev.txBytes)   / dtSec);
+  return r;
+}
+
+function computeHealth(state, activeAlerts) {
+  if (!state) return "offline";
+  if (activeAlerts && activeAlerts.some(function (a) { return a.severity === "critical"; })) return "fail";
+  if (activeAlerts && activeAlerts.some(function (a) { return a.severity === "warning";  })) return "warn";
+  return "ok";
+}
+
+function formatUptime(secs) {
+  secs = Math.max(0, Math.floor(secs || 0));
+  var d = Math.floor(secs / 86400);
+  var h = Math.floor((secs % 86400) / 3600);
+  var m = Math.floor((secs % 3600) / 60);
+  var s = secs % 60;
+  if (d > 0) return d + "d " + h + "h " + m + "m";
+  if (h > 0) return h + "h " + m + "m " + s + "s";
+  if (m > 0) return m + "m " + s + "s";
+  return s + "s";
+}
+
+if (typeof window !== "undefined") {
+  window.__headerExports = { wrapDelta, deriveRates, computeHealth, formatUptime };
+}
+</script>
+
   <script>
     "use strict";
 
@@ -1607,15 +1652,6 @@
 
     function pad(value, width) {
       return String(value).padStart(width, "0");
-    }
-
-    function formatUptime(totalSeconds) {
-      const days = Math.floor(totalSeconds / 86400);
-      const h = Math.floor((totalSeconds % 86400) / 3600);
-      const m = Math.floor((totalSeconds % 3600) / 60);
-      const s = totalSeconds % 60;
-      const clock = `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)}`;
-      return days ? `${days}d ${clock}` : clock;
     }
 
     function timestamp() {
