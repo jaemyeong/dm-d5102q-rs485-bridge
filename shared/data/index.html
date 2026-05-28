@@ -1538,24 +1538,19 @@
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
   <script id="header-pure-fns">
-var _O = (typeof window !== "undefined" && window.constructor) || Object;
-
 function wrapDelta(curr, prev, max) {
   max = max || 0xFFFFFFFF;
   return curr >= prev ? (curr - prev) : ((max - prev) + curr + 1);
 }
 
 function deriveRates(prev, curr, dtSec) {
-  var r = new _O();
-  if (!prev || dtSec <= 0) {
-    r.rxPktRate = 0; r.rxByteRate = 0; r.txPktRate = 0; r.txByteRate = 0;
-    return r;
-  }
-  r.rxPktRate  = Math.round(wrapDelta(curr.rxPackets, prev.rxPackets) / dtSec);
-  r.rxByteRate = Math.round(wrapDelta(curr.rxBytes,   prev.rxBytes)   / dtSec);
-  r.txPktRate  = Math.round(wrapDelta(curr.txPackets, prev.txPackets) / dtSec);
-  r.txByteRate = Math.round(wrapDelta(curr.txBytes,   prev.txBytes)   / dtSec);
-  return r;
+  if (!prev || dtSec <= 0) return { rxPktRate: 0, rxByteRate: 0, txPktRate: 0, txByteRate: 0 };
+  return {
+    rxPktRate:  Math.round(wrapDelta(curr.rxPackets, prev.rxPackets) / dtSec),
+    rxByteRate: Math.round(wrapDelta(curr.rxBytes,   prev.rxBytes)   / dtSec),
+    txPktRate:  Math.round(wrapDelta(curr.txPackets, prev.txPackets) / dtSec),
+    txByteRate: Math.round(wrapDelta(curr.txBytes,   prev.txBytes)   / dtSec),
+  };
 }
 
 function computeHealth(state, activeAlerts) {

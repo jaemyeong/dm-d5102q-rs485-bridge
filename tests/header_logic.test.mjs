@@ -45,7 +45,10 @@ test("deriveRates returns zeros when dt <= 0", () => {
     { rxPackets: 200, rxBytes: 2000, txPackets: 160, txBytes: 1600 },
     0
   );
-  assert.deepEqual(r, { rxPktRate: 0, rxByteRate: 0, txPktRate: 0, txByteRate: 0 });
+  assert.equal(r.rxPktRate, 0);
+  assert.equal(r.rxByteRate, 0);
+  assert.equal(r.txPktRate, 0);
+  assert.equal(r.txByteRate, 0);
 });
 
 test("computeHealth offline when state null", () => {
