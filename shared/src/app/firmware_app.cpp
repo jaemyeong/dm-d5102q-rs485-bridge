@@ -58,6 +58,7 @@ void FirmwareApp::loop() {
     delay(150);
     ESP.restart();
   }
+  web_.pollRebootDeadline();
 }
 
 bool FirmwareApp::queueTx(const uint8_t* data, size_t length) {

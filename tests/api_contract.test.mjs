@@ -40,3 +40,12 @@ test("/api/reboot 200 path returns queued:true and scheduledMs from kRebootDelay
   assert.match(ws, /doc\["queued"\]\s*=\s*true/);
   assert.match(ws, /doc\["scheduledMs"\]\s*=\s*kRebootDelayMs/);
 });
+
+test("pollRebootDeadline triggers ESP.restart at deadline", () => {
+  assert.match(ws, /void\s+WebServer::pollRebootDeadline\s*\(\s*\)\s*{[\s\S]*?ESP\.restart\(\)/);
+});
+
+const app = readFileSync(join(root, "shared/src/app/firmware_app.cpp"), "utf8");
+test("FirmwareApp::poll calls web_.pollRebootDeadline", () => {
+  assert.match(app, /web_\.pollRebootDeadline\(\)/);
+});

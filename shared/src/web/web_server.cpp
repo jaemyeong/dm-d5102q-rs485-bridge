@@ -362,7 +362,10 @@ void WebServer::handleReboot(AsyncWebServerRequest* request) {
 }
 
 void WebServer::pollRebootDeadline() {
-  // Implemented in Task 6
+  if (rebootScheduledMs_ == 0) return;
+  if (static_cast<int32_t>(millis() - rebootScheduledMs_) < 0) return;
+  ESP.restart();
+  // never returns
 }
 
 void WebServer::handleInfo(AsyncWebServerRequest* request) {
