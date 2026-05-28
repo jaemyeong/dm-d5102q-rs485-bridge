@@ -34,6 +34,21 @@
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
       --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
       --focus: 0 0 0 2px rgba(59, 130, 246, 0.36);
+      --status-ok:         var(--cyan);
+      --status-ok-bg:      rgba(34, 184, 207, 0.10);
+      --status-warn:       var(--warn);
+      --status-warn-bg:    var(--warn-soft);
+      --status-fail:       var(--err);
+      --status-fail-bg:    rgba(239, 68, 68, 0.12);
+      --status-offline:    #6b7280;
+      --status-offline-bg: rgba(107, 114, 128, 0.10);
+      --drawer-bg:         rgba(15, 23, 42, 0.92);
+      --panel-divider:     rgba(148, 163, 184, 0.15);
+      --panel-label:       rgba(148, 163, 184, 0.70);
+      --reboot-fg:           rgba(248, 250, 252, 0.65);
+      --reboot-fg-hover:     var(--err);
+      --reboot-border:       rgba(148, 163, 184, 0.25);
+      --reboot-border-hover: var(--err);
     }
 
     * { box-sizing: border-box; }
@@ -893,30 +908,253 @@
         grid-template-columns: 1fr;
       }
     }
+
+/* === Summary cluster (always-visible right side) === */
+.summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px; border-radius: 8px;
+  cursor: pointer; user-select: none;
+  transition: background-color 150ms ease;
+}
+.summary:hover { background: rgba(255,255,255,0.04); }
+.summary[aria-expanded="true"] { background: rgba(255,255,255,0.06); }
+.summary:focus-visible { outline: 2px solid var(--status-ok); outline-offset: 2px; }
+
+.health-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid currentColor; min-height: 24px;
+  transition: color 200ms ease, background-color 200ms ease;
+}
+.health-pill.health-ok      { color: var(--status-ok);      background: var(--status-ok-bg); }
+.health-pill.health-warn    { color: var(--status-warn);    background: var(--status-warn-bg); }
+.health-pill.health-fail    { color: var(--status-fail);    background: var(--status-fail-bg); }
+.health-pill.health-offline { color: var(--status-offline); background: var(--status-offline-bg); }
+
+.alert-badge {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px; font-weight: 600;
+  padding: 2px 6px; border-radius: 6px;
+  color: var(--status-warn);
+}
+.alert-badge.alert-badge-zero { color: var(--panel-label); }
+
+.reboot-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-left: 8px; padding: 4px 10px;
+  border: 1px solid var(--reboot-border);
+  background: transparent; color: var(--reboot-fg);
+  border-radius: 6px; font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.reboot-btn:hover {
+  border-color: var(--reboot-border-hover);
+  color: var(--reboot-fg-hover);
+}
+.reboot-btn:active {
+  background: var(--reboot-fg-hover); color: #fff;
+}
+.reboot-btn:focus-visible {
+  outline: 2px solid var(--status-fail); outline-offset: 2px;
+}
+.reboot-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* === Header drawer === */
+#header-drawer {
+  position: relative;
+  background: var(--drawer-bg);
+  border-bottom: 1px solid var(--panel-divider);
+  padding: 16px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 32px;
+  overflow: hidden;
+  max-height: 0; opacity: 0;
+  transition: max-height 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 200ms ease;
+}
+#header-drawer[hidden] { display: grid; }
+#header-drawer.open { max-height: 320px; opacity: 1; }
+@media (max-width: 640px) {
+  #header-drawer { grid-template-columns: 1fr; gap: 12px; padding: 12px 16px; }
+  #header-drawer.open { max-height: 480px; }
+}
+
+.drawer-close {
+  position: absolute; top: 8px; right: 12px;
+  background: transparent; border: none; color: var(--panel-label);
+  font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+}
+.drawer-close:hover { color: #fff; background: rgba(255,255,255,0.05); }
+
+.drawer-panel { display: flex; flex-direction: column; gap: 6px; }
+.panel-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--panel-label);
+}
+.panel-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.panel-key { color: var(--panel-label); }
+.panel-val { color: rgba(248,250,252,0.92); }
+.panel-val.mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+
+.drawer-alerts {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--panel-divider);
+  padding-top: 12px;
+}
+.alert-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.alert-list li { font-size: 13px; padding: 6px 0; min-height: 32px; display: flex; align-items: center; gap: 8px; }
+.alert-list li.alert-none { color: var(--status-ok); }
+.alert-list li.alert-warning { color: var(--status-warn); }
+.alert-list li.alert-critical { color: var(--status-fail); }
+.alert-list li .alert-ts { color: var(--panel-label); font-size: 11px; margin-left: auto; }
+
+/* === Reboot dialog === */
+#rebootDialog {
+  border: 1px solid var(--panel-divider);
+  border-radius: 12px;
+  background: var(--drawer-bg);
+  color: rgba(248,250,252,0.92);
+  padding: 24px;
+  max-width: 420px;
+}
+#rebootDialog::backdrop { background: rgba(0,0,0,0.6); }
+#rebootDialog h2 { margin: 0 0 8px; font-size: 16px; }
+#rebootDialog p  { margin: 0 0 16px; color: var(--panel-label); font-size: 14px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.dialog-actions button {
+  padding: 8px 16px; border-radius: 6px; font-size: 14px;
+  border: 1px solid var(--panel-divider); background: transparent;
+  color: rgba(248,250,252,0.92); cursor: pointer;
+}
+.dialog-actions button.destructive {
+  background: var(--status-fail); border-color: var(--status-fail); color: #fff;
+}
+.dialog-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#rebootProgress { margin-top: 16px; display: flex; align-items: center; gap: 8px; }
+#rebootProgress .spinner {
+  display: inline-block;
+  animation: spinner-rotate 1.4s linear infinite;
+}
+@keyframes spinner-rotate { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  #header-drawer, .health-pill, .reboot-btn, .alert-list li {
+    transition-duration: 0.01ms !important;
+  }
+  #rebootProgress .spinner { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .reboot-label { display: none; }
+  .reboot-btn { padding: 4px 8px; }
+}
+.nav-toggle { display: none; background: transparent; color: inherit; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; }
+@media (max-width: 640px) {
+  .nav-toggle { display: inline-block; }
+  .nav-tabs   { position: relative; }
+  .nav-tabs button[data-route] {
+    display: none;
+  }
+  .nav-tabs.menu-open button[data-route] {
+    display: block;
+    position: absolute;
+    top: 46px;
+    left: 0; right: 0;
+    background: var(--drawer-bg);
+    border-bottom: 1px solid var(--panel-divider);
+    padding: 12px 16px;
+    text-align: left;
+  }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(1) { top: 46px;  }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(2) { top: 90px;  }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(3) { top: 134px; }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(4) { top: 178px; }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(5) { top: 222px; }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(6) { top: 266px; }
+}
   </style>
 </head>
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark"></span>
-        <span>DM-D5102Q</span>
-      </div>
-      <nav class="nav-tabs" aria-label="주요 메뉴">
-        <button type="button" data-route="dashboard" class="active">대시보드</button>
-        <button type="button" data-route="console">콘솔</button>
-        <button type="button" data-route="scanner">스캐너</button>
-        <button type="button" data-route="settings">설정</button>
-        <button type="button" data-route="ota">OTA</button>
-        <button type="button" data-route="about">정보</button>
-      </nav>
-      <div class="top-state">
-        <span id="ledState" class="led cyan"><i></i><span>TCP</span></span>
-        <span id="navIp">192.168.4.18</span>
-        <span id="navRssi" class="hide-md">-54 dBm</span>
-        <span id="navUptime" class="hide-md">00:00:00</span>
-      </div>
-    </header>
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <span>DM-D5102Q</span>
+  </div>
+  <nav class="nav-tabs" aria-label="주요 메뉴">
+    <button type="button" class="nav-toggle" aria-label="메뉴 열기/닫기" aria-controls="nav-tabs-list" aria-expanded="false">&#x2630;</button>
+    <button type="button" data-route="dashboard" class="active">대시보드</button>
+    <button type="button" data-route="console">콘솔</button>
+    <button type="button" data-route="scanner">스캐너</button>
+    <button type="button" data-route="settings">설정</button>
+    <button type="button" data-route="ota">OTA</button>
+    <button type="button" data-route="about">정보</button>
+  </nav>
+  <div class="summary" role="button" tabindex="0"
+       aria-expanded="false" aria-controls="header-drawer"
+       aria-label="장치 상태 요약, 펼치려면 활성화">
+    <span id="hdrHealth" class="health-pill health-ok">
+      <span class="health-glyph" aria-hidden="true">●</span>
+      <span class="health-label">정상</span>
+    </span>
+    <span id="hdrAlertCount" class="alert-badge alert-badge-zero" aria-live="polite">
+      <span aria-hidden="true">⚠</span> <span class="count">0</span>
+    </span>
+    <button id="hdrReboot" type="button" class="reboot-btn"
+            aria-label="장치 재부팅" aria-haspopup="dialog">
+      <span class="reboot-glyph" aria-hidden="true">⏻</span>
+      <span class="reboot-label">재부팅</span>
+    </button>
+  </div>
+</header>
+
+<div id="header-drawer" role="region" aria-label="장치 상태 상세" hidden>
+  <button class="drawer-close" type="button" aria-label="상세 닫기">✕</button>
+  <section class="drawer-panel" aria-label="네트워크">
+    <h3 class="panel-eyebrow">Network</h3>
+    <div class="panel-row"><span class="panel-key">Mode</span><span id="dwMode" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">SSID</span><span id="dwSsid" class="panel-val">—</span></div>
+    <div class="panel-row"><span class="panel-key">IP</span><span id="dwIp" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">RSSI</span><span id="dwRssi" class="panel-val mono">—</span></div>
+  </section>
+  <section class="drawer-panel" aria-label="트래픽">
+    <h3 class="panel-eyebrow">Traffic</h3>
+    <div class="panel-row"><span class="panel-key">▲ RX</span><span id="dwRxRate" class="panel-val mono">— pkt/s</span></div>
+    <div class="panel-row"><span class="panel-key">▼ TX</span><span id="dwTxRate" class="panel-val mono">— pkt/s</span></div>
+    <div class="panel-row"><span class="panel-key">⇄ TCP</span><span id="dwTcp" class="panel-val mono">—/—</span></div>
+    <div class="panel-row"><span class="panel-key">Queue</span><span id="dwQueue" class="panel-val mono">—</span></div>
+  </section>
+  <section class="drawer-panel" aria-label="디바이스">
+    <h3 class="panel-eyebrow">Device</h3>
+    <div class="panel-row"><span class="panel-key">Uptime</span><span id="dwUptime" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">Heap</span><span id="dwHeap" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">Firmware</span><span id="dwFw" class="panel-val mono">—</span></div>
+  </section>
+  <div class="drawer-alerts" role="status" aria-live="polite">
+    <h3 class="panel-eyebrow">알림 (<span id="dwAlertTotal">0</span>)</h3>
+    <ul id="dwAlertList" class="alert-list"><li class="alert-none">✓ 모든 시스템 정상</li></ul>
+  </div>
+</div>
+
+<dialog id="rebootDialog" aria-modal="true"
+        aria-labelledby="rebootTitle" aria-describedby="rebootDesc">
+  <h2 id="rebootTitle">장치를 재부팅하시겠어요?</h2>
+  <p id="rebootDesc">재부팅 중 약 8초간 연결이 끊깁니다.</p>
+  <div class="dialog-actions">
+    <button id="rebootCancel" type="button">취소</button>
+    <button id="rebootConfirm" type="button" class="destructive">재부팅</button>
+  </div>
+  <div id="rebootProgress" hidden>
+    <span class="spinner" aria-hidden="true">⟳</span>
+    <span id="rebootProgressLabel">재부팅 중…</span>
+  </div>
+</dialog>
 
     <main>
       <section class="page" id="page-dashboard" data-route="dashboard">
@@ -1324,8 +1562,368 @@
 
   <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
+  <script id="header-pure-fns">
+function wrapDelta(curr, prev, max) {
+  max = max || 0xFFFFFFFF;
+  return curr >= prev ? (curr - prev) : ((max - prev) + curr + 1);
+}
+
+function deriveRates(prev, curr, dtSec) {
+  if (!prev || dtSec <= 0) return { rxPktRate: 0, rxByteRate: 0, txPktRate: 0, txByteRate: 0 };
+  return {
+    rxPktRate:  Math.round(wrapDelta(curr.rxPackets, prev.rxPackets) / dtSec),
+    rxByteRate: Math.round(wrapDelta(curr.rxBytes,   prev.rxBytes)   / dtSec),
+    txPktRate:  Math.round(wrapDelta(curr.txPackets, prev.txPackets) / dtSec),
+    txByteRate: Math.round(wrapDelta(curr.txBytes,   prev.txBytes)   / dtSec),
+  };
+}
+
+function computeHealth(state, activeAlerts) {
+  if (!state) return "offline";
+  if (activeAlerts && activeAlerts.some(function (a) { return a.severity === "critical"; })) return "fail";
+  if (activeAlerts && activeAlerts.some(function (a) { return a.severity === "warning";  })) return "warn";
+  return "ok";
+}
+
+function formatUptime(secs) {
+  secs = Math.max(0, Math.floor(secs || 0));
+  var d = Math.floor(secs / 86400);
+  var h = Math.floor((secs % 86400) / 3600);
+  var m = Math.floor((secs % 3600) / 60);
+  var s = secs % 60;
+  if (d > 0) return d + "d " + h + "h " + m + "m";
+  if (h > 0) return h + "h " + m + "m " + s + "s";
+  if (m > 0) return m + "m " + s + "s";
+  return s + "s";
+}
+
+if (typeof window !== "undefined") {
+  window.__headerExports = { wrapDelta, deriveRates, computeHealth, formatUptime };
+}
+</script>
+
   <script>
     "use strict";
+
+    (function initHeaderDrawer() {
+      const drawer  = document.getElementById("header-drawer");
+      const summary = document.querySelector(".summary");
+      const closeBtn = document.querySelector(".drawer-close");
+      if (!drawer || !summary) return;
+
+      const STATE_KEY = "hdrDrawerOpen";
+
+      function setOpen(open) {
+        drawer.classList.toggle("open", open);
+        summary.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) drawer.removeAttribute("hidden");
+        else      drawer.setAttribute("hidden", "");
+        try { sessionStorage.setItem(STATE_KEY, open ? "1" : "0"); } catch (_) {}
+      }
+
+      // Restore on mount
+      try {
+        if (sessionStorage.getItem(STATE_KEY) === "1") setOpen(true);
+      } catch (_) {}
+
+      summary.addEventListener("click", function (e) {
+        if (e.target.closest("#hdrReboot")) return;
+        setOpen(!drawer.classList.contains("open"));
+      });
+      summary.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setOpen(!drawer.classList.contains("open"));
+        }
+      });
+      if (closeBtn) closeBtn.addEventListener("click", function () { setOpen(false); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && drawer.classList.contains("open")) {
+          const dialog = document.getElementById("rebootDialog");
+          if (dialog && dialog.open) return;
+          setOpen(false);
+        }
+      });
+      document.addEventListener("click", function (e) {
+        if (!drawer.classList.contains("open")) return;
+        if (drawer.contains(e.target) || summary.contains(e.target)) return;
+        setOpen(false);
+      });
+    })();
+
+    (function initHeaderInfo() {
+      var INFO = { tcpMax: null, queueCap: null };
+      fetch("/api/info", { credentials: "include" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || !j.ok) return;
+          var d = j.data || {};
+          INFO.tcpMax  = (d.tcp   && d.tcp.max_clients)  || null;
+          INFO.queueCap = (d.queue && d.queue.capacity)   || null;
+          var fw = d.firmware || {};
+          var label = "v" + (fw.version || "?.?.?") + " · " + (fw.commit || "?");
+          var el = document.getElementById("dwFw");
+          if (el) el.textContent = label;
+        })
+        .catch(function () { /* offline -- handled elsewhere */ });
+      window.__hdrInfo = INFO;
+    })();
+
+    (function initHeaderStatus() {
+      var prev = null;
+      var fns  = window.__headerExports || {};
+      var deriveRates  = fns.deriveRates  || function () { return {rxPktRate:0,rxByteRate:0,txPktRate:0,txByteRate:0}; };
+      var formatUptime = fns.formatUptime || function (s) { return String(s); };
+
+      function setText(id, txt) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = txt;
+      }
+
+      function fmtKb(bytes) { return (bytes / 1024).toFixed(1) + " KB/s"; }
+      function queueBar(used, cap) {
+        if (!cap) return "—";
+        var pct = Math.round((used / cap) * 100);
+        var filled = Math.min(5, Math.round((used / cap) * 5));
+        var bar = "▮".repeat(filled) + "▯".repeat(5 - filled);
+        return bar + " " + used + "/" + cap + " (" + pct + "%)";
+      }
+
+      window.__headerOnStatus = function (payload) {
+        if (!payload || !payload.ok) return;
+        var d = payload.data || {};
+        var w = d.wifi || {};
+        var t = d.tcp  || {};
+        var m = d.metrics || {};
+
+        setText("dwMode", w.mode === "sta" ? "STA" : (w.mode === "ap" ? "AP" : "—"));
+        setText("dwSsid", w.ssid || "—");
+        setText("dwIp",   w.ip   || "—");
+        setText("dwRssi", w.rssi != null ? (w.rssi + " dBm") : "—");
+
+        var uptime = m.uptime_sec || 0;
+        var dt = prev ? (uptime - prev.t) : 0;
+        var r = deriveRates(prev, {
+          rxPackets: m.rx_packets, rxBytes: m.rx_bytes,
+          txPackets: m.tx_packets, txBytes: m.tx_bytes,
+        }, dt);
+        setText("dwRxRate", "▲ " + r.rxPktRate + " pkt/s · " + fmtKb(r.rxByteRate));
+        setText("dwTxRate", "▼ " + r.txPktRate + " pkt/s · " + fmtKb(r.txByteRate));
+        prev = { t: uptime,
+                 rxPackets: m.rx_packets, rxBytes: m.rx_bytes,
+                 txPackets: m.tx_packets, txBytes: m.tx_bytes };
+
+        var maxClients = (window.__hdrInfo && window.__hdrInfo.tcpMax) || t.max_clients || 0;
+        setText("dwTcp", (m.tcp_clients != null ? m.tcp_clients : "—") + "/" + maxClients);
+
+        var cap = (window.__hdrInfo && window.__hdrInfo.queueCap) || 0;
+        setText("dwQueue", queueBar(m.queue_usage || 0, cap));
+
+        setText("dwUptime", formatUptime(uptime));
+        setText("dwHeap", m.heap_free != null ? Math.round(m.heap_free / 1024) + " KB free" : "—");
+      };
+    })();
+
+    (function initHeaderAlerts() {
+      var alerts = new Map();   // id → {severity,label,since,ttlExpiresAt}
+      var prevCounters = null;
+      var fns = window.__headerExports || {};
+      var computeHealth = fns.computeHealth || function () { return "ok"; };
+
+      function nowMs() { return Date.now(); }
+
+      function setLevelAlert(id, on, severity, label) {
+        var existing = alerts.get(id);
+        if (on) {
+          if (!existing) alerts.set(id, { severity: severity, label: label, since: nowMs() });
+        } else if (existing) {
+          alerts.delete(id);
+        }
+      }
+      function bumpEdgeAlert(id, severity, label, ttlMs) {
+        var ex = alerts.get(id);
+        var n = (ex && ex.count) || 0;
+        alerts.set(id, {
+          severity: severity, label: label, since: ex ? ex.since : nowMs(),
+          ttlExpiresAt: nowMs() + ttlMs, count: n + 1
+        });
+      }
+      function gcEdgeAlerts() {
+        var t = nowMs();
+        for (var entry of alerts) {
+          var v = entry[1];
+          if (v.ttlExpiresAt && v.ttlExpiresAt <= t) alerts.delete(entry[0]);
+        }
+      }
+
+      function reconcile(state) {
+        gcEdgeAlerts();
+        if (!state || !state.ok) return;
+        var d = state.data || {};
+        var w = d.wifi || {};
+        var m = d.metrics || {};
+
+        // Level alerts
+        setLevelAlert("wifi_lost", w.connected === false && w.mode !== "ap", "critical", "Wi-Fi 끊김");
+        setLevelAlert("ap_mode",   w.mode === "ap", "warning", "AP 프로비저닝 모드");
+        var rxAgo = m.last_raw_ago_ms != null ? m.last_raw_ago_ms : -1;
+        setLevelAlert("rx_stale_short", rxAgo >= 60000  && rxAgo < 300000, "warning",  "RS485 RX 정적 60s+");
+        setLevelAlert("rx_stale_long",  rxAgo >= 300000, "critical", "RS485 RX 정적 5분+");
+        var cap = (window.__hdrInfo && window.__hdrInfo.queueCap) || 0;
+        if (cap > 0) {
+          setLevelAlert("queue_high", (m.queue_usage || 0) / cap >= 0.8, "warning", "큐 사용률 " + Math.round(100 * (m.queue_usage||0)/cap) + "%");
+        }
+        setLevelAlert("mem_low", (m.heap_free != null) && m.heap_free < 20480, "critical", "메모리 " + Math.round(m.heap_free/1024) + " KB");
+
+        // Edge alerts (counter deltas vs prev snapshot)
+        if (prevCounters) {
+          function delta(key) { return (m[key] || 0) - (prevCounters[key] || 0); }
+          var dUart  = delta("uart_overflow");
+          var dQueue = delta("queue_overflow");
+          var dRej   = delta("tcp_rejected");
+          var dAuth  = delta("auth_failures");
+          if (dUart  > 0) bumpEdgeAlert("uart_overflow",  "warning", "UART 오버플로우 " + dUart + "건", 60000);
+          if (dQueue > 0) bumpEdgeAlert("queue_overflow", "warning", "큐 오버플로우 " + dQueue + "건", 60000);
+          if (dRej   > 0) bumpEdgeAlert("tcp_rejected",   "warning", "TCP 클라이언트 거부 " + dRej + "건", 60000);
+          if (dAuth >= 3) bumpEdgeAlert("auth_fail",      "warning", "인증 실패 " + dAuth + "건", 60000);
+        }
+        prevCounters = {
+          uart_overflow:  m.uart_overflow  || 0,
+          queue_overflow: m.queue_overflow || 0,
+          tcp_rejected:   m.tcp_rejected   || 0,
+          auth_failures:  m.auth_failures  || 0,
+        };
+
+        render(state);
+      }
+
+      function render(state) {
+        var arr = [];
+        alerts.forEach(function (v) { arr.push(v); });
+        arr.sort(function (a, b) {
+          var rank = { critical: 0, warning: 1 };
+          if (rank[a.severity] !== rank[b.severity]) return rank[a.severity] - rank[b.severity];
+          return a.since - b.since;
+        });
+
+        var pill = document.getElementById("hdrHealth");
+        var label = pill && pill.querySelector(".health-label");
+        var glyph = pill && pill.querySelector(".health-glyph");
+        var health = state ? computeHealth(state, arr) : "offline";
+        if (pill) {
+          pill.classList.remove("health-ok","health-warn","health-fail","health-offline");
+          pill.classList.add("health-" + health);
+        }
+        if (glyph && label) {
+          var map = { ok:["●","정상"], warn:["⚠","경고"], fail:["✕","장애"], offline:["⊘","오프라인"] };
+          glyph.textContent = map[health][0];
+          label.textContent = map[health][1];
+        }
+
+        var badge = document.getElementById("hdrAlertCount");
+        var count = badge && badge.querySelector(".count");
+        if (count) count.textContent = String(arr.length);
+        if (badge) {
+          badge.classList.toggle("alert-badge-zero", arr.length === 0);
+        }
+
+        var list = document.getElementById("dwAlertList");
+        var total = document.getElementById("dwAlertTotal");
+        if (total) total.textContent = String(arr.length);
+        if (!list) return;
+        if (arr.length === 0) {
+          list.innerHTML = '<li class="alert-none">✓ 모든 시스템 정상</li>';
+          return;
+        }
+        list.innerHTML = arr.map(function (a) {
+          var cls = a.severity === "critical" ? "alert-critical" : "alert-warning";
+          var bullet = '<span aria-hidden="true">●</span>';
+          var ago = Math.max(0, Math.round((nowMs() - a.since) / 1000));
+          var ts  = ago < 60 ? (ago + "초 전부터") : (Math.round(ago/60) + "분 전부터");
+          return '<li class="' + cls + '">' + bullet + ' ' + a.label + ' <span class="alert-ts">' + ts + '</span></li>';
+        }).join("");
+      }
+
+      window.__headerReconcileAlerts = reconcile;
+    })();
+
+    (function initRebootFlow() {
+      var btn      = document.getElementById("hdrReboot");
+      var dialog   = document.getElementById("rebootDialog");
+      var cancel   = document.getElementById("rebootCancel");
+      var confirm  = document.getElementById("rebootConfirm");
+      var actions  = dialog && dialog.querySelector(".dialog-actions");
+      var progress = document.getElementById("rebootProgress");
+      var progressLabel = document.getElementById("rebootProgressLabel");
+      if (!btn || !dialog || !cancel || !confirm) return;
+
+      btn.addEventListener("click", function () {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+      });
+      cancel.addEventListener("click", function () { dialog.close(); });
+
+      confirm.addEventListener("click", function () {
+        confirm.disabled = true;
+        cancel.disabled  = true;
+        if (progress) progress.removeAttribute("hidden");
+        if (progressLabel) progressLabel.textContent = "재부팅 요청 중…";
+
+        fetch("/api/reboot", { method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                                body: "{}" })
+          .then(function (r) {
+            if (r.status === 200 || r.status === 409) {
+              if (progressLabel) progressLabel.textContent = "재부팅 중…";
+              beginPolling();
+            } else {
+              fail("재부팅 요청 실패 (" + r.status + ")");
+            }
+          })
+          .catch(function () { beginPolling(); });
+      });
+
+      var pollDeadline;
+      var pollTimer;
+      function beginPolling() {
+        pollDeadline = Date.now() + 90000;
+        setTimeout(tick, 2000);
+      }
+      function tick() {
+        if (Date.now() >= pollDeadline) { fail("장치가 응답하지 않습니다."); return; }
+        fetch("/api/status", { credentials: "include", cache: "no-store" })
+          .then(function (r) {
+            if (r.status === 200) { location.reload(); return; }
+            pollTimer = setTimeout(tick, 1000);
+          })
+          .catch(function () { pollTimer = setTimeout(tick, 1000); });
+      }
+      function fail(msg) {
+        if (progressLabel) progressLabel.textContent = msg;
+        confirm.disabled = false;
+        cancel.disabled  = false;
+        cancel.textContent = "닫기";
+        confirm.textContent = "다시 시도";
+      }
+    })();
+
+    (function initMobileNav() {
+      var toggle = document.querySelector(".nav-toggle");
+      var nav    = document.querySelector(".nav-tabs");
+      if (!toggle || !nav) return;
+      toggle.addEventListener("click", function () {
+        var open = !nav.classList.contains("menu-open");
+        nav.classList.toggle("menu-open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      // Close menu when a route is selected
+      nav.addEventListener("click", function (e) {
+        if (e.target && e.target.matches("button[data-route]")) {
+          nav.classList.remove("menu-open");
+          toggle.setAttribute("aria-expanded", "false");
+        }
+      });
+    })();
 
     const MAX_CONSOLE_LINES = 300;
     const MAX_TX_BYTES = 256;
@@ -1394,15 +1992,6 @@
 
     function pad(value, width) {
       return String(value).padStart(width, "0");
-    }
-
-    function formatUptime(totalSeconds) {
-      const days = Math.floor(totalSeconds / 86400);
-      const h = Math.floor((totalSeconds % 86400) / 3600);
-      const m = Math.floor((totalSeconds % 3600) / 60);
-      const s = totalSeconds % 60;
-      const clock = `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)}`;
-      return days ? `${days}d ${clock}` : clock;
     }
 
     function timestamp() {
@@ -1569,9 +2158,6 @@
       setText("[data-field='board']", state.device.board);
       setText("[data-field='build']", state.device.build);
 
-      setText("#navIp", state.wifi.ip);
-      setText("#navRssi", `${state.wifi.rssi} dBm`);
-      setText("#navUptime", formatUptime(state.metrics.uptime_sec));
       syncShellMode();
       renderLed();
     }
@@ -1635,8 +2221,10 @@
     }
 
     async function loadStatus() {
+      let statusPayload = null;
       try {
         const payload = await api("/api/status");
+        statusPayload = payload;
         const normalized = normalizeStatus(payload);
         mergeDefined(state.wifi, normalized.wifi);
         mergeDefined(state.uart, normalized.uart);
@@ -1649,6 +2237,8 @@
       } catch (_) {
         if (LOCAL_DEMO) tickDemoState();
       }
+      if (window.__headerOnStatus) window.__headerOnStatus(statusPayload);
+      if (window.__headerReconcileAlerts) window.__headerReconcileAlerts(statusPayload);
       renderDashboard();
       refreshSettingsFromState();
       if (isProvisioningMode() && !isProvisioningAllowedRoute(activeRoute)) navigate("provisioning");
@@ -1875,6 +2465,8 @@
           const payload = JSON.parse(event.data);
           if (payload.type === "status") {
             mergeDefined(state.metrics, normalizeStatus(payload).metrics);
+            if (window.__headerOnStatus) window.__headerOnStatus({ ok: true, data: payload });
+            if (window.__headerReconcileAlerts) window.__headerReconcileAlerts({ ok: true, data: payload });
             renderDashboard();
             return;
           }
