@@ -1054,6 +1054,30 @@
   .reboot-label { display: none; }
   .reboot-btn { padding: 4px 8px; }
 }
+.nav-toggle { display: none; background: transparent; color: inherit; border: none; font-size: 18px; cursor: pointer; padding: 4px 8px; }
+@media (max-width: 640px) {
+  .nav-toggle { display: inline-block; }
+  .nav-tabs   { position: relative; }
+  .nav-tabs button[data-route] {
+    display: none;
+  }
+  .nav-tabs.menu-open button[data-route] {
+    display: block;
+    position: absolute;
+    top: 46px;
+    left: 0; right: 0;
+    background: var(--drawer-bg);
+    border-bottom: 1px solid var(--panel-divider);
+    padding: 12px 16px;
+    text-align: left;
+  }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(1) { top: 46px;  }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(2) { top: 90px;  }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(3) { top: 134px; }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(4) { top: 178px; }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(5) { top: 222px; }
+  .nav-tabs.menu-open button[data-route]:nth-of-type(6) { top: 266px; }
+}
   </style>
 </head>
 <body>
@@ -1064,6 +1088,7 @@
     <span>DM-D5102Q</span>
   </div>
   <nav class="nav-tabs" aria-label="주요 메뉴">
+    <button type="button" class="nav-toggle" aria-label="메뉴 열기/닫기" aria-controls="nav-tabs-list" aria-expanded="false">&#x2630;</button>
     <button type="button" data-route="dashboard" class="active">대시보드</button>
     <button type="button" data-route="console">콘솔</button>
     <button type="button" data-route="scanner">스캐너</button>
@@ -1880,6 +1905,24 @@ if (typeof window !== "undefined") {
         cancel.textContent = "닫기";
         confirm.textContent = "다시 시도";
       }
+    })();
+
+    (function initMobileNav() {
+      var toggle = document.querySelector(".nav-toggle");
+      var nav    = document.querySelector(".nav-tabs");
+      if (!toggle || !nav) return;
+      toggle.addEventListener("click", function () {
+        var open = !nav.classList.contains("menu-open");
+        nav.classList.toggle("menu-open", open);
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      // Close menu when a route is selected
+      nav.addEventListener("click", function (e) {
+        if (e.target && e.target.matches("button[data-route]")) {
+          nav.classList.remove("menu-open");
+          toggle.setAttribute("aria-expanded", "false");
+        }
+      });
     })();
 
     const MAX_CONSOLE_LINES = 300;
