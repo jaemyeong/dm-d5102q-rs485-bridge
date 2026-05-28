@@ -49,3 +49,8 @@ const app = readFileSync(join(root, "shared/src/app/firmware_app.cpp"), "utf8");
 test("FirmwareApp::loop calls web_.pollRebootDeadline", () => {
   assert.match(app, /web_\.pollRebootDeadline\(\)/);
 });
+
+test("/api/reboot returns 409 when reboot already scheduled", () => {
+  assert.match(ws, /"reboot_in_progress"/);
+  assert.match(ws, /send\(\s*409\s*,/);
+});

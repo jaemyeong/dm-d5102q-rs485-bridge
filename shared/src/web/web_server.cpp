@@ -354,6 +354,11 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
 }
 
 void WebServer::handleReboot(AsyncWebServerRequest* request) {
+  if (rebootScheduledMs_ != 0) {
+    request->send(409, "application/json",
+                  R"({"ok":false,"error":"reboot_in_progress"})");
+    return;
+  }
   rebootScheduledMs_ = millis() + kRebootDelayMs;
   JsonDocument doc;
   doc["queued"] = true;
