@@ -1699,6 +1699,129 @@ if (typeof window !== "undefined") {
       };
     })();
 
+    (function initHeaderAlerts() {
+      var alerts = new Map();   // id → {severity,label,since,ttlExpiresAt}
+      var prevCounters = null;
+      var fns = window.__headerExports || {};
+      var computeHealth = fns.computeHealth || function () { return "ok"; };
+
+      function nowMs() { return Date.now(); }
+
+      function setLevelAlert(id, on, severity, label) {
+        var existing = alerts.get(id);
+        if (on) {
+          if (!existing) alerts.set(id, { severity: severity, label: label, since: nowMs() });
+        } else if (existing) {
+          alerts.delete(id);
+        }
+      }
+      function bumpEdgeAlert(id, severity, label, ttlMs) {
+        var ex = alerts.get(id);
+        var n = (ex && ex.count) || 0;
+        alerts.set(id, {
+          severity: severity, label: label, since: ex ? ex.since : nowMs(),
+          ttlExpiresAt: nowMs() + ttlMs, count: n + 1
+        });
+      }
+      function gcEdgeAlerts() {
+        var t = nowMs();
+        for (var entry of alerts) {
+          var v = entry[1];
+          if (v.ttlExpiresAt && v.ttlExpiresAt <= t) alerts.delete(entry[0]);
+        }
+      }
+
+      function reconcile(state) {
+        gcEdgeAlerts();
+        if (!state || !state.ok) return;
+        var d = state.data || {};
+        var w = d.wifi || {};
+        var m = d.metrics || {};
+
+        // Level alerts
+        setLevelAlert("wifi_lost", w.connected === false && w.mode !== "ap", "critical", "Wi-Fi 끊김");
+        setLevelAlert("ap_mode",   w.mode === "ap", "warning", "AP 프로비저닝 모드");
+        var rxAgo = m.last_raw_ago_ms != null ? m.last_raw_ago_ms : -1;
+        setLevelAlert("rx_stale_short", rxAgo >= 60000  && rxAgo < 300000, "warning",  "RS485 RX 정적 60s+");
+        setLevelAlert("rx_stale_long",  rxAgo >= 300000, "critical", "RS485 RX 정적 5분+");
+        var cap = (window.__hdrInfo && window.__hdrInfo.queueCap) || 0;
+        if (cap > 0) {
+          setLevelAlert("queue_high", (m.queue_usage || 0) / cap >= 0.8, "warning", "큐 사용률 " + Math.round(100 * (m.queue_usage||0)/cap) + "%");
+        }
+        setLevelAlert("mem_low", (m.heap_free != null) && m.heap_free < 20480, "critical", "메모리 " + Math.round(m.heap_free/1024) + " KB");
+
+        // Edge alerts (counter deltas vs prev snapshot)
+        if (prevCounters) {
+          function delta(key) { return (m[key] || 0) - (prevCounters[key] || 0); }
+          var dUart  = delta("uart_overflow");
+          var dQueue = delta("queue_overflow");
+          var dRej   = delta("tcp_rejected");
+          var dAuth  = delta("auth_failures");
+          if (dUart  > 0) bumpEdgeAlert("uart_overflow",  "warning", "UART 오버플로우 " + dUart + "건", 60000);
+          if (dQueue > 0) bumpEdgeAlert("queue_overflow", "warning", "큐 오버플로우 " + dQueue + "건", 60000);
+          if (dRej   > 0) bumpEdgeAlert("tcp_rejected",   "warning", "TCP 클라이언트 거부 " + dRej + "건", 60000);
+          if (dAuth >= 3) bumpEdgeAlert("auth_fail",      "warning", "인증 실패 " + dAuth + "건", 60000);
+        }
+        prevCounters = {
+          uart_overflow:  m.uart_overflow  || 0,
+          queue_overflow: m.queue_overflow || 0,
+          tcp_rejected:   m.tcp_rejected   || 0,
+          auth_failures:  m.auth_failures  || 0,
+        };
+
+        render(state);
+      }
+
+      function render(state) {
+        var arr = [];
+        alerts.forEach(function (v) { arr.push(v); });
+        arr.sort(function (a, b) {
+          var rank = { critical: 0, warning: 1 };
+          if (rank[a.severity] !== rank[b.severity]) return rank[a.severity] - rank[b.severity];
+          return a.since - b.since;
+        });
+
+        var pill = document.getElementById("hdrHealth");
+        var label = pill && pill.querySelector(".health-label");
+        var glyph = pill && pill.querySelector(".health-glyph");
+        var health = state ? computeHealth(state, arr) : "offline";
+        if (pill) {
+          pill.classList.remove("health-ok","health-warn","health-fail","health-offline");
+          pill.classList.add("health-" + health);
+        }
+        if (glyph && label) {
+          var map = { ok:["●","정상"], warn:["⚠","경고"], fail:["✕","장애"], offline:["⊘","오프라인"] };
+          glyph.textContent = map[health][0];
+          label.textContent = map[health][1];
+        }
+
+        var badge = document.getElementById("hdrAlertCount");
+        var count = badge && badge.querySelector(".count");
+        if (count) count.textContent = String(arr.length);
+        if (badge) {
+          badge.classList.toggle("alert-badge-zero", arr.length === 0);
+        }
+
+        var list = document.getElementById("dwAlertList");
+        var total = document.getElementById("dwAlertTotal");
+        if (total) total.textContent = String(arr.length);
+        if (!list) return;
+        if (arr.length === 0) {
+          list.innerHTML = '<li class="alert-none">✓ 모든 시스템 정상</li>';
+          return;
+        }
+        list.innerHTML = arr.map(function (a) {
+          var cls = a.severity === "critical" ? "alert-critical" : "alert-warning";
+          var bullet = '<span aria-hidden="true">●</span>';
+          var ago = Math.max(0, Math.round((nowMs() - a.since) / 1000));
+          var ts  = ago < 60 ? (ago + "초 전부터") : (Math.round(ago/60) + "분 전부터");
+          return '<li class="' + cls + '">' + bullet + ' ' + a.label + ' <span class="alert-ts">' + ts + '</span></li>';
+        }).join("");
+      }
+
+      window.__headerReconcileAlerts = reconcile;
+    })();
+
     const MAX_CONSOLE_LINES = 300;
     const MAX_TX_BYTES = 256;
     const CONSOLE_BATCH_MS = 50;
@@ -2012,6 +2135,7 @@ if (typeof window !== "undefined") {
         if (LOCAL_DEMO) tickDemoState();
       }
       if (window.__headerOnStatus) window.__headerOnStatus(statusPayload);
+      if (window.__headerReconcileAlerts) window.__headerReconcileAlerts(statusPayload);
       renderDashboard();
       refreshSettingsFromState();
       if (isProvisioningMode() && !isProvisioningAllowedRoute(activeRoute)) navigate("provisioning");
@@ -2239,6 +2363,7 @@ if (typeof window !== "undefined") {
           if (payload.type === "status") {
             mergeDefined(state.metrics, normalizeStatus(payload).metrics);
             if (window.__headerOnStatus) window.__headerOnStatus({ ok: true, data: payload });
+            if (window.__headerReconcileAlerts) window.__headerReconcileAlerts({ ok: true, data: payload });
             renderDashboard();
             return;
           }
