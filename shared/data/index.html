@@ -1822,6 +1822,66 @@ if (typeof window !== "undefined") {
       window.__headerReconcileAlerts = reconcile;
     })();
 
+    (function initRebootFlow() {
+      var btn      = document.getElementById("hdrReboot");
+      var dialog   = document.getElementById("rebootDialog");
+      var cancel   = document.getElementById("rebootCancel");
+      var confirm  = document.getElementById("rebootConfirm");
+      var actions  = dialog && dialog.querySelector(".dialog-actions");
+      var progress = document.getElementById("rebootProgress");
+      var progressLabel = document.getElementById("rebootProgressLabel");
+      if (!btn || !dialog || !cancel || !confirm) return;
+
+      btn.addEventListener("click", function () {
+        if (typeof dialog.showModal === "function") dialog.showModal();
+      });
+      cancel.addEventListener("click", function () { dialog.close(); });
+
+      confirm.addEventListener("click", function () {
+        confirm.disabled = true;
+        cancel.disabled  = true;
+        if (progress) progress.removeAttribute("hidden");
+        if (progressLabel) progressLabel.textContent = "재부팅 요청 중…";
+
+        fetch("/api/reboot", { method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json" },
+                                body: "{}" })
+          .then(function (r) {
+            if (r.status === 200 || r.status === 409) {
+              if (progressLabel) progressLabel.textContent = "재부팅 중…";
+              beginPolling();
+            } else {
+              fail("재부팅 요청 실패 (" + r.status + ")");
+            }
+          })
+          .catch(function () { beginPolling(); });
+      });
+
+      var pollDeadline;
+      var pollTimer;
+      function beginPolling() {
+        pollDeadline = Date.now() + 90000;
+        setTimeout(tick, 2000);
+      }
+      function tick() {
+        if (Date.now() >= pollDeadline) { fail("장치가 응답하지 않습니다."); return; }
+        fetch("/api/status", { credentials: "include", cache: "no-store" })
+          .then(function (r) {
+            if (r.status === 200) { location.reload(); return; }
+            pollTimer = setTimeout(tick, 1000);
+          })
+          .catch(function () { pollTimer = setTimeout(tick, 1000); });
+      }
+      function fail(msg) {
+        if (progressLabel) progressLabel.textContent = msg;
+        confirm.disabled = false;
+        cancel.disabled  = false;
+        cancel.textContent = "닫기";
+        confirm.textContent = "다시 시도";
+      }
+    })();
+
     const MAX_CONSOLE_LINES = 300;
     const MAX_TX_BYTES = 256;
     const CONSOLE_BATCH_MS = 50;
