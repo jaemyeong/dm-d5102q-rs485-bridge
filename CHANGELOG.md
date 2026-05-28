@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-05-29
+### Added
+- 웹 관리자 헤더 재설계: 46px 토픽바 + 클릭으로 펼치는 상세 drawer.
+- 헬스 요약(`정상/경고/장애/오프라인`)과 활성 알림 개수를 헤더 우측에서 항상 표시.
+- 헤더에서 바로 호출 가능한 **재부팅** 버튼 (확인 모달 + 자동 폴링 재접속).
+- `GET /api/info` — 펌웨어 버전, 커밋, 빌드 시각, 보드, TCP 최대 클라이언트, 큐 용량.
+- `POST /api/reboot` — 인증 보호된 재부팅 API (200 → 500ms 후 `ESP.restart()`, 중복 호출 시 409).
+
+### Changed
+- `GET /api/status` `metrics`에 `auth_failures`, `last_auth_fail_ago_ms` 추가.
+- `data.device`에 `commit`, `built_at` 노출.
+- 펌웨어 버전 0.1.10으로 상향.
+
+### Security
+- 인증 실패 횟수를 펌웨어에서 추적하고 헤더 알림으로 노출.
+
 ## [0.1.9] - 2026-05-27
 
 ### Changed

@@ -5,6 +5,22 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-05-29
+### Added
+- Web admin header redesign: 46px topbar + click-to-expand detail drawer.
+- Always-visible health summary (`OK / WARN / FAIL / OFFLINE`) and active alert count.
+- One-click **Reboot** action with confirmation dialog and auto-reconnect polling.
+- `GET /api/info` exposes firmware version, commit, build time, board, TCP max clients, queue capacity.
+- `POST /api/reboot` — auth-protected reboot endpoint (200 → `ESP.restart()` after 500 ms; 409 if already scheduled).
+
+### Changed
+- `GET /api/status` `metrics` now includes `auth_failures` and `last_auth_fail_ago_ms`.
+- `data.device` exposes `commit` and `built_at`.
+- Firmware bumped to 0.1.10.
+
+### Security
+- Authentication failures are tracked in firmware and surfaced as a header alert.
+
 ## [0.1.9] - 2026-05-27
 
 ### Changed
