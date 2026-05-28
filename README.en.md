@@ -22,6 +22,8 @@ This project is a debugging and self-diagnostics tool for user-owned IoT equipme
 | §5.13-5.14 | Packet replay and baud scanner |
 | §5.15-5.19 | Status LED, OTA, dashboard, overflow, factory reset |
 
+- One-click reboot from the admin header; Wi-Fi/queue/auth alerts surfaced automatically.
+
 ## Quick Start
 
 1. Install Arduino IDE 2.x and the ESP32 board package.
