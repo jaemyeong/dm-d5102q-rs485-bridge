@@ -38,3 +38,17 @@ When overflow increases, the dashboard shows the last error and counters. A rese
 - Finalize status JSON schema.
 - Decide queue usage units and thresholds.
 - Decide dashboard warning colors and thresholds.
+
+## Header Drawer
+
+The 46px topbar exposes a persistent health summary on the right: `● OK` / `⚠ WARN` / `✕ FAIL` / `⊘ OFFLINE` chip, the active alert count (`⚠ N`), and the ⏻ reboot button.
+
+- **Expand**: click the right cluster or press Enter / Space.
+- **Dismiss**: click the cluster again, press Esc, click the ✕ button, or click outside the drawer.
+- **State**: open across route navigation within a session; closed after page reload.
+
+The drawer renders three panels (Network / Traffic / Device) and the active alert list. Alerts are derived from 12 sources (Wi-Fi loss, RS485 RX silence, queue overflow, auth failure, etc.).
+
+## Reboot Button
+
+Pressing the ⏻ button opens a confirmation modal. Clicking **Reboot** posts to `POST /api/reboot`; the device restarts ~500 ms later. The modal switches to `재부팅 중…`/`Rebooting…` and polls `/api/status` once per second; on a 200 response the page reloads automatically. After a 90 s timeout, a [Retry] option appears.
