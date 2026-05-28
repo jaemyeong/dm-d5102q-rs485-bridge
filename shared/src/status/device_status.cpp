@@ -3,6 +3,7 @@
 #include <ESP.h>
 #include <WiFi.h>
 #include "../utils/time.h"
+#include "../build_info.h"
 
 namespace dm {
 
@@ -93,8 +94,10 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   JsonObject device = data["device"].to<JsonObject>();
   device["name"] = config.deviceName;
   device["board"] = ARDUINO_BOARD;
-  device["version"] = "0.1.9";
-  device["build"] = __DATE__ " " __TIME__;
+  device["version"] = "0.1.10";
+  device["commit"]  = BUILD_COMMIT;
+  device["built_at"] = BUILD_AT;
+  device["build"] = BUILD_COMMIT " " BUILD_AT;
 
   JsonObject console = data["console"].to<JsonObject>();
   console["limit"] = config.console.lineLimit;
@@ -125,6 +128,10 @@ void DeviceStatus::writeJson(JsonDocument& doc, const DeviceConfig& config) cons
   metrics["last_rx_ago_ms"] = metrics_.lastRxMs == 0 ? -1L : static_cast<long>(now - metrics_.lastRxMs);
   metrics["last_raw_ago_ms"] = metrics_.lastRawByteMs == 0 ? -1L : static_cast<long>(now - metrics_.lastRawByteMs);
   metrics["last_tx_ago_ms"] = metrics_.lastTxMs == 0 ? -1L : static_cast<long>(now - metrics_.lastTxMs);
+  metrics["auth_failures"] = metrics_.authFailures;
+  metrics["last_auth_fail_ago_ms"] = metrics_.lastAuthFailMs == 0
+      ? -1L
+      : static_cast<long>(now - metrics_.lastAuthFailMs);
 
   JsonObject logServer = data["log_server"].to<JsonObject>();
   logServer["enabled"] = config.log.enabled;

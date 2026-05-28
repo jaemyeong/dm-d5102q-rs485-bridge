@@ -20,3 +20,16 @@ test("DeviceStatus declares recordAuthFailure()", () => {
 test("recordAuthFailure increments counter and updates timestamp", () => {
   assert.match(c, /void\s+DeviceStatus::recordAuthFailure\s*\(\s*\)\s*{[\s\S]*?authFailures\+\+[\s\S]*?lastAuthFailMs\s*=\s*millis\(\)/);
 });
+
+test("writeJson serializes auth_failures and last_auth_fail_ago_ms", () => {
+  assert.match(c, /metrics\["auth_failures"\]\s*=\s*metrics_\.authFailures/);
+  assert.match(c, /metrics\["last_auth_fail_ago_ms"\]/);
+});
+
+test("device.version is bumped to 0.1.10", () => {
+  assert.match(c, /device\["version"\]\s*=\s*"0\.1\.10"/);
+});
+
+test("device.build includes BUILD_COMMIT", () => {
+  assert.match(c, /device\["build"\]\s*=\s*BUILD_COMMIT/);
+});
