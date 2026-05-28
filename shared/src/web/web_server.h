@@ -23,6 +23,7 @@ class WebServer {
   void setConfigSaveHandler(ConfigSaveHandler handler, void* ctx);
   void setFactoryResetHandler(FactoryResetHandler handler, void* ctx);
   void poll();
+  void pollRebootDeadline();
   void broadcastPacket(const Packet& packet);
   OtaManager& ota();
 
@@ -39,7 +40,6 @@ class WebServer {
   void handleWifiScan(AsyncWebServerRequest* request);
   void handleInfo(AsyncWebServerRequest* request);
   void handleReboot(AsyncWebServerRequest* request);
-  void pollRebootDeadline();
   void handleWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
   void handleWsText(AsyncWebSocketClient* client, const String& text);
   static void collectBody(WebServer* self, AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total, BodyHandler handler);

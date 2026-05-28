@@ -46,6 +46,6 @@ test("pollRebootDeadline triggers ESP.restart at deadline", () => {
 });
 
 const app = readFileSync(join(root, "shared/src/app/firmware_app.cpp"), "utf8");
-test("FirmwareApp::poll calls web_.pollRebootDeadline", () => {
+test("FirmwareApp::loop calls web_.pollRebootDeadline", () => {
   assert.match(app, /web_\.pollRebootDeadline\(\)/);
 });
