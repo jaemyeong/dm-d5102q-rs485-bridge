@@ -17,9 +17,12 @@ test("WebServer declares handleInfo", () => {
 });
 
 test("/api/info payload exposes firmware/tcp/queue blocks with required fields", () => {
-  // ArduinoJson assignment syntax — match actual C++ source, not JSON literals
-  assert.match(ws, /\["firmware"\]/);
+  // Match ArduinoJson C++ assignment syntax, scoped to the right parent object
+  assert.match(ws, /data\["firmware"\]\.to<JsonObject>/);
   assert.match(ws, /fw\["version"\]\s*=\s*"0\.1\.10"/);
+  assert.match(ws, /fw\["commit"\]\s*=\s*BUILD_COMMIT/);
+  assert.match(ws, /fw\["built_at"\]\s*=\s*BUILD_AT/);
+  assert.match(ws, /fw\["board"\]\s*=\s*ARDUINO_BOARD/);
   assert.match(ws, /tcp\["max_clients"\]\s*=/);
   assert.match(ws, /queue\["capacity"\]\s*=/);
 });

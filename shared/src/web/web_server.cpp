@@ -351,21 +351,19 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
 }
 
 void WebServer::handleInfo(AsyncWebServerRequest* request) {
-  AsyncResponseStream* stream = request->beginResponseStream("application/json");
   JsonDocument doc;
   doc["ok"] = true;
   JsonObject data = doc["data"].to<JsonObject>();
   JsonObject fw = data["firmware"].to<JsonObject>();
-  fw["version"]  = "0.1.10";
+  fw["version"]  = "0.1.10";  // NOTE: version is intentionally duplicated with device_status.cpp; a shared FIRMWARE_VERSION macro is deferred to a follow-up refactor
   fw["commit"]   = BUILD_COMMIT;
   fw["built_at"] = BUILD_AT;
   fw["board"]    = ARDUINO_BOARD;
   JsonObject tcp = data["tcp"].to<JsonObject>();
   tcp["max_clients"] = config_->tcp.maxClients;
   JsonObject queue = data["queue"].to<JsonObject>();
-  queue["capacity"] = config_->uart.rxBufferBytes;
-  serializeJson(doc, *stream);
-  request->send(stream);
+  queue["capacity"] = config_->uart.rxBufferBytes;  // NOTE: maps to the UART RX buffer size as a practical proxy for queue capacity; revisit once PacketQueue exposes its own capacity
+  sendJson(request, doc);
 }
 
 }  // namespace dm
