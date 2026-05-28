@@ -114,8 +114,9 @@ void WebServer::registerRoutes() {
     sendJson(request, doc);
   });
 
-  { auto& server = server_; server.on("/api/info", HTTP_GET,
-    [this](AsyncWebServerRequest* req) { handleInfo(req); }); }
+  server_.on("/api/info", HTTP_GET, [this](AsyncWebServerRequest* req) {
+    handleInfo(req);
+  });
 
   server_.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
     JsonDocument doc;
@@ -350,7 +351,6 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
 }
 
 void WebServer::handleInfo(AsyncWebServerRequest* request) {
-  // response shape: {"ok":true,"data":{"firmware":{"version":"0.1.10",...},"tcp":{"max_clients":N},"queue":{"capacity":N}}}
   AsyncResponseStream* stream = request->beginResponseStream("application/json");
   JsonDocument doc;
   doc["ok"] = true;
