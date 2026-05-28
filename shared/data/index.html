@@ -898,25 +898,77 @@
 <body>
   <div id="app" class="app-shell">
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark"></span>
-        <span>DM-D5102Q</span>
-      </div>
-      <nav class="nav-tabs" aria-label="주요 메뉴">
-        <button type="button" data-route="dashboard" class="active">대시보드</button>
-        <button type="button" data-route="console">콘솔</button>
-        <button type="button" data-route="scanner">스캐너</button>
-        <button type="button" data-route="settings">설정</button>
-        <button type="button" data-route="ota">OTA</button>
-        <button type="button" data-route="about">정보</button>
-      </nav>
-      <div class="top-state">
-        <span id="ledState" class="led cyan"><i></i><span>TCP</span></span>
-        <span id="navIp">192.168.4.18</span>
-        <span id="navRssi" class="hide-md">-54 dBm</span>
-        <span id="navUptime" class="hide-md">00:00:00</span>
-      </div>
-    </header>
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <span>DM-D5102Q</span>
+  </div>
+  <nav class="nav-tabs" aria-label="주요 메뉴">
+    <button type="button" data-route="dashboard" class="active">대시보드</button>
+    <button type="button" data-route="console">콘솔</button>
+    <button type="button" data-route="scanner">스캐너</button>
+    <button type="button" data-route="settings">설정</button>
+    <button type="button" data-route="ota">OTA</button>
+    <button type="button" data-route="about">정보</button>
+  </nav>
+  <div class="summary" role="button" tabindex="0"
+       aria-expanded="false" aria-controls="header-drawer"
+       aria-label="장치 상태 요약, 펼치려면 활성화">
+    <span id="hdrHealth" class="health-pill health-ok">
+      <span class="health-glyph" aria-hidden="true">●</span>
+      <span class="health-label">정상</span>
+    </span>
+    <span id="hdrAlertCount" class="alert-badge alert-badge-zero" aria-live="polite">
+      <span aria-hidden="true">⚠</span> <span class="count">0</span>
+    </span>
+    <button id="hdrReboot" type="button" class="reboot-btn"
+            aria-label="장치 재부팅" aria-haspopup="dialog">
+      <span class="reboot-glyph" aria-hidden="true">⏻</span>
+      <span class="reboot-label">재부팅</span>
+    </button>
+  </div>
+</header>
+
+<div id="header-drawer" role="region" aria-label="장치 상태 상세" hidden>
+  <button class="drawer-close" type="button" aria-label="상세 닫기">✕</button>
+  <section class="drawer-panel" aria-label="네트워크">
+    <h3 class="panel-eyebrow">Network</h3>
+    <div class="panel-row"><span class="panel-key">Mode</span><span id="dwMode" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">SSID</span><span id="dwSsid" class="panel-val">—</span></div>
+    <div class="panel-row"><span class="panel-key">IP</span><span id="dwIp" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">RSSI</span><span id="dwRssi" class="panel-val mono">—</span></div>
+  </section>
+  <section class="drawer-panel" aria-label="트래픽">
+    <h3 class="panel-eyebrow">Traffic</h3>
+    <div class="panel-row"><span class="panel-key">▲ RX</span><span id="dwRxRate" class="panel-val mono">— pkt/s</span></div>
+    <div class="panel-row"><span class="panel-key">▼ TX</span><span id="dwTxRate" class="panel-val mono">— pkt/s</span></div>
+    <div class="panel-row"><span class="panel-key">⇄ TCP</span><span id="dwTcp" class="panel-val mono">—/—</span></div>
+    <div class="panel-row"><span class="panel-key">Queue</span><span id="dwQueue" class="panel-val mono">—</span></div>
+  </section>
+  <section class="drawer-panel" aria-label="디바이스">
+    <h3 class="panel-eyebrow">Device</h3>
+    <div class="panel-row"><span class="panel-key">Uptime</span><span id="dwUptime" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">Heap</span><span id="dwHeap" class="panel-val mono">—</span></div>
+    <div class="panel-row"><span class="panel-key">Firmware</span><span id="dwFw" class="panel-val mono">—</span></div>
+  </section>
+  <div class="drawer-alerts" role="status" aria-live="polite">
+    <h3 class="panel-eyebrow">알림 (<span id="dwAlertTotal">0</span>)</h3>
+    <ul id="dwAlertList" class="alert-list"><li class="alert-none">✓ 모든 시스템 정상</li></ul>
+  </div>
+</div>
+
+<dialog id="rebootDialog" aria-modal="true"
+        aria-labelledby="rebootTitle" aria-describedby="rebootDesc">
+  <h2 id="rebootTitle">장치를 재부팅하시겠어요?</h2>
+  <p id="rebootDesc">재부팅 중 약 8초간 연결이 끊깁니다.</p>
+  <div class="dialog-actions">
+    <button id="rebootCancel" type="button">취소</button>
+    <button id="rebootConfirm" type="button" class="destructive">재부팅</button>
+  </div>
+  <div id="rebootProgress" hidden>
+    <span class="spinner" aria-hidden="true">⟳</span>
+    <span id="rebootProgressLabel">재부팅 중…</span>
+  </div>
+</dialog>
 
     <main>
       <section class="page" id="page-dashboard" data-route="dashboard">
@@ -1569,9 +1621,6 @@
       setText("[data-field='board']", state.device.board);
       setText("[data-field='build']", state.device.build);
 
-      setText("#navIp", state.wifi.ip);
-      setText("#navRssi", `${state.wifi.rssi} dBm`);
-      setText("#navUptime", formatUptime(state.metrics.uptime_sec));
       syncShellMode();
       renderLed();
     }
