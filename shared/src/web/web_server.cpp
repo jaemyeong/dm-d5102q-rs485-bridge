@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include "admin_ui.h"
 #include "../utils/hex.h"
+#include "../build_info.h"
 
 namespace dm {
 
@@ -112,6 +113,9 @@ void WebServer::registerRoutes() {
     status_->writeJson(doc, *config_);
     sendJson(request, doc);
   });
+
+  { auto& server = server_; server.on("/api/info", HTTP_GET,
+    [this](AsyncWebServerRequest* req) { handleInfo(req); }); }
 
   server_.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* request) {
     JsonDocument doc;
@@ -343,6 +347,25 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
     request->_tempObject = nullptr;
     handler(self, request, complete);
   }
+}
+
+void WebServer::handleInfo(AsyncWebServerRequest* request) {
+  // response shape: {"ok":true,"data":{"firmware":{"version":"0.1.10",...},"tcp":{"max_clients":N},"queue":{"capacity":N}}}
+  AsyncResponseStream* stream = request->beginResponseStream("application/json");
+  JsonDocument doc;
+  doc["ok"] = true;
+  JsonObject data = doc["data"].to<JsonObject>();
+  JsonObject fw = data["firmware"].to<JsonObject>();
+  fw["version"]  = "0.1.10";
+  fw["commit"]   = BUILD_COMMIT;
+  fw["built_at"] = BUILD_AT;
+  fw["board"]    = ARDUINO_BOARD;
+  JsonObject tcp = data["tcp"].to<JsonObject>();
+  tcp["max_clients"] = config_->tcp.maxClients;
+  JsonObject queue = data["queue"].to<JsonObject>();
+  queue["capacity"] = config_->uart.rxBufferBytes;
+  serializeJson(doc, *stream);
+  request->send(stream);
 }
 
 }  // namespace dm

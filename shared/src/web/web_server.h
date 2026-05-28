@@ -37,6 +37,7 @@ class WebServer {
   void handleTxBody(AsyncWebServerRequest* request, const String& body);
   void handleScannerStartBody(AsyncWebServerRequest* request, const String& body);
   void handleWifiScan(AsyncWebServerRequest* request);
+  void handleInfo(AsyncWebServerRequest* request);
   void handleWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
   void handleWsText(AsyncWebSocketClient* client, const String& text);
   static void collectBody(WebServer* self, AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total, BodyHandler handler);
