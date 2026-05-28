@@ -38,6 +38,8 @@ class WebServer {
   void handleScannerStartBody(AsyncWebServerRequest* request, const String& body);
   void handleWifiScan(AsyncWebServerRequest* request);
   void handleInfo(AsyncWebServerRequest* request);
+  void handleReboot(AsyncWebServerRequest* request);
+  void pollRebootDeadline();
   void handleWsEvent(AsyncWebSocket* server, AsyncWebSocketClient* client, AwsEventType type, void* arg, uint8_t* data, size_t len);
   void handleWsText(AsyncWebSocketClient* client, const String& text);
   static void collectBody(WebServer* self, AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total, BodyHandler handler);
@@ -55,6 +57,8 @@ class WebServer {
   void* saveCtx_ = nullptr;
   FactoryResetHandler resetHandler_ = nullptr;
   void* resetCtx_ = nullptr;
+  uint32_t rebootScheduledMs_ = 0;
+  static constexpr uint32_t kRebootDelayMs = 500;
   OtaManager ota_;
 };
 

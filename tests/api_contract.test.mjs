@@ -26,3 +26,17 @@ test("/api/info payload exposes firmware/tcp/queue blocks with required fields",
   assert.match(ws, /tcp\["max_clients"\]\s*=/);
   assert.match(ws, /queue\["capacity"\]\s*=/);
 });
+
+test("WebServer registers POST /api/reboot", () => {
+  assert.match(ws, /server_?\.\s*on\s*\(\s*"\/api\/reboot"\s*,\s*HTTP_POST/);
+});
+
+test("WebServer declares handleReboot and rebootScheduledMs_", () => {
+  assert.match(wsh, /void\s+handleReboot\s*\(/);
+  assert.match(wsh, /uint32_t\s+rebootScheduledMs_/);
+});
+
+test("/api/reboot 200 path returns queued:true and scheduledMs", () => {
+  assert.match(ws, /"queued"\s*:\s*true/);
+  assert.match(ws, /"scheduledMs"\s*:\s*500/);
+});

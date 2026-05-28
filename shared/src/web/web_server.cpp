@@ -168,6 +168,9 @@ void WebServer::registerRoutes() {
     sendJson(request, doc);
   });
 
+  server_.on("/api/reboot", HTTP_POST,
+    [this](AsyncWebServerRequest* req) { handleReboot(req); });
+
   server_.on("/api/factory-reset/settings", HTTP_POST, [this](AsyncWebServerRequest* request) {
     JsonDocument doc;
     doc["ok"] = true;
@@ -348,6 +351,15 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
     request->_tempObject = nullptr;
     handler(self, request, complete);
   }
+}
+
+void WebServer::handleReboot(AsyncWebServerRequest* request) {
+  rebootScheduledMs_ = millis() + kRebootDelayMs;
+  request->send(200, "application/json", R"({"queued":true,"scheduledMs":500})");
+}
+
+void WebServer::pollRebootDeadline() {
+  // Implemented in Task 6
 }
 
 void WebServer::handleInfo(AsyncWebServerRequest* request) {
