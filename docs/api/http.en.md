@@ -17,6 +17,8 @@
 | Method | Path | Purpose | Auth Required |
 |---|---|---|---|
 | GET | `/api/status` | RSSI, uptime, heap, queue, overflow | ✓ |
+| GET | `/api/info` | Returns static metadata (firmware, board, TCP limits, queue capacity) | ✓ |
+| POST | `/api/reboot` | Body `{}`. 200 → reboot 500 ms later. 409 if already scheduled | ✓ |
 | GET | `/api/config` | Read current settings | ✓ |
 | POST | `/api/config` | Save settings | ✓ |
 | GET | `/api/wifi/scan` | List nearby Wi-Fi scan results | ✓ |
@@ -57,6 +59,51 @@ The body matches the ESPAsyncWebServer default message (`Authentication required
 | `queue_full` | TX queue is full |
 | `scanner_busy` | Scanner is already running |
 | `invalid_config` | Settings validation failed |
+
+## GET /api/info
+
+Auth required. Returns static metadata about the firmware build and configuration.
+
+Example response:
+```json
+{
+  "ok": true,
+  "data": {
+    "firmware": {
+      "version": "0.1.10",
+      "commit": "abc1234",
+      "built_at": "2026-05-29T03:00:00Z",
+      "board": "ESP32_DEV"
+    },
+    "tcp":   { "max_clients": 4 },
+    "queue": { "capacity": 256 }
+  }
+}
+```
+
+## POST /api/reboot
+
+Auth required. Send an empty JSON body (`{}`) to reboot the device approximately 500 ms later.
+
+Success response:
+```json
+{ "queued": true, "scheduledMs": 500 }
+```
+
+409 when a reboot is already scheduled:
+```json
+{ "ok": false, "error": "reboot_in_progress" }
+```
+
+## GET /api/status — additional fields (0.1.10)
+
+Added to `data.metrics`:
+- `auth_failures` (number) — cumulative 401 auth failures since boot.
+- `last_auth_fail_ago_ms` (number) — milliseconds since last 401 (or `-1` if none).
+
+Added to `data.device`:
+- `commit` (string) — short build git SHA.
+- `built_at` (string) — build ISO-8601 UTC timestamp.
 
 ## TODO
 

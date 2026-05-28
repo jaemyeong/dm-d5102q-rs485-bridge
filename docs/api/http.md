@@ -17,6 +17,8 @@
 | Method | Path | 용도 | 인증 필요 |
 |---|---|---|---|
 | GET | `/api/status` | RSSI, uptime, heap, queue, overflow | ✓ |
+| GET | `/api/info` | 펌웨어/보드/TCP 한도/큐 용량 등 정적 메타 반환 | ✓ |
+| POST | `/api/reboot` | 본문 `{}`. 200 → 500ms 후 재부팅. 이미 예약돼 있으면 409 | ✓ |
 | GET | `/api/config` | 현재 설정 조회 | ✓ |
 | POST | `/api/config` | 설정 저장 | ✓ |
 | GET | `/api/wifi/scan` | 주변 Wi-Fi 스캔 결과 조회 | ✓ |
@@ -57,6 +59,51 @@
 | `queue_full` | TX queue 가득 참 |
 | `scanner_busy` | Scanner 실행 중 충돌 |
 | `invalid_config` | 설정 검증 실패 |
+
+## GET /api/info
+
+인증 필요. 펌웨어 빌드와 설정의 정적 메타데이터를 반환합니다.
+
+응답 예시:
+```json
+{
+  "ok": true,
+  "data": {
+    "firmware": {
+      "version": "0.1.10",
+      "commit": "abc1234",
+      "built_at": "2026-05-29T03:00:00Z",
+      "board": "ESP32_DEV"
+    },
+    "tcp":   { "max_clients": 4 },
+    "queue": { "capacity": 256 }
+  }
+}
+```
+
+## POST /api/reboot
+
+인증 필요. 본문에 빈 JSON 객체(`{}`)를 보내면 약 500ms 후 장치가 재시작합니다.
+
+성공 응답:
+```json
+{ "queued": true, "scheduledMs": 500 }
+```
+
+이미 재부팅이 예약돼 있는 경우 409:
+```json
+{ "ok": false, "error": "reboot_in_progress" }
+```
+
+## GET /api/status — 추가 필드 (0.1.10)
+
+`data.metrics`에 추가된 필드:
+- `auth_failures` (number) — 부팅 후 누적 401 인증 실패 횟수.
+- `last_auth_fail_ago_ms` (number) — 마지막 401 발생으로부터 경과한 밀리초 (없으면 `-1`).
+
+`data.device`에 추가된 필드:
+- `commit` (string) — 빌드 git 짧은 SHA.
+- `built_at` (string) — 빌드 ISO-8601 UTC 시각.
 
 ## TODO
 
