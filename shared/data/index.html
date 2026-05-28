@@ -34,6 +34,21 @@
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
       --ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
       --focus: 0 0 0 2px rgba(59, 130, 246, 0.36);
+      --status-ok:         var(--sys);
+      --status-ok-bg:      rgba(34, 211, 238, 0.10);
+      --status-warn:       #f59e0b;
+      --status-warn-bg:    rgba(245, 158, 11, 0.12);
+      --status-fail:       var(--err);
+      --status-fail-bg:    rgba(239, 68, 68, 0.12);
+      --status-offline:    #6b7280;
+      --status-offline-bg: rgba(107, 114, 128, 0.10);
+      --drawer-bg:         rgba(15, 23, 42, 0.92);
+      --panel-divider:     rgba(148, 163, 184, 0.15);
+      --panel-label:       rgba(148, 163, 184, 0.70);
+      --reboot-fg:           rgba(248, 250, 252, 0.65);
+      --reboot-fg-hover:     var(--err);
+      --reboot-border:       rgba(148, 163, 184, 0.25);
+      --reboot-border-hover: var(--err);
     }
 
     * { box-sizing: border-box; }
@@ -893,6 +908,153 @@
         grid-template-columns: 1fr;
       }
     }
+
+/* === Summary cluster (always-visible right side) === */
+.summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px; border-radius: 8px;
+  cursor: pointer; user-select: none;
+  transition: background-color 150ms ease;
+}
+.summary:hover { background: rgba(255,255,255,0.04); }
+.summary[aria-expanded="true"] { background: rgba(255,255,255,0.06); }
+.summary:focus-visible { outline: 2px solid var(--status-ok); outline-offset: 2px; }
+
+.health-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid currentColor; min-height: 24px;
+  transition: color 200ms ease, background-color 200ms ease;
+}
+.health-pill.health-ok      { color: var(--status-ok);      background: var(--status-ok-bg); }
+.health-pill.health-warn    { color: var(--status-warn);    background: var(--status-warn-bg); }
+.health-pill.health-fail    { color: var(--status-fail);    background: var(--status-fail-bg); }
+.health-pill.health-offline { color: var(--status-offline); background: var(--status-offline-bg); }
+
+.alert-badge {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 13px; font-weight: 600;
+  padding: 2px 6px; border-radius: 6px;
+  color: var(--status-warn);
+}
+.alert-badge.alert-badge-zero { color: var(--panel-label); }
+
+.reboot-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-left: 8px; padding: 4px 10px;
+  border: 1px solid var(--reboot-border);
+  background: transparent; color: var(--reboot-fg);
+  border-radius: 6px; font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.reboot-btn:hover {
+  border-color: var(--reboot-border-hover);
+  color: var(--reboot-fg-hover);
+}
+.reboot-btn:active {
+  background: var(--reboot-fg-hover); color: #fff;
+}
+.reboot-btn:focus-visible {
+  outline: 2px solid var(--status-fail); outline-offset: 2px;
+}
+.reboot-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* === Header drawer === */
+#header-drawer {
+  position: relative;
+  background: var(--drawer-bg);
+  border-bottom: 1px solid var(--panel-divider);
+  padding: 16px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 32px;
+  overflow: hidden;
+  max-height: 0; opacity: 0;
+  transition: max-height 220ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 200ms ease,
+              padding 220ms ease;
+}
+#header-drawer[hidden] { display: grid; }
+#header-drawer.open { max-height: 320px; opacity: 1; }
+@media (max-width: 640px) {
+  #header-drawer { grid-template-columns: 1fr; gap: 12px; padding: 12px 16px; }
+  #header-drawer.open { max-height: 480px; }
+}
+
+.drawer-close {
+  position: absolute; top: 8px; right: 12px;
+  background: transparent; border: none; color: var(--panel-label);
+  font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+}
+.drawer-close:hover { color: #fff; background: rgba(255,255,255,0.05); }
+
+.drawer-panel { display: flex; flex-direction: column; gap: 6px; }
+.panel-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--panel-label);
+}
+.panel-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.panel-key { color: var(--panel-label); }
+.panel-val { color: rgba(248,250,252,0.92); }
+.panel-val.mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+
+.drawer-alerts {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--panel-divider);
+  padding-top: 12px;
+}
+.alert-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.alert-list li { font-size: 13px; padding: 6px 0; min-height: 32px; display: flex; align-items: center; gap: 8px; }
+.alert-list li.alert-none { color: var(--status-ok); }
+.alert-list li.alert-warning { color: var(--status-warn); }
+.alert-list li.alert-critical { color: var(--status-fail); }
+.alert-list li .alert-ts { color: var(--panel-label); font-size: 11px; margin-left: auto; }
+
+/* === Reboot dialog === */
+#rebootDialog {
+  border: 1px solid var(--panel-divider);
+  border-radius: 12px;
+  background: var(--drawer-bg);
+  color: rgba(248,250,252,0.92);
+  padding: 24px;
+  max-width: 420px;
+}
+#rebootDialog::backdrop { background: rgba(0,0,0,0.6); }
+#rebootDialog h2 { margin: 0 0 8px; font-size: 16px; }
+#rebootDialog p  { margin: 0 0 16px; color: var(--panel-label); font-size: 14px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.dialog-actions button {
+  padding: 8px 16px; border-radius: 6px; font-size: 14px;
+  border: 1px solid var(--panel-divider); background: transparent;
+  color: rgba(248,250,252,0.92); cursor: pointer;
+}
+.dialog-actions button.destructive {
+  background: var(--status-fail); border-color: var(--status-fail); color: #fff;
+}
+.dialog-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#rebootProgress { margin-top: 16px; display: flex; align-items: center; gap: 8px; }
+#rebootProgress .spinner {
+  display: inline-block;
+  animation: spinner-rotate 1.4s linear infinite;
+}
+@keyframes spinner-rotate { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  #header-drawer, .health-pill, .reboot-btn, .alert-list li {
+    transition-duration: 0.01ms !important;
+  }
+  #rebootProgress .spinner { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .reboot-label { display: none; }
+  .reboot-btn { padding: 4px 8px; }
+}
   </style>
 </head>
 <body>
