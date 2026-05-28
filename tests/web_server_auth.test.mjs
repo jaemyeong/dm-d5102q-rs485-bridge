@@ -25,7 +25,14 @@ test("WebServer no longer declares the authenticate() helper", () => {
 });
 
 test("WebServer holds a single AsyncAuthenticationMiddleware member", () => {
-  assert.match(webServerHeader, /AsyncAuthenticationMiddleware\s+authMiddleware_/);
+  // AuthMiddlewareWithCallback is a thin subclass of AsyncAuthenticationMiddleware
+  // (see web_server.h) that adds an auth-failure callback hook; we accept either
+  // type name here so this regression assertion keeps guarding the single-member
+  // invariant without locking the concrete subclass out.
+  assert.match(
+    webServerHeader,
+    /(?:AsyncAuthenticationMiddleware|AuthMiddlewareWithCallback)\s+authMiddleware_/,
+  );
 });
 
 test("WebServer declares updateCredentials hot-swap entry point", () => {

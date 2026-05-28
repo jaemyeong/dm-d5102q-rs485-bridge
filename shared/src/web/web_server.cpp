@@ -24,6 +24,15 @@ void sendAdminUi(AsyncWebServerRequest* request) {
 
 }  // namespace
 
+void AuthMiddlewareWithCallback::run(AsyncWebServerRequest* request, ArMiddlewareNext next) {
+  if (allowed(request)) {
+    next();
+    return;
+  }
+  if (onFailure_) onFailure_();
+  request->requestAuthentication(authType(), realm().c_str(), authFailureMessage().c_str());
+}
+
 void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& status, BaudScanner& scanner) {
   config_ = &config;
   store_ = &store;
@@ -36,6 +45,9 @@ void WebServer::begin(DeviceConfig& config, ConfigStore& store, DeviceStatus& st
   authMiddleware_.setUsername(config_->security.username.c_str());
   authMiddleware_.setPassword(config_->security.password.c_str());
   authMiddleware_.generateHash();
+  authMiddleware_.setOnFailure([this]() {
+    if (status_) status_->recordAuthFailure();
+  });
   server_.addMiddleware(&authMiddleware_);
   ws_.addMiddleware(&authMiddleware_);
 

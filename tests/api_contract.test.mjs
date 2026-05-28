@@ -54,3 +54,7 @@ test("/api/reboot returns 409 when reboot already scheduled", () => {
   assert.match(ws, /"reboot_in_progress"/);
   assert.match(ws, /send\(\s*409\s*,/);
 });
+
+test("WebServer notifies DeviceStatus on auth failure", () => {
+  assert.match(ws, /recordAuthFailure\(\)/);
+});
