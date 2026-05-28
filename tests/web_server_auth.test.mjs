@@ -76,3 +76,9 @@ test("handleConfigBody calls updateCredentials after save", () => {
   assert.ok(fnMatch, "handleConfigBody definition missing");
   assert.match(fnMatch[0], /updateCredentials\s*\(/);
 });
+
+test("WebServer registers POST /api/reboot behind global auth middleware", () => {
+  assert.match(webServerSource, /server_?\.\s*on\s*\(\s*"\/api\/reboot"\s*,\s*HTTP_POST/);
+  // Global middleware is attached in WebServer::begin via addMiddleware(&authMiddleware_)
+  assert.match(webServerSource, /addMiddleware\s*\(\s*&authMiddleware_\s*\)/);
+});
