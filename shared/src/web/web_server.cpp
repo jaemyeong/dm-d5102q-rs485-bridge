@@ -355,7 +355,10 @@ void WebServer::collectBody(WebServer* self, AsyncWebServerRequest* request, uin
 
 void WebServer::handleReboot(AsyncWebServerRequest* request) {
   rebootScheduledMs_ = millis() + kRebootDelayMs;
-  request->send(200, "application/json", R"({"queued":true,"scheduledMs":500})");
+  JsonDocument doc;
+  doc["queued"] = true;
+  doc["scheduledMs"] = kRebootDelayMs;
+  sendJson(request, doc);
 }
 
 void WebServer::pollRebootDeadline() {

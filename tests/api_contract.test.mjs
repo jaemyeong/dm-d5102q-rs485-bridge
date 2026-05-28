@@ -36,7 +36,7 @@ test("WebServer declares handleReboot and rebootScheduledMs_", () => {
   assert.match(wsh, /uint32_t\s+rebootScheduledMs_/);
 });
 
-test("/api/reboot 200 path returns queued:true and scheduledMs", () => {
-  assert.match(ws, /"queued"\s*:\s*true/);
-  assert.match(ws, /"scheduledMs"\s*:\s*500/);
+test("/api/reboot 200 path returns queued:true and scheduledMs from kRebootDelayMs", () => {
+  assert.match(ws, /doc\["queued"\]\s*=\s*true/);
+  assert.match(ws, /doc\["scheduledMs"\]\s*=\s*kRebootDelayMs/);
 });
