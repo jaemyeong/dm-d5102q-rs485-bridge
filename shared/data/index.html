@@ -1626,6 +1626,79 @@ if (typeof window !== "undefined") {
       });
     })();
 
+    (function initHeaderInfo() {
+      var INFO = { tcpMax: null, queueCap: null };
+      fetch("/api/info", { credentials: "include" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || !j.ok) return;
+          var d = j.data || {};
+          INFO.tcpMax  = (d.tcp   && d.tcp.max_clients)  || null;
+          INFO.queueCap = (d.queue && d.queue.capacity)   || null;
+          var fw = d.firmware || {};
+          var label = "v" + (fw.version || "?.?.?") + " · " + (fw.commit || "?");
+          var el = document.getElementById("dwFw");
+          if (el) el.textContent = label;
+        })
+        .catch(function () { /* offline -- handled elsewhere */ });
+      window.__hdrInfo = INFO;
+    })();
+
+    (function initHeaderStatus() {
+      var prev = null;
+      var fns  = window.__headerExports || {};
+      var deriveRates  = fns.deriveRates  || function () { return {rxPktRate:0,rxByteRate:0,txPktRate:0,txByteRate:0}; };
+      var formatUptime = fns.formatUptime || function (s) { return String(s); };
+
+      function setText(id, txt) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = txt;
+      }
+
+      function fmtKb(bytes) { return (bytes / 1024).toFixed(1) + " KB/s"; }
+      function queueBar(used, cap) {
+        if (!cap) return "—";
+        var pct = Math.round((used / cap) * 100);
+        var filled = Math.min(5, Math.round((used / cap) * 5));
+        var bar = "▮".repeat(filled) + "▯".repeat(5 - filled);
+        return bar + " " + used + "/" + cap + " (" + pct + "%)";
+      }
+
+      window.__headerOnStatus = function (payload) {
+        if (!payload || !payload.ok) return;
+        var d = payload.data || {};
+        var w = d.wifi || {};
+        var t = d.tcp  || {};
+        var m = d.metrics || {};
+
+        setText("dwMode", w.mode === "sta" ? "STA" : (w.mode === "ap" ? "AP" : "—"));
+        setText("dwSsid", w.ssid || "—");
+        setText("dwIp",   w.ip   || "—");
+        setText("dwRssi", w.rssi != null ? (w.rssi + " dBm") : "—");
+
+        var uptime = m.uptime_sec || 0;
+        var dt = prev ? (uptime - prev.t) : 0;
+        var r = deriveRates(prev, {
+          rxPackets: m.rx_packets, rxBytes: m.rx_bytes,
+          txPackets: m.tx_packets, txBytes: m.tx_bytes,
+        }, dt);
+        setText("dwRxRate", "▲ " + r.rxPktRate + " pkt/s · " + fmtKb(r.rxByteRate));
+        setText("dwTxRate", "▼ " + r.txPktRate + " pkt/s · " + fmtKb(r.txByteRate));
+        prev = { t: uptime,
+                 rxPackets: m.rx_packets, rxBytes: m.rx_bytes,
+                 txPackets: m.tx_packets, txBytes: m.tx_bytes };
+
+        var maxClients = (window.__hdrInfo && window.__hdrInfo.tcpMax) || t.max_clients || 0;
+        setText("dwTcp", (m.tcp_clients != null ? m.tcp_clients : "—") + "/" + maxClients);
+
+        var cap = (window.__hdrInfo && window.__hdrInfo.queueCap) || 0;
+        setText("dwQueue", queueBar(m.queue_usage || 0, cap));
+
+        setText("dwUptime", formatUptime(uptime));
+        setText("dwHeap", m.heap_free != null ? Math.round(m.heap_free / 1024) + " KB free" : "—");
+      };
+    })();
+
     const MAX_CONSOLE_LINES = 300;
     const MAX_TX_BYTES = 256;
     const CONSOLE_BATCH_MS = 50;
@@ -1922,8 +1995,10 @@ if (typeof window !== "undefined") {
     }
 
     async function loadStatus() {
+      let statusPayload = null;
       try {
         const payload = await api("/api/status");
+        statusPayload = payload;
         const normalized = normalizeStatus(payload);
         mergeDefined(state.wifi, normalized.wifi);
         mergeDefined(state.uart, normalized.uart);
@@ -1936,6 +2011,7 @@ if (typeof window !== "undefined") {
       } catch (_) {
         if (LOCAL_DEMO) tickDemoState();
       }
+      if (window.__headerOnStatus) window.__headerOnStatus(statusPayload);
       renderDashboard();
       refreshSettingsFromState();
       if (isProvisioningMode() && !isProvisioningAllowedRoute(activeRoute)) navigate("provisioning");
@@ -2162,6 +2238,7 @@ if (typeof window !== "undefined") {
           const payload = JSON.parse(event.data);
           if (payload.type === "status") {
             mergeDefined(state.metrics, normalizeStatus(payload).metrics);
+            if (window.__headerOnStatus) window.__headerOnStatus({ ok: true, data: payload });
             renderDashboard();
             return;
           }
