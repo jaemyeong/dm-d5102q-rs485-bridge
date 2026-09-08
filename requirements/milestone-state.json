@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 1,
+  "designVersion": "1.0",
+  "designSha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+  "catalogSha256": "b04ce539c7c8881d44b6dba0e0c733132279526d27ede76ec71fe3d3d1890a71",
+  "currentMilestone": "M0",
+  "milestones": {
+    "M0": {
+      "status": "blocked",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "host-then-hardware",
+      "requirementIds": [
+        "HW-01"
+      ],
+      "blockedBy": [
+        "M0-T01",
+        "M0-T03",
+        "M0-T04",
+        "M0-E01",
+        "M0-E04",
+        "M0-S01"
+      ],
+      "overrides": {
+        "M0-T01": {
+          "status": "blocked",
+          "proofStage": "host",
+          "artifactPaths": [
+            "docs/cleanroom/roles.md"
+          ],
+          "blocker": "Evidence, specification, verification, bus-owner, and safety-approver human owners remain unassigned."
+        },
+        "M0-T02": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-PUB-T002-HARDWARE-LOCK-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/public-source-lock.json"
+          ]
+        },
+        "M0-T03": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-HARDWARE-001"
+          ],
+          "blocker": "Four partial enclosure/module photos exist, but no accepted identity-photo packet confirms the exact C008/T002 units, revision and capture/power context."
+        },
+        "M0-T04": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-BUS-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/wiring-checklist.md"
+          ],
+          "blocker": "The field topology, bus owner, and safety approver are not identified or approved."
+        },
+        "M0-T05": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-DEC-T002-EVIDENCE-CONTRACT-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/physical-evidence-contract.md",
+            "requirements/evidence-packet-contract.json"
+          ]
+        },
+        "M0-T06": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-DESIGN-001",
+            "EV-DEC-TARGET-T002-001"
+          ],
+          "artifactPaths": [
+            "requirements/requirements.json",
+            "tests/vectors/initial.json"
+          ]
+        },
+        "M0-T07": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-BUILD-PIO-001",
+            "EV-BUILD-PARTITION-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/toolchain-lock.md",
+            "requirements/memory-budget.json"
+          ]
+        },
+        "M0-D01": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "artifactPaths": [
+            "docs/cleanroom/evidence-register.json"
+          ]
+        },
+        "M0-D02": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "artifactPaths": [
+            "docs/cleanroom/threat-model.md"
+          ]
+        },
+        "M0-D03": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "artifactPaths": [
+            "docs/cleanroom/wiring-checklist.md"
+          ]
+        },
+        "M0-D04": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "artifactPaths": [
+            "tests/vectors/initial.json"
+          ]
+        },
+        "M0-D05": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "artifactPaths": [
+            "requirements/requirements.json"
+          ]
+        },
+        "M0-E01": {
+          "status": "blocked",
+          "proofStage": "host",
+          "artifactPaths": [
+            "docs/cleanroom/roles.md"
+          ],
+          "blocker": "The current single-agent context is not a legally strict source-blind clean-room boundary and independent role approvals are absent."
+        },
+        "M0-E02": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-PUB-T002-HARDWARE-LOCK-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/public-source-lock.json"
+          ]
+        },
+        "M0-E03": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-UNV-HARDWARE-001",
+            "EV-UNV-BUS-001",
+            "EV-UNV-PROTOCOL-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/evidence-register.json",
+            "docs/cleanroom/wiring-checklist.md"
+          ]
+        },
+        "M0-E04": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-BUS-001"
+          ],
+          "blocker": "TX prohibition and stop conditions have no named bus-owner and safety-approver approval packet."
+        },
+        "M0-S01": {
+          "status": "triggered",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-HARDWARE-001",
+            "EV-UNV-BUS-001"
+          ],
+          "blocker": "Exact revision, bus owner, and safety approval remain unclear, so M1 is prohibited."
+        }
+      }
+    },
+    "M1": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "hardware",
+      "requirementIds": [
+        "HW-01",
+        "RX-01"
+      ],
+      "blockedBy": [
+        "M0"
+      ],
+      "overrides": {}
+    },
+    "M2": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "host-then-hardware",
+      "requirementIds": [
+        "RX-01",
+        "FR-01"
+      ],
+      "blockedBy": [
+        "M1"
+      ],
+      "overrides": {}
+    },
+    "M3": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "system",
+      "requirementIds": [
+        "RX-01",
+        "NET-01"
+      ],
+      "blockedBy": [
+        "M2"
+      ],
+      "overrides": {}
+    },
+    "M4": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "host-then-target",
+      "requirementIds": [
+        "CFG-01",
+        "SEC-01"
+      ],
+      "blockedBy": [
+        "M3"
+      ],
+      "overrides": {}
+    },
+    "M5": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "host-browser",
+      "requirementIds": [
+        "WEB-01",
+        "SEC-01"
+      ],
+      "blockedBy": [
+        "M4"
+      ],
+      "overrides": {}
+    },
+    "M6": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "host-then-hardware",
+      "requirementIds": [
+        "TX-01",
+        "SEC-01"
+      ],
+      "blockedBy": [
+        "M5"
+      ],
+      "overrides": {}
+    },
+    "M7": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "host-then-hardware",
+      "requirementIds": [
+        "SCN-01",
+        "RX-01"
+      ],
+      "blockedBy": [
+        "M6"
+      ],
+      "overrides": {}
+    },
+    "M8": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "target-deployment",
+      "requirementIds": [
+        "SEC-01",
+        "OTA-01",
+        "CFG-01"
+      ],
+      "blockedBy": [
+        "M7"
+      ],
+      "overrides": {}
+    },
+    "M9": {
+      "status": "not-started",
+      "defaultStatus": "not-started",
+      "defaultStopStatus": "not-evaluated",
+      "defaultProofStage": "deployment",
+      "requirementIds": [
+        "OPS-01"
+      ],
+      "blockedBy": [
+        "M8"
+      ],
+      "overrides": {}
+    }
+  },
+  "groups": {
+    "host-tests": {
+      "defaultStatus": "registered",
+      "defaultProofStage": "host",
+      "requirementIds": [
+        "RX-01",
+        "FR-01",
+        "CFG-01",
+        "WEB-01",
+        "TX-01",
+        "SCN-01",
+        "SEC-01",
+        "OTA-01"
+      ],
+      "overrides": {}
+    },
+    "hardware-tests": {
+      "defaultStatus": "registered",
+      "defaultProofStage": "hardware",
+      "requirementIds": [
+        "HW-01",
+        "RX-01",
+        "NET-01",
+        "CFG-01",
+        "WEB-01",
+        "TX-01",
+        "OTA-01"
+      ],
+      "overrides": {}
+    },
+    "field-tests": {
+      "defaultStatus": "registered",
+      "defaultProofStage": "system",
+      "requirementIds": [
+        "HW-01",
+        "RX-01",
+        "TX-01",
+        "SCN-01",
+        "OPS-01"
+      ],
+      "overrides": {}
+    },
+    "quantitative-acceptance": {
+      "defaultStatus": "not-evaluated",
+      "defaultProofStage": "deployment",
+      "requirementIds": [
+        "NET-01",
+        "WEB-01",
+        "SEC-01",
+        "OTA-01",
+        "OPS-01"
+      ],
+      "overrides": {}
+    },
+    "release-definition": {
+      "defaultStatus": "not-evaluated",
+      "defaultProofStage": "deployment",
+      "requirementIds": [
+        "HW-01",
+        "RX-01",
+        "FR-01",
+        "NET-01",
+        "CFG-01",
+        "WEB-01",
+        "TX-01",
+        "SCN-01",
+        "SEC-01",
+        "OTA-01",
+        "OPS-01"
+      ],
+      "overrides": {}
+    },
+    "implementation-checklist": {
+      "defaultStatus": "open",
+      "defaultProofStage": "host-then-hardware",
+      "requirementIds": [
+        "HW-01"
+      ],
+      "overrides": {
+        "IC-01": {
+          "status": "blocked",
+          "proofStage": "host",
+          "artifactPaths": [
+            "docs/cleanroom/roles.md"
+          ],
+          "blocker": "Role owners and independent approval are unassigned."
+        },
+        "IC-02": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-HARDWARE-001"
+          ],
+          "blocker": "Exact-unit identity photographs are missing."
+        },
+        "IC-03": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-BUS-001"
+          ],
+          "blocker": "Bus-owner RX-only approval is missing."
+        },
+        "IC-04": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-BUS-001"
+          ],
+          "blocker": "Power, polarity, ground, and termination topology measurements are missing."
+        },
+        "IC-05": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-PUBLIC-CONFLICT-001"
+          ],
+          "blocker": "UART pin continuity and automatic-direction behavior are unresolved."
+        },
+        "IC-06": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-PROTOCOL-001"
+          ],
+          "blocker": "No accepted passive raw capture exists."
+        },
+        "IC-07": {
+          "status": "open",
+          "proofStage": "hardware",
+          "evidenceIds": [
+            "EV-UNV-PROTOCOL-001"
+          ],
+          "blocker": "DM-D5102Q UART candidates remain explicitly unverified."
+        },
+        "IC-08": {
+          "status": "satisfied",
+          "proofStage": "host",
+          "evidenceIds": [
+            "EV-PUB-HARDWARE-LOCK-001",
+            "EV-BUILD-PIO-001",
+            "EV-BUILD-PARTITION-001"
+          ],
+          "artifactPaths": [
+            "docs/cleanroom/toolchain-lock.md"
+          ]
+        },
+        "IC-09": {
+          "status": "open",
+          "proofStage": "host-then-hardware",
+          "artifactPaths": [
+            "platformio.ini"
+          ],
+          "blocker": "The current no-I/O build fixture is not an RX-only bring-up image with an explicit compile-time TX-off assertion."
+        },
+        "IC-10": {
+          "status": "blocked",
+          "proofStage": "hardware",
+          "artifactPaths": [
+            "docs/cleanroom/roles.md",
+            "docs/cleanroom/wiring-checklist.md"
+          ],
+          "blocker": "Stop-condition and recovery owners are unassigned."
+        }
+      }
+    }
+  },
+  "catalogExpectations": {
+    "total": 207,
+    "milestones": {
+      "M0": {
+        "tasks": 7,
+        "deliverables": 5,
+        "exitConditions": 4,
+        "stopConditions": 1
+      },
+      "M1": {
+        "tasks": 6,
+        "deliverables": 4,
+        "exitConditions": 4,
+        "stopConditions": 1
+      },
+      "M2": {
+        "tasks": 6,
+        "deliverables": 4,
+        "exitConditions": 4,
+        "stopConditions": 1
+      },
+      "M3": {
+        "tasks": 6,
+        "deliverables": 2,
+        "exitConditions": 4,
+        "stopConditions": 1
+      },
+      "M4": {
+        "tasks": 6,
+        "deliverables": 3,
+        "exitConditions": 4,
+        "stopConditions": 1
+      },
+      "M5": {
+        "tasks": 6,
+        "deliverables": 3,
+        "exitConditions": 5,
+        "stopConditions": 1
+      },
+      "M6": {
+        "tasks": 6,
+        "deliverables": 3,
+        "exitConditions": 4,
+        "stopConditions": 1
+      },
+      "M7": {
+        "tasks": 5,
+        "deliverables": 3,
+        "exitConditions": 5,
+        "stopConditions": 1
+      },
+      "M8": {
+        "tasks": 7,
+        "deliverables": 3,
+        "exitConditions": 5,
+        "stopConditions": 1
+      },
+      "M9": {
+        "tasks": 6,
+        "deliverables": 4,
+        "exitConditions": 5,
+        "stopConditions": 1
+      }
+    },
+    "groups": {
+      "host-tests": 8,
+      "hardware-tests": 12,
+      "field-tests": 6,
+      "quantitative-acceptance": 11,
+      "release-definition": 11,
+      "implementation-checklist": 10
+    }
+  },
+  "designAmendment": {
+    "id": "TARGET-T002-20260907",
+    "path": "docs/design/TARGET-AMENDMENT-T002-2026-09-07.md",
+    "sha256": "e511d76a211b12e225974dfcf24a1b5b2d3bddb6f00ee7f4981e6c3e1666cc45"
+  },
+  "effectiveTarget": {
+    "atomSku": "C008",
+    "baseSku": "T002"
+  }
+}

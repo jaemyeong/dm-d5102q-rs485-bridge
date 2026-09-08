@@ -1,0 +1,43 @@
+# Generated Arduino build products
+.arduino/build/
+.arduino/tmp/
+**/build/
+.pio/
+.platformio/
+.platformio-venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Device backups can contain configuration or credentials; keep them local.
+.arduino/evidence/deployment/*.bin
+
+# Raw field captures and photos may contain operational or location metadata.
+.arduino/evidence/hardware/private/
+
+# Manufacturer snapshots are locally retained evidence. Their URLs, dates, and
+# SHA-256 digests are committed in docs/cleanroom/public-source-lock.json.
+.arduino/evidence/public-sources/raw/
+
+# Public source publication excludes all local evidence, identity, and agent state.
+# Keep these on disk; none is part of a public clone or release asset.
+.arduino/
+.codegraph/
+.serena/
+.claude/
+.codex/
+graphify-out/
+CLAUDE.md
+
+# Local secrets and packaged/flash artifacts are never source commits.
+.env
+.env.*
+!.env.example
+**/signing-key.pem
+**/credentials.txt
+*.key
+*.p12
+*.pfx
+*.bin
+*.elf
+*.dmota

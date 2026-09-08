@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "designVersion": "1.0",
+  "designSha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+  "requirements": [
+    {
+      "id": "HW-01",
+      "milestones": [
+        "M0",
+        "M1"
+      ],
+      "statement": "Exact C008/T002 identity, pin mapping, logic levels, power, grounding, polarity, direction behavior, and termination shall be source-backed and physically measured before field operation.",
+      "sources": [
+        "PUB",
+        "OBS",
+        "DEC",
+        "UNV"
+      ],
+      "tests": [
+        "T-HW-001"
+      ],
+      "status": "blocked-physical-evidence"
+    },
+    {
+      "id": "RX-01",
+      "milestones": [
+        "M1",
+        "M2",
+        "M3"
+      ],
+      "statement": "The receive path shall preserve every observed RS485 byte and expose loss/error counters without being blocked by networking or logging.",
+      "sources": [
+        "DEC",
+        "OBS"
+      ],
+      "tests": [
+        "T-RX-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "FR-01",
+      "milestones": [
+        "M2"
+      ],
+      "statement": "Framing shall use only configured gap, delimiter, verified length, or diagnostic raw-chunk boundaries and shall not infer payload meaning.",
+      "sources": [
+        "DEC",
+        "OBS"
+      ],
+      "tests": [
+        "T-FR-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "NET-01",
+      "milestones": [
+        "M3"
+      ],
+      "statement": "Raw TCP and WebSocket fan-out shall be bounded and read-only by default; a slow or inbound client shall not block RX or cause UART writes.",
+      "sources": [
+        "DEC"
+      ],
+      "tests": [
+        "T-NET-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "CFG-01",
+      "milestones": [
+        "M4"
+      ],
+      "statement": "Configuration shall use validated two-slot generation and CRC semantics and recover to the previous slot or a TX-disabled safe default after interruption or corruption.",
+      "sources": [
+        "DEC",
+        "PUB"
+      ],
+      "tests": [
+        "T-CFG-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "WEB-01",
+      "milestones": [
+        "M5"
+      ],
+      "statement": "The local UI and API shall expose only device-derived state, preserve stale values as stale, bound inputs, and meet the defined keyboard/mobile accessibility contract.",
+      "sources": [
+        "DEC"
+      ],
+      "tests": [
+        "T-WEB-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "TX-01",
+      "milestones": [
+        "M6"
+      ],
+      "statement": "UART transmission shall remain zero unless authentication, CSRF/Origin, physical arm, expiry, budget, rate, idle, state, payload, and queue gates all pass.",
+      "sources": [
+        "DEC",
+        "OBS"
+      ],
+      "tests": [
+        "T-TX-001"
+      ],
+      "status": "prohibited-before-m6"
+    },
+    {
+      "id": "SCN-01",
+      "milestones": [
+        "M7"
+      ],
+      "statement": "Baud scanning shall be passive, evidence-based, deterministic, score zero-byte candidates as zero, and restore the original UART configuration on every exit path.",
+      "sources": [
+        "DEC",
+        "OBS"
+      ],
+      "tests": [
+        "T-SCN-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "SEC-01",
+      "milestones": [
+        "M8"
+      ],
+      "statement": "Every mutation, WebSocket handshake, and OTA upload shall authenticate and validate origin/nonce before first-body or first-upload-byte side effects, with bounded inputs and secret redaction.",
+      "sources": [
+        "DEC",
+        "PUB"
+      ],
+      "tests": [
+        "T-SEC-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "OTA-01",
+      "milestones": [
+        "M8"
+      ],
+      "statement": "OTA shall verify Ed25519 manifest, board ID, size, SHA-256, inactive slot, boot health, and rollback; invalid or interrupted images shall never become valid.",
+      "sources": [
+        "DEC",
+        "PUB"
+      ],
+      "tests": [
+        "T-OTA-001"
+      ],
+      "status": "unimplemented"
+    },
+    {
+      "id": "OPS-01",
+      "milestones": [
+        "M9"
+      ],
+      "statement": "A release shall satisfy the 72-hour soak, zero-loss/reboot/overflow gates, heap and latency budgets, reproducible artifacts, SBOM, recovery runbook, and explicit TX profile decision.",
+      "sources": [
+        "DEC",
+        "OBS"
+      ],
+      "tests": [
+        "T-OPS-001"
+      ],
+      "status": "unimplemented"
+    }
+  ],
+  "designAmendment": {
+    "id": "TARGET-T002-20260907",
+    "path": "docs/design/TARGET-AMENDMENT-T002-2026-09-07.md",
+    "sha256": "e511d76a211b12e225974dfcf24a1b5b2d3bddb6f00ee7f4981e6c3e1666cc45"
+  },
+  "effectiveTarget": {
+    "atomSku": "C008",
+    "baseSku": "T002"
+  }
+}

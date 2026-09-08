@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "designSha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+  "target": {
+    "boardId": "m5stack-atom",
+    "sku": "C008",
+    "flashBytes": 4194304
+  },
+  "flash": {
+    "partitionCsv": "partitions/dmbridge_ota.csv",
+    "partitionTableOffsetBytes": 32768,
+    "partitionTableSizeBytes": 4096,
+    "firmwareImageMaxBytes": 1310720,
+    "minimumUnallocatedSpareBytes": 962560,
+    "filesystemRequired": false,
+    "partitions": [
+      {
+        "name": "nvs",
+        "type": "data",
+        "subtype": "nvs",
+        "offsetBytes": 36864,
+        "sizeBytes": 20480,
+        "flags": ""
+      },
+      {
+        "name": "otadata",
+        "type": "data",
+        "subtype": "ota",
+        "offsetBytes": 57344,
+        "sizeBytes": 8192,
+        "flags": ""
+      },
+      {
+        "name": "app0",
+        "type": "app",
+        "subtype": "ota_0",
+        "offsetBytes": 65536,
+        "sizeBytes": 1572864,
+        "flags": ""
+      },
+      {
+        "name": "app1",
+        "type": "app",
+        "subtype": "ota_1",
+        "offsetBytes": 1638400,
+        "sizeBytes": 1572864,
+        "flags": ""
+      },
+      {
+        "name": "diag_nvs",
+        "type": "data",
+        "subtype": "nvs",
+        "offsetBytes": 3211264,
+        "sizeBytes": 20480,
+        "flags": ""
+      }
+    ]
+  },
+  "runtime": {
+    "status": "unverified",
+    "steadyStateFreeHeapMinBytes": 81920,
+    "loadedFreeHeapMinBytes": 51200,
+    "largestFreeBlockMinBytes": 32768,
+    "proofStage": "target-system",
+    "failureResponse": "Block release, identify the owning feature or allocation, and remeasure under representative load."
+  },
+  "storagePolicy": {
+    "webAssets": "compiled-into-app-image",
+    "persistentPacketReplay": false,
+    "diagnosticPartitionUse": "bounded boot and rollback diagnostics only; never raw payloads, logs, or secrets"
+  }
+}

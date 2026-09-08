@@ -1,0 +1,8 @@
+; Optional local package-source override. Copy this file to
+; .arduino/tmp/platformio-local.ini only when the official PlatformIO registry
+; cannot be reached. The archive must be the exact locked package and its
+; SHA-256 must be verified before this override is used.
+
+[env:atom_lite]
+platform_packages =
+    tool-esptoolpy @ file:///absolute/path/to/tool-esptoolpy-2.41100.260830.tar.gz

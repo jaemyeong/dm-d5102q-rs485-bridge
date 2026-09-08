@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "vectors": [
+    {
+      "id": "T-HW-001",
+      "requirementIds": [
+        "HW-01"
+      ],
+      "proofStage": "hardware",
+      "input": {
+        "power": "off",
+        "artifacts": [
+          "hash-bound identity-photo packet",
+          "C008 photo",
+          "T002 revision and connector evidence",
+          "transceiver and termination population observation",
+          "hash-bound four-row straight/crossed GPIO26/GPIO32 continuity packet",
+          "independent approval packet",
+          "revision-matched logic-level and power-path evidence",
+          "isolated boot-reset-brownout A/B trace",
+          "paired RX-only MCU/analyzer NDJSON",
+          "topology diagram"
+        ]
+      },
+      "expected": {
+        "allExactIdentityFieldsKnown": true,
+        "uartPinMapResolvedByContinuity": true,
+        "bootLifecycleABPassive": true,
+        "txPermitted": false
+      },
+      "status": "blocked-physical-evidence"
+    },
+    {
+      "id": "T-RX-001",
+      "requirementIds": [
+        "RX-01"
+      ],
+      "proofStage": "host-then-hardware",
+      "input": {
+        "hex": "00 7E 80 FF 00",
+        "timestampsMs": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "expected": {
+        "outputHex": "00 7E 80 FF 00",
+        "byteLoss": 0,
+        "uartWrites": 0
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-FR-001",
+      "requirementIds": [
+        "FR-01"
+      ],
+      "proofStage": "host",
+      "input": {
+        "mode": "inter-byte",
+        "gapMs": 20,
+        "bytes": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "timestampsMs": [
+          0,
+          1,
+          2,
+          23
+        ]
+      },
+      "expected": {
+        "framesHex": [
+          "01 02 03",
+          "04"
+        ],
+        "reasons": [
+          "gap",
+          "flush"
+        ],
+        "payloadMeaning": null
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-NET-001",
+      "requirementIds": [
+        "NET-01"
+      ],
+      "proofStage": "system",
+      "input": {
+        "tcpInboundHex": "AA 55",
+        "slowClientBlockedMs": 2001,
+        "concurrentTcpClients": 2,
+        "concurrentWsClients": 2
+      },
+      "expected": {
+        "uartWrites": 0,
+        "slowClientDrops": 1,
+        "rxBlocked": false
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-CFG-001",
+      "requirementIds": [
+        "CFG-01"
+      ],
+      "proofStage": "host-then-target",
+      "input": {
+        "slotA": {
+          "generation": 7,
+          "crc": "valid"
+        },
+        "slotB": {
+          "generation": 8,
+          "crc": "invalid"
+        },
+        "active": "B"
+      },
+      "expected": {
+        "selectedGeneration": 7,
+        "txEnabled": false,
+        "event": "CONFIG_CORRUPT"
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-WEB-001",
+      "requirementIds": [
+        "WEB-01"
+      ],
+      "proofStage": "host-browser",
+      "input": {
+        "lastCounter": 42,
+        "websocketDisconnected": true,
+        "viewportWidthPx": 320,
+        "bodyBytes": 4097
+      },
+      "expected": {
+        "displayedCounter": 42,
+        "stale": true,
+        "horizontalOverflow": false,
+        "mutationSideEffects": 0,
+        "httpStatus": 413
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-TX-001",
+      "requirementIds": [
+        "TX-01"
+      ],
+      "proofStage": "host-then-hardware",
+      "input": {
+        "authenticated": true,
+        "csrfValid": true,
+        "physicalArm": false,
+        "payloadHex": "01 02"
+      },
+      "expected": {
+        "accepted": false,
+        "uartWrites": 0,
+        "errorCode": "TX_NOT_ARMED"
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-SCN-001",
+      "requirementIds": [
+        "SCN-01"
+      ],
+      "proofStage": "host-then-hardware",
+      "input": {
+        "candidateBaud": 3840,
+        "observedBytes": 0,
+        "originalBaud": 9600,
+        "exit": "cancel"
+      },
+      "expected": {
+        "confidence": 0,
+        "uartWrites": 0,
+        "restoredBaud": 9600,
+        "savedAutomatically": false
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-SEC-001",
+      "requirementIds": [
+        "SEC-01"
+      ],
+      "proofStage": "host-system",
+      "input": {
+        "authenticated": false,
+        "firstChunkBytes": 1,
+        "route": "/api/v1/firmware/image"
+      },
+      "expected": {
+        "flashWrites": 0,
+        "retainedBodyBytes": 0,
+        "httpStatus": 401,
+        "secretInLog": false
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-OTA-001",
+      "requirementIds": [
+        "OTA-01"
+      ],
+      "proofStage": "target-deployment",
+      "input": {
+        "boardId": "m5stack-atom",
+        "signature": "invalid",
+        "imageSha256": "mismatch"
+      },
+      "expected": {
+        "bootPartitionChanged": false,
+        "imageBooted": false,
+        "txEnabled": false
+      },
+      "status": "registered"
+    },
+    {
+      "id": "T-OPS-001",
+      "requirementIds": [
+        "OPS-01"
+      ],
+      "proofStage": "deployment",
+      "input": {
+        "durationHours": 72,
+        "representativeLoad": true
+      },
+      "expected": {
+        "unexpectedReboots": 0,
+        "rxByteLoss": 0,
+        "queueOverflow": 0,
+        "minimumFreeHeapBytes": 51200,
+        "heapDownwardTrend": false,
+        "p95WebsocketLatencyMsMax": 100
+      },
+      "status": "registered"
+    }
+  ],
+  "designAmendment": {
+    "id": "TARGET-T002-20260907",
+    "path": "docs/design/TARGET-AMENDMENT-T002-2026-09-07.md",
+    "sha256": "e511d76a211b12e225974dfcf24a1b5b2d3bddb6f00ee7f4981e6c3e1666cc45"
+  }
+}

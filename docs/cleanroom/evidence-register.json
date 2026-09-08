@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-01T08:11:02+09:00",
+  "hashAlgorithm": "SHA-256",
+  "entries": [
+    {
+      "id": "EV-DESIGN-001",
+      "classification": "DEC",
+      "status": "captured",
+      "uri": "docs/design/DM-D5102Q-RS485-WIFI-BRIDGE-SPEC-v1.0.md",
+      "sha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+      "hashScope": "entire UTF-8 attachment",
+      "facts": [
+        "design version 1.0",
+        "M0-M9 product contract"
+      ]
+    },
+    {
+      "id": "EV-PUB-ATOM-001",
+      "classification": "PUB",
+      "status": "metadata-captured",
+      "uri": "https://docs.m5stack.com/en/core/ATOM%20Lite",
+      "sha256": "79d2a2c4ef54a688d64174ec0f666edaec773aeb4fcb65b90d849fd87cbf6fb1",
+      "hashScope": "HTTP response body retrieved with redirects and compression",
+      "facts": [
+        "SKU C008",
+        "ESP32-PICO-D4",
+        "4 MB flash",
+        "520 KB SRAM",
+        "2.4 GHz Wi-Fi",
+        "GPIO26/GPIO32 custom port",
+        "GPIO27 RGB",
+        "GPIO39 button"
+      ]
+    },
+    {
+      "id": "EV-PUB-RS485-001",
+      "classification": "PUB",
+      "status": "metadata-captured",
+      "uri": "https://docs.m5stack.com/en/atom/Atomic%20RS485%20Base",
+      "sha256": "5528f112802e3dbd72d66beb9777bd63645d6cd37e8b074fe9f4a19a858e1e00",
+      "hashScope": "HTTP response body retrieved with redirects and compression",
+      "facts": [
+        "SKU A131",
+        "SP3485EE",
+        "AOZ1282CI DC-DC",
+        "6-24 V input description",
+        "VH-3.96 4P"
+      ],
+      "applicability": "historical-A131-only"
+    },
+    {
+      "id": "EV-PUB-TUTORIAL-001",
+      "classification": "PUB",
+      "status": "metadata-captured",
+      "uri": "https://docs.m5stack.com/en/arduino/projects/atomic/atomic_rs485_232_base",
+      "sha256": "40534fd65926d0fe5332d71951017326a8c2d5cc125f0ce0cc662c723de16927",
+      "hashScope": "HTTP response body retrieved with redirects and compression",
+      "facts": [
+        "manufacturer Arduino tutorial exists"
+      ],
+      "limitations": [
+        "tutorial example behavior is not physical proof for the selected base revision"
+      ],
+      "applicability": "historical-A131-only"
+    },
+    {
+      "id": "EV-PUB-PIO-001",
+      "classification": "PUB",
+      "status": "immutable-revision-captured",
+      "uri": "https://github.com/platformio/platform-espressif32/tree/76b0e9b942330979860e3bc7fd3b92b383d66cc1",
+      "sha256": "9a0750a8c6164f6751249a32b24ca8b250bc888d0345aebad5200a23b8019247",
+      "hashScope": "boards/m5stack-atom.json at tag v7.0.0",
+      "facts": [
+        "m5stack-atom board ID",
+        "classic ESP32",
+        "4 MB flash",
+        "Arduino and ESP-IDF framework support"
+      ]
+    },
+    {
+      "id": "EV-OBS-SMOKE-001",
+      "classification": "OBS",
+      "status": "captured",
+      "uri": ".arduino/evidence/hardware/atom-lite-serial-unfiltered.log",
+      "sha256": "0ee41ee9ec88f27e11522384b48b07912b90cdc19f4a863d56be0d1f7e33ed0f",
+      "hashScope": "entire prior smoke-test serial log",
+      "facts": [
+        "18 structured heartbeat lines",
+        "17 adjacent 1000 ms intervals"
+      ],
+      "limitations": [
+        "no GPIO",
+        "no RS485 base",
+        "no field bus",
+        "no networking"
+      ]
+    },
+    {
+      "id": "EV-OBS-BACKUP-001",
+      "classification": "OBS",
+      "status": "local-sensitive",
+      "uri": ".arduino/evidence/deployment/atom-lite-pre-smoke-4mb.bin",
+      "sha256": "3f2a06f6ecd7d8bf358201923d00b4f10bf5ad847cb66a1473d220b787e13c8c",
+      "hashScope": "entire 4 MiB pre-smoke flash image",
+      "facts": [
+        "rollback image captured at 115200 baud"
+      ],
+      "limitations": [
+        "Git-ignored because raw flash may contain secrets"
+      ]
+    },
+    {
+      "id": "EV-BUILD-PIO-001",
+      "classification": "OBS",
+      "status": "build-passed",
+      "uri": ".arduino/evidence/build/platformio-m0-toolchain.md",
+      "sha256": "aca5804b2f728cbdff524a207789b6e6b362c7b61c639b878b0a82c5b4d87f87",
+      "hashScope": "generated PlatformIO firmware.bin; detailed artifact hashes are in the evidence document",
+      "facts": [
+        "pinned m5stack-atom host compile passed",
+        "-Wall -Wextra -Werror",
+        "no source warnings",
+        "no USB access"
+      ],
+      "limitations": [
+        "build proof only",
+        "generated binaries are Git-ignored and must be reproduced"
+      ]
+    },
+    {
+      "id": "EV-BUILD-PARTITION-001",
+      "classification": "OBS",
+      "status": "build-passed",
+      "uri": ".arduino/evidence/build/platformio-m0-partition-budget.md",
+      "sha256": "fb9da29aa7639cfae2ffb31c94bdff9a4d99eb23bc0813d72fed72e7f4f3ae04",
+      "hashScope": "generated PlatformIO partitions.bin; detailed input and artifact hashes are in the evidence document",
+      "facts": [
+        "fixed 4 MiB layout accepted",
+        "two 1.5 MiB OTA slots",
+        "no filesystem",
+        "release LTO link verified",
+        "automatic 1.25 MiB image gate passed with 1048176 bytes margin",
+        "no USB access"
+      ],
+      "limitations": [
+        "host build proof only",
+        "runtime heap remains unverified",
+        "generated binaries are Git-ignored and must be reproduced"
+      ]
+    },
+    {
+      "id": "EV-PUB-HARDWARE-LOCK-001",
+      "classification": "PUB",
+      "status": "source-locked",
+      "uri": "docs/cleanroom/archive/public-source-lock-a131-20260907.json",
+      "sha256": "71488f6af90ece3ba27dca98a03ffea39473dfa2e532e0afc7bcb114d1f00dd2",
+      "hashScope": "entire public-source lock manifest",
+      "facts": [
+        "8 public manufacturer/library snapshots have fixed URLs, dates, SHA-256 digests, and bounded facts",
+        "8 matching local raw archives passed integrity validation",
+        "2 documentation conflicts and 1 schematic inference are explicitly retained"
+      ],
+      "limitations": [
+        "source integrity is not selected-unit identity, continuity, electrical, or runtime proof",
+        "raw snapshots are local and Git-ignored"
+      ],
+      "applicability": "historical-A131-baseline"
+    },
+    {
+      "id": "EV-DEC-PHYSICAL-EVIDENCE-CONTRACT-001",
+      "classification": "DEC",
+      "status": "host-validated",
+      "uri": "docs/cleanroom/archive/evidence-packet-contract-a131-20260907.json",
+      "sha256": "34f1bc58f230d6a26eeb729aaafe57a066a62b2713626f2c0f6b2ce9fc454a08",
+      "hashScope": "entire evidence packet contract",
+      "facts": [
+        "4 one-action physical packet types are defined",
+        "identity and passive-capture templates are marked non-evidence",
+        "field-passive capture requires 30 minutes and paired MCU/analyzer byte equality",
+        "raw artifacts remain under the Git-ignored private root"
+      ],
+      "limitations": [
+        "contract validation proves format and artifact integrity only",
+        "no actual identity, continuity, approval, or passive-capture packet has been accepted"
+      ],
+      "applicability": "historical-A131-baseline"
+    },
+    {
+      "id": "EV-UNV-PUBLIC-CONFLICT-001",
+      "classification": "UNV",
+      "status": "unresolved",
+      "uri": "docs/cleanroom/public-source-lock.json",
+      "facts": [
+        "selected A131 UART-to-GPIO mapping",
+        "selected A131 transceiver part and input range",
+        "selected A131 R4 population",
+        "boot/reset A/B passivity"
+      ],
+      "verification": "power-off labeled C008/A131 photographs, de-energized continuity for both GPIO candidate pairs, revision-matched component evidence, and isolated current-limited boot/reset/brownout scope captures",
+      "applicability": "historical-A131-only"
+    },
+    {
+      "id": "EV-UNV-HARDWARE-001",
+      "classification": "UNV",
+      "status": "partial-intake-unverified",
+      "uri": ".arduino/evidence/hardware/private/target-sku-revision/",
+      "facts": [
+        "exact Atom Lite C008 and Tail RS485 T002 selected-unit SKU/revision and connector identity",
+        "capture context, terminal wire far ends, logic levels and electrical behavior"
+      ],
+      "verification": "Reuse the four supplied private photos; confirm current power/wiring and capture context, then obtain remaining identity/revision evidence before any physical action."
+    },
+    {
+      "id": "EV-UNV-BUS-001",
+      "classification": "UNV",
+      "status": "missing",
+      "uri": ".arduino/evidence/hardware/private/field-bus/",
+      "facts": [
+        "A/B polarity",
+        "ground policy",
+        "termination topology",
+        "supply voltage",
+        "ground potential",
+        "bus owner approval"
+      ],
+      "verification": "approved wiring diagram plus contextualized meter/scope captures"
+    },
+    {
+      "id": "EV-UNV-PROTOCOL-001",
+      "classification": "UNV",
+      "status": "missing",
+      "uri": ".arduino/evidence/hardware/private/passive-capture/",
+      "facts": [
+        "field baud",
+        "data bits",
+        "parity",
+        "stop bits",
+        "maximum frame length",
+        "inter-frame timing"
+      ],
+      "verification": "30-minute receive-only raw capture with equipment, firmware, wiring, and SHA-256 metadata"
+    },
+    {
+      "id": "EV-DEC-TARGET-T002-001",
+      "classification": "DEC",
+      "status": "captured",
+      "uri": "docs/design/TARGET-AMENDMENT-T002-2026-09-07.md",
+      "sha256": "e511d76a211b12e225974dfcf24a1b5b2d3bddb6f00ee7f4981e6c3e1666cc45",
+      "hashScope": "entire approved target amendment",
+      "facts": [
+        "User authorized switching the intended target to Atom Lite C008 plus Tail RS485 T002 on 2026-09-07",
+        "The original v1.0 attachment and all physical/raw history remain preserved"
+      ],
+      "limitations": [
+        "Target selection only; no independent safety approval, physical acceptance or hardware action is implied"
+      ]
+    },
+    {
+      "id": "EV-PUB-T002-HARDWARE-LOCK-001",
+      "classification": "PUB",
+      "status": "source-locked",
+      "uri": "docs/cleanroom/public-source-lock.json",
+      "sha256": "cfe8868abfb9e49115af3f7de5b855a14515daaee7755472fd267eeb40fa5342",
+      "hashScope": "entire amended public-source lock manifest",
+      "facts": [
+        "10 hash-bound snapshots distinguish 4 active C008/T002 sources from 6 historical A131-related sources",
+        "3 T002-specific hardware gates remain unverified",
+        "A131 conflicts and DE inference are retained with historical applicability"
+      ],
+      "limitations": [
+        "Documentation and source integrity only; no selected-unit or electrical proof"
+      ]
+    },
+    {
+      "id": "EV-DEC-T002-EVIDENCE-CONTRACT-001",
+      "classification": "DEC",
+      "status": "host-validated",
+      "uri": "requirements/evidence-packet-contract.json",
+      "sha256": "cca6a63e529be27d72f838107403f133ff446b1addb114aaf1054bc4c45cc442",
+      "hashScope": "entire amended evidence packet contract",
+      "facts": [
+        "Current packets declare C008/T002 and the approved amendment",
+        "Identity uses generic component/termination fields",
+        "Continuity covers all four straight/crossed GPIO26/32 rows; independent review remains required"
+      ],
+      "limitations": [
+        "No actual packet has been accepted; templates and test fixtures are not physical evidence"
+      ]
+    }
+  ],
+  "designAmendment": {
+    "id": "TARGET-T002-20260907",
+    "path": "docs/design/TARGET-AMENDMENT-T002-2026-09-07.md",
+    "sha256": "e511d76a211b12e225974dfcf24a1b5b2d3bddb6f00ee7f4981e6c3e1666cc45"
+  }
+}

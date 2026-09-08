@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "designSha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+  "packetSchemaVersion": 1,
+  "captureSchemaVersion": 1,
+  "pathPolicy": {
+    "privateRoot": ".arduino/evidence/hardware/private",
+    "trackedRegister": "docs/cleanroom/evidence-register.json",
+    "rawEvidenceCommitted": false
+  },
+  "packetTypes": {
+    "identity-photo": {
+      "proofStage": "hardware",
+      "requiredArtifactRoles": [
+        "atom-front",
+        "atom-back",
+        "base-front",
+        "base-back",
+        "base-terminal",
+        "base-connector"
+      ],
+      "requiredPower": {
+        "usb": "disconnected",
+        "field": "disconnected",
+        "bench": "disconnected"
+      },
+      "requiredWiring": {
+        "atomBaseMated": false,
+        "fieldBusConnected": false
+      },
+      "allowedClaimFields": [
+        "target.atom.sku",
+        "target.atom.pcbRevision",
+        "target.atom.connectorOrientation",
+        "target.base.sku",
+        "target.base.pcbRevision",
+        "target.base.connectorOrientation",
+        "target.base.u1Marking",
+        "target.base.r4Population",
+        "target.base.terminalLabels"
+      ]
+    },
+    "continuity": {
+      "proofStage": "hardware",
+      "requiredArtifactRoles": ["meter-overview", "probe-orientation"],
+      "requiredPower": {
+        "usb": "disconnected",
+        "field": "disconnected",
+        "bench": "disconnected"
+      },
+      "requiredWiring": {
+        "fieldBusConnected": false
+      },
+      "candidateMatrix": [
+        {"baseNet": "RX", "gpio": 22},
+        {"baseNet": "TX", "gpio": 19},
+        {"baseNet": "RX", "gpio": 32},
+        {"baseNet": "TX", "gpio": 26}
+      ],
+      "autoResolutionPermitted": false
+    },
+    "approval": {
+      "proofStage": "host-then-hardware",
+      "roles": [
+        "evidence",
+        "specification",
+        "verification",
+        "bus-owner",
+        "safety-approver"
+      ],
+      "decisions": ["approved", "rejected"],
+      "scopes": [
+        "clean-room-boundary",
+        "rx-only-observation",
+        "power-off-continuity",
+        "isolated-bench-power",
+        "field-bus-attachment",
+        "tx-prohibited-stop-conditions"
+      ]
+    },
+    "passive-capture": {
+      "proofStage": "hardware",
+      "requiredArtifactRoles": ["paired-capture-ndjson"],
+      "requiredConditions": {
+        "txPolicy": "compile-time-disabled",
+        "fieldBusConnected": true,
+        "independentAnalyzerConnected": true
+      }
+    }
+  },
+  "capture": {
+    "recordTypes": ["header", "rx", "trailer"],
+    "sources": ["mcu-uart", "logic-analyzer"],
+    "timebase": "monotonic-us",
+    "txPolicy": "prohibited",
+    "maximumRecordBytes": 256,
+    "kinds": {
+      "field-passive": {"minimumDurationMs": 1800000},
+      "bench-loss-115200": {"minimumDurationMs": 3600000}
+    },
+    "requiredTrailerZeroes": ["txFrames", "busFaults"]
+  },
+  "invariants": [
+    "A valid packet proves only that evidence is well formed and hash-bound.",
+    "Template packets and captures are never evidence.",
+    "A failed or ambiguous observation remains valid evidence but does not close a gate.",
+    "Identity photos cannot resolve UART pins.",
+    "Continuity evidence cannot auto-resolve a pin map without independent review.",
+    "A passive capture contains no TX records and is compared byte-for-byte by concatenated source digest.",
+    "Raw photos, captures, identifiers, and field payloads remain under the ignored private root."
+  ]
+}

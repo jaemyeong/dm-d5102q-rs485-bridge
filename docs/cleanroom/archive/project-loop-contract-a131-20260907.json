@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "designPath": "docs/design/DM-D5102Q-RS485-WIFI-BRIDGE-SPEC-v1.0.md",
+  "designSha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+  "currentMilestone": "M0",
+  "target": {
+    "boardId": "m5stack-atom",
+    "atomSku": "C008",
+    "baseSku": "A131",
+    "excludedBoard": "Atom S3 Lite",
+    "excludedPort": "/dev/cu.usbmodem212201",
+    "excludedUsbSerial": "34:B7:DA:57:38:94"
+  },
+  "stateFiles": [
+    ".arduino/goal.md",
+    ".arduino/next-todo.md",
+    ".arduino/board-profile.md",
+    ".arduino/resume-token.md",
+    ".arduino/experiment-log.jsonl"
+  ],
+  "evidenceStageDirectories": [
+    ".arduino/evidence/build",
+    ".arduino/evidence/upload",
+    ".arduino/evidence/hardware",
+    ".arduino/evidence/system",
+    ".arduino/evidence/deployment"
+  ],
+  "goalRequiredMarkers": [
+    "Implement and verify the complete DM-D5102Q RS485-Wi-Fi Bridge design version 1.0",
+    "M5Stack Atom Lite C008 plus Atomic RS485 Base A131",
+    "Status: active. Current milestone: M0",
+    "Current value: 0/11",
+    "Atom S3 Lite and all S3 code/build/pin/test/document branches are excluded",
+    "Every boot starts with TX blocked",
+    "Build, upload, hardware, system, and deployment evidence remain separate"
+  ],
+  "nextTodo": {
+    "openTasks": 1,
+    "owner": "user",
+    "requiredMarkers": [
+      "Owner: user.",
+      "Prerequisite:",
+      "Expected evidence:",
+      "Gate:",
+      "Reply with the observation",
+      "every USB and field/bus power source disconnected",
+      "before any continuity, mating, power, or M1 upload action"
+    ]
+  },
+  "boardProfileRequiredMarkers": [
+    "production_board_id`: `m5stack-atom`",
+    "declared_target`: M5Stack Atom Lite, SKU C008, plus Atomic RS485 Base, SKU A131",
+    "selected_unit_status`:",
+    "remain `UNV`",
+    "Port: `/dev/cu.usbmodem212201`",
+    "USB serial: `34:B7:DA:57:38:94`",
+    "M1 remains blocked"
+  ],
+  "resumeRequiredMarkers": [
+    "Current milestone: M0",
+    "Accepted physical packets: none",
+    "TX policy: prohibited",
+    "do not mate the base yet"
+  ],
+  "ledger": {
+    "path": ".arduino/experiment-log.jsonl",
+    "sealedPrefixRows": 24,
+    "sealedPrefixSha256": "33563364927cfb9840348a7fd412326c9e02ef661ef9dff0c594678019a74ba4",
+    "rowSchemaVersion": 1,
+    "requiredFieldsAfterPrefix": [
+      "schemaVersion",
+      "previousRowSha256",
+      "timestamp",
+      "stage",
+      "hypothesis",
+      "changed_files",
+      "command",
+      "result",
+      "metric",
+      "gates",
+      "acceptance",
+      "rollback",
+      "lesson",
+      "next_candidate"
+    ]
+  },
+  "rollbackArtifact": {
+    "path": ".arduino/evidence/deployment/atom-lite-pre-smoke-4mb.bin",
+    "bytes": 4194304,
+    "sha256": "3f2a06f6ecd7d8bf358201923d00b4f10bf5ad847cb66a1473d220b787e13c8c"
+  },
+  "requiredIgnoreRules": [
+    ".arduino/evidence/deployment/*.bin",
+    ".arduino/evidence/hardware/private/",
+    ".arduino/evidence/public-sources/raw/"
+  ]
+}

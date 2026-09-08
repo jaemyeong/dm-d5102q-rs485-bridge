@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "designSha256": "d2ed6064f8bb4babc75a7877060684294728eaa9cefb351817ca33f9e2584114",
+  "packetId": "TEMPLATE-NOT-EVIDENCE",
+  "packetType": "identity-photo",
+  "status": "template",
+  "proofStage": "hardware",
+  "capturedAt": null,
+  "operator": {
+    "id": null,
+    "role": "evidence"
+  },
+  "target": {
+    "declaredAtomSku": "C008",
+    "declaredBaseSku": "T002"
+  },
+  "conditions": {
+    "power": {
+      "usb": null,
+      "field": null,
+      "bench": null,
+      "verificationMethod": null
+    },
+    "wiring": {
+      "atomBaseMated": null,
+      "fieldBusConnected": null
+    }
+  },
+  "artifacts": [
+    {
+      "id": "atom-front",
+      "path": null,
+      "sha256": null,
+      "bytes": null,
+      "mediaType": null,
+      "capturedAt": null,
+      "roles": [
+        "atom-front"
+      ]
+    },
+    {
+      "id": "atom-back",
+      "path": null,
+      "sha256": null,
+      "bytes": null,
+      "mediaType": null,
+      "capturedAt": null,
+      "roles": [
+        "atom-back"
+      ]
+    },
+    {
+      "id": "base-front",
+      "path": null,
+      "sha256": null,
+      "bytes": null,
+      "mediaType": null,
+      "capturedAt": null,
+      "roles": [
+        "base-front"
+      ]
+    },
+    {
+      "id": "base-back",
+      "path": null,
+      "sha256": null,
+      "bytes": null,
+      "mediaType": null,
+      "capturedAt": null,
+      "roles": [
+        "base-back"
+      ]
+    },
+    {
+      "id": "base-terminal",
+      "path": null,
+      "sha256": null,
+      "bytes": null,
+      "mediaType": null,
+      "capturedAt": null,
+      "roles": [
+        "base-terminal"
+      ]
+    },
+    {
+      "id": "base-connector",
+      "path": null,
+      "sha256": null,
+      "bytes": null,
+      "mediaType": null,
+      "capturedAt": null,
+      "roles": [
+        "base-connector"
+      ]
+    }
+  ],
+  "content": {
+    "atom": {
+      "observedSku": null,
+      "pcbRevision": null,
+      "connectorOrientation": null,
+      "markings": []
+    },
+    "base": {
+      "observedSku": null,
+      "pcbRevision": null,
+      "connectorOrientation": null,
+      "terminalLabels": [],
+      "markings": [],
+      "transceiverMarking": null,
+      "terminationPopulation": "unverified"
+    },
+    "notes": null
+  },
+  "claims": [],
+  "unverified": [
+    "target.atom.sku",
+    "target.atom.pcbRevision",
+    "target.atom.connectorOrientation",
+    "target.base.sku",
+    "target.base.pcbRevision",
+    "target.base.connectorOrientation",
+    "target.base.transceiverMarking",
+    "target.base.terminationPopulation",
+    "target.base.terminalLabels"
+  ],
+  "designAmendmentId": "TARGET-T002-20260907"
+}

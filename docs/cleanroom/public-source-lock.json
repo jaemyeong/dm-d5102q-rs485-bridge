@@ -1,0 +1,387 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-01T07:42:03+09:00",
+  "hashAlgorithm": "SHA-256",
+  "selectedHardwareClaims": {
+    "confirmedUartPinMap": null,
+    "confirmedTransceiverPart": null,
+    "confirmedInputVoltageRange": null,
+    "m1Gate": "blocked"
+  },
+  "sources": [
+    {
+      "id": "PUB-ATOM-PDF-001",
+      "classification": "PUB",
+      "title": "M5Stack Atom Lite official documentation PDF",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "2026-08-21",
+      "retrievedAt": "2026-09-01T07:42:03+09:00",
+      "uri": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/static/pdf/static/en/core/ATOM%20Lite.pdf",
+      "mutableUri": true,
+      "revision": "PDF update time 2026-08-21",
+      "sha256": "95d1dd837d4c47f49e29ee13ceb8de41c436131eb7fb86a743b9a2d87197a59c",
+      "archivePath": ".arduino/evidence/public-sources/raw/atom-lite-2026-08-21.pdf",
+      "facts": [
+        "The document identifies SKU C008 and ESP32-PICO-D4 with 4 MB flash.",
+        "The HY2.0 custom port table assigns GPIO26 and GPIO32.",
+        "The separate bottom pin interface lists GPIO19, GPIO21, GPIO22, GPIO23, GPIO25, and GPIO33."
+      ],
+      "limitations": [
+        "The download URI is mutable; the digest pins only the retrieved snapshot.",
+        "A family product document does not identify the exact physical unit or PCB revision."
+      ],
+      "applicability": "shared-C008"
+    },
+    {
+      "id": "PUB-A131-PDF-001",
+      "classification": "PUB",
+      "title": "M5Stack Atomic RS485 Base official documentation PDF",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "2026-08-05",
+      "retrievedAt": "2026-09-01T07:42:03+09:00",
+      "uri": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/static/pdf/static/en/atom/Atomic%20RS485%20Base.pdf",
+      "mutableUri": true,
+      "revision": "PDF update time 2026-08-05",
+      "sha256": "1707cded160830ee9b0653cf2fa349bc7655e1f95307cb8bc657a46b237508b1",
+      "archivePath": ".arduino/evidence/public-sources/raw/atomic-rs485-base-2026-08-05.pdf",
+      "facts": [
+        "The document identifies SKU A131.",
+        "It describes a 6 V to 24 V input, SP3485EE level converter, and AOZ1282CI DC-DC converter.",
+        "Its base pin table labels connector pin 3 RS485_RX and connector pin 5 RS485_TX without assigning MCU GPIO numbers."
+      ],
+      "limitations": [
+        "The download URI is mutable; the digest pins only the retrieved snapshot.",
+        "The document does not prove which PCB or component revision is in the selected physical unit."
+      ],
+      "applicability": "historical-A131"
+    },
+    {
+      "id": "PUB-ATOM-SCHEMATIC-001",
+      "classification": "PUB",
+      "title": "M5Stack Atom Lite simple circuit image",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "2022-01-30",
+      "retrievedAt": "2026-09-01T07:37:00+09:00",
+      "uri": "https://raw.githubusercontent.com/m5stack/m5-docs/e5354c5dcc61d16fdc1dff9d92c2c760728d0b60/docs/assets/img/product_pics/core/minicore/atom/ATOM_LITE_SIMPLE_CIRCUT_20200514.webp",
+      "mutableUri": false,
+      "revision": "m5-docs commit e5354c5dcc61d16fdc1dff9d92c2c760728d0b60",
+      "sha256": "807418b50ff5630349cee07e1c8f751a59015112082d8a32073b0f77feadd6c9",
+      "archivePath": ".arduino/evidence/public-sources/raw/atom-lite-schematic-e5354c5.webp",
+      "facts": [
+        "The custom four-pin port is labeled GPIO32, GPIO26, 5V, and GND.",
+        "The bottom pad interface separately exposes GPIO22 and GPIO19 among its signals."
+      ],
+      "limitations": [
+        "The immutable repository asset is a public reference, not continuity evidence from the selected unit."
+      ],
+      "applicability": "shared-C008"
+    },
+    {
+      "id": "PUB-A131-SCHEMATIC-001",
+      "classification": "PUB",
+      "title": "M5Stack Atomic RS485 Base schematic image",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "2022-01-30",
+      "retrievedAt": "2026-09-01T07:37:00+09:00",
+      "uri": "https://raw.githubusercontent.com/m5stack/m5-docs/e5354c5dcc61d16fdc1dff9d92c2c760728d0b60/docs/assets/img/product_pics/atom_base/atomicRS485/atomic_rs485_sch.webp",
+      "mutableUri": false,
+      "revision": "m5-docs commit e5354c5dcc61d16fdc1dff9d92c2c760728d0b60",
+      "sha256": "72fa3f8f2f70f0097edc759aa4941778e213c6dfa1130aabdcf80b0b8019cefa",
+      "archivePath": ".arduino/evidence/public-sources/raw/atomic-rs485-base-schematic-e5354c5.webp",
+      "facts": [
+        "The image labels U1 SP3485EN-L/TR, not SP3485EE.",
+        "Receiver output RO reaches RX through 1 kOhm, /RE is tied low, and DI is tied low.",
+        "DE is pulled up by 4.7 kOhm and pulled low through a TX-driven SS8050 transistor.",
+        "R4 is labeled 120R/NC and the terminal is labeled B, A, 12V+, and 12V-."
+      ],
+      "limitations": [
+        "The asset does not identify the selected unit revision, populated R4 state, or actual component markings.",
+        "The component and voltage labels conflict with the current product document."
+      ],
+      "applicability": "historical-A131"
+    },
+    {
+      "id": "PUB-M5UNIT-README-001",
+      "classification": "PUB",
+      "title": "M5Stack M5Unit-RS485 README",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "2026-08-10",
+      "retrievedAt": "2026-09-01T07:42:03+09:00",
+      "uri": "https://raw.githubusercontent.com/m5stack/M5Unit-RS485/8a0af48e8dfdc4adca1ce5736c0407b8fff25303/README.md",
+      "mutableUri": false,
+      "revision": "M5Unit-RS485 commit 8a0af48e8dfdc4adca1ce5736c0407b8fff25303",
+      "sha256": "47410384539cdac981fa7520c50271f30830b2d512c0302cf16b73ed0ef4ca95",
+      "archivePath": ".arduino/evidence/public-sources/raw/m5unit-rs485-readme-8a0af48.md",
+      "facts": [
+        "The official library identifies A131 as Atomic RS485 Base.",
+        "It states that A131 does not include a built-in termination resistor and recommends external termination when topology requires it."
+      ],
+      "limitations": [
+        "A software-library statement does not prove whether R4 is populated on the selected physical revision."
+      ],
+      "applicability": "historical-A131"
+    },
+    {
+      "id": "PUB-M5UNIT-WIRING-001",
+      "classification": "PUB",
+      "title": "M5Stack M5Unit-RS485 board-aware wiring header",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "2026-08-10",
+      "retrievedAt": "2026-09-01T07:42:03+09:00",
+      "uri": "https://raw.githubusercontent.com/m5stack/M5Unit-RS485/8a0af48e8dfdc4adca1ce5736c0407b8fff25303/src/wiring/m5_unit_unified_rs485_wiring.hpp",
+      "mutableUri": false,
+      "revision": "M5Unit-RS485 commit 8a0af48e8dfdc4adca1ce5736c0407b8fff25303",
+      "sha256": "5be77135b2120364bc539d2387676a37bbc48ff430b073895df441dfe58342a5",
+      "archivePath": ".arduino/evidence/public-sources/raw/m5unit-rs485-wiring-8a0af48.hpp",
+      "facts": [
+        "atomicBaseUartPins returns RX GPIO22 and TX GPIO19 for M5AtomLite and M5AtomMatrix.",
+        "The source describes A131 as connected through the Atom-family bottom base rather than generic Port A or Port C."
+      ],
+      "limitations": [
+        "The mapping is strong public implementation evidence but is not a substitute for power-off continuity on the selected hardware revision."
+      ],
+      "applicability": "historical-A131"
+    },
+    {
+      "id": "PUB-A131-LINKED-SP485-DATASHEET-001",
+      "classification": "PUB",
+      "title": "SP481E/SP485E datasheet linked by the A131 product page",
+      "publisher": "Sipex Corporation; copy hosted by M5Stack",
+      "sourceDate": "Rev. 5/16/03",
+      "retrievedAt": "2026-09-01T07:44:00+09:00",
+      "uri": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/hat/SP485EEN_en.pdf",
+      "mutableUri": true,
+      "revision": "SP481E/SP485E Rev. 5/16/03",
+      "sha256": "07881f7fed9d4974d4e22df35eb1d5b4f279e78bd44bd3e2627c39a76428b22d",
+      "archivePath": ".arduino/evidence/public-sources/raw/sp485een-linked-datasheet.pdf",
+      "facts": [
+        "The linked file describes the 5 V SP481E/SP485E family."
+      ],
+      "limitations": [
+        "Its part family does not match either SP3485EE in the product document or SP3485EN-L/TR in the schematic, so it is not accepted as the selected transceiver's electrical-limit source."
+      ],
+      "applicability": "historical-A131"
+    },
+    {
+      "id": "PUB-A131-LINKED-AOZ1282-DATASHEET-001",
+      "classification": "PUB",
+      "title": "AOZ1282CI datasheet linked by the A131 product page",
+      "publisher": "Alpha and Omega Semiconductor; copy hosted by M5Stack",
+      "sourceDate": "Rev. 1.2 March 2016",
+      "retrievedAt": "2026-09-01T07:44:00+09:00",
+      "uri": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/atombase/tail485/AOZ1282CI-datasheet.pdf",
+      "mutableUri": true,
+      "revision": "AOZ1282CI Rev. 1.2 March 2016",
+      "sha256": "61032eaad2d8951adb7a2801598255df83fae32eeab5863b7cc6f1f116fa2cba",
+      "archivePath": ".arduino/evidence/public-sources/raw/aoz1282ci-linked-datasheet.pdf",
+      "facts": [
+        "The component document specifies a 4.5 V to 36 V operating input range for AOZ1282CI."
+      ],
+      "limitations": [
+        "A component limit is not the assembled A131 input rating and does not override the product document's 6 V to 24 V range."
+      ],
+      "applicability": "historical-A131"
+    },
+    {
+      "id": "PUB-T002-PAGE-001",
+      "classification": "PUB",
+      "applicability": "active-T002",
+      "title": "M5Stack Tail RS485 T002 official product documentation",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "not stated; retrieved 2026-09-07",
+      "retrievedAt": "2026-09-07T17:28:18+09:00",
+      "uri": "https://docs.m5stack.com/en/atom/tail485",
+      "mutableUri": true,
+      "revision": "Mutable product page snapshot reviewed 2026-09-07",
+      "sha256": "b1c587d397abf4565a8e327cef29f85abaaa6a2d4ba957961439f7cbc06ced50",
+      "archivePath": ".arduino/evidence/public-sources/raw/t002-20260907/tail485.html",
+      "facts": [
+        "The page identifies Tail RS485 as SKU T002.",
+        "The Atom Lite pin table maps GPIO26 to TX and GPIO32 to RX.",
+        "The page identifies SP485EEN-L, AOZ1282CI, and a 9-24 V to 5 V conversion description."
+      ],
+      "limitations": [
+        "Manufacturer family facts do not establish the selected unit revision, populated circuitry, power or GPIO-side logic levels.",
+        "No current pin assignment or power authorization follows from this source."
+      ]
+    },
+    {
+      "id": "PUB-T002-BLOCK-DIAGRAM-001",
+      "classification": "PUB",
+      "applicability": "active-T002",
+      "title": "M5Stack Tail485 labeled interface and power block diagram",
+      "publisher": "M5Stack Technology Co., Ltd.",
+      "sourceDate": "not stated; retrieved 2026-09-07",
+      "retrievedAt": "2026-09-07T17:28:18+09:00",
+      "uri": "https://static-cdn.m5stack.com/resource/docs/products/atom/tail485/tail485_sch_01.webp",
+      "mutableUri": true,
+      "revision": "Mutable asset snapshot reviewed 2026-09-07",
+      "sha256": "394dab7fcba7668172b929a0b5da6754bfc87bdb9e389d78660ad788815c1f48",
+      "archivePath": ".arduino/evidence/public-sources/raw/t002-20260907/tail485-schematic.webp",
+      "facts": [
+        "The block diagram labels B, A, 12V with a 9-24V annotation, GND, G, 5V, TXD and RXD.",
+        "It depicts SP485 and DC/DC blocks and a USB 5V-IN power path."
+      ],
+      "limitations": [
+        "Despite the asset being linked under Schematics, it is not a component-level schematic.",
+        "It does not expose direction-enable topology, termination population, level conditioning or USB backfeed protection.",
+        "Graphic orientation is not measured terminal-to-wire continuity."
+      ]
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "PIN-CONFLICT-001",
+      "classification": "UNV",
+      "status": "unresolved",
+      "claims": [
+        {
+          "sourceRef": "governing design sections 3.1, 5.1, 12.1, and M1",
+          "claim": "Candidate bridge UART mapping is TX GPIO26 and RX GPIO32."
+        },
+        {
+          "sourceRef": "PUB-ATOM-PDF-001 and PUB-ATOM-SCHEMATIC-001",
+          "claim": "GPIO26 and GPIO32 belong to the Atom Lite custom HY2.0 port, while the bottom interface exposes GPIO19 and GPIO22."
+        },
+        {
+          "sourceRef": "PUB-M5UNIT-WIRING-001",
+          "claim": "The official A131 bottom-base helper maps Atom Lite RX to GPIO22 and TX to GPIO19."
+        }
+      ],
+      "safetyImpact": "Selecting UART pins from documentation alone could observe the wrong signal or unintentionally drive an unrelated connector.",
+      "verification": [
+        "Capture power-off photographs showing exact C008 and A131 SKU, PCB revision, connector orientation, and markings.",
+        "With every source disconnected, measure continuity from A131 connector RX/TX nets to Atom Lite bottom pads and identified MCU GPIO nets.",
+        "On an isolated bench, confirm MCU receive and transmit-pad behavior with a scope or logic analyzer before any field-bus connection."
+      ],
+      "blockingMilestones": [
+        "M1"
+      ],
+      "appliesToBaseSku": "A131",
+      "applicability": "historical-non-target"
+    },
+    {
+      "id": "A131-REVISION-CONFLICT-001",
+      "classification": "UNV",
+      "status": "unresolved",
+      "claims": [
+        {
+          "sourceRef": "PUB-A131-PDF-001",
+          "claim": "The current product document says SP3485EE and 6 V to 24 V input."
+        },
+        {
+          "sourceRef": "PUB-A131-SCHEMATIC-001",
+          "claim": "The schematic labels SP3485EN-L/TR and marks the terminal 12V+ and 12V-."
+        },
+        {
+          "sourceRef": "PUB-A131-LINKED-SP485-DATASHEET-001",
+          "claim": "The product page's linked transceiver datasheet is for the different 5 V SP481E/SP485E family."
+        }
+      ],
+      "safetyImpact": "The selected unit's power limits, transceiver limits, bias, termination population, and direction behavior cannot be certified from the mixed public revisions.",
+      "verification": [
+        "Photograph and record the selected A131 PCB revision, U1 marking, input-terminal labels, R4 population, and connector orientation while fully de-energized.",
+        "Obtain a revision-matched manufacturer schematic and transceiver datasheet or retain the electrical facts as UNV.",
+        "Use current-limited isolated bench measurements before field power or bus attachment."
+      ],
+      "blockingMilestones": [
+        "M1"
+      ],
+      "appliesToBaseSku": "A131",
+      "applicability": "historical-non-target"
+    }
+  ],
+  "inferences": [
+    {
+      "id": "DEC-A131-BOOT-DIRECTION-001",
+      "classification": "DEC",
+      "status": "requires-hardware-verification",
+      "sourceIds": [
+        "PUB-A131-SCHEMATIC-001"
+      ],
+      "statement": "For the archived schematic only, a floating or high TX leaves the SS8050 path unable to pull DE low, while the 4.7 kOhm pull-up can enable a driver whose DI is tied low. Therefore a compile-time promise not to write UART bytes is not, by itself, proof that the selected base remains passive during boot, reset, or brownout.",
+      "verification": [
+        "With the revision-confirmed base isolated from the field bus and powered through a current limit, scope TX, DE when accessible, and A/B across power-on, reset, bootloader entry, UART initialization, and brownout recovery."
+      ],
+      "blockingMilestones": [
+        "M1"
+      ],
+      "appliesToBaseSku": "A131",
+      "applicability": "historical-non-target"
+    }
+  ],
+  "designAmendment": {
+    "id": "TARGET-T002-20260907",
+    "path": "docs/design/TARGET-AMENDMENT-T002-2026-09-07.md",
+    "sha256": "e511d76a211b12e225974dfcf24a1b5b2d3bddb6f00ee7f4981e6c3e1666cc45"
+  },
+  "activeTarget": {
+    "atomSku": "C008",
+    "baseSku": "T002"
+  },
+  "activeSourceIds": [
+    "PUB-ATOM-PDF-001",
+    "PUB-ATOM-SCHEMATIC-001",
+    "PUB-T002-PAGE-001",
+    "PUB-T002-BLOCK-DIAGRAM-001"
+  ],
+  "updatedAt": "2026-09-07T17:28:18+09:00",
+  "unverifiedGates": [
+    {
+      "id": "T002-IDENTITY-CONTINUITY-001",
+      "classification": "UNV",
+      "status": "unverified",
+      "baseSku": "T002",
+      "blockingMilestones": [
+        "M0",
+        "M1"
+      ],
+      "sourceIds": [
+        "PUB-T002-PAGE-001",
+        "PUB-ATOM-SCHEMATIC-001"
+      ],
+      "statement": "Selected-unit SKU/revision, connector orientation and the GPIO26/32 interconnect remain unverified.",
+      "verification": [
+        "Confirm capture/power/wiring context for the four private photos.",
+        "After identity and de-energization are accepted, independently review straight and crossed RX/TX-to-GPIO26/32 continuity."
+      ]
+    },
+    {
+      "id": "T002-ELECTRICAL-001",
+      "classification": "UNV",
+      "status": "unverified",
+      "baseSku": "T002",
+      "blockingMilestones": [
+        "M0",
+        "M1"
+      ],
+      "sourceIds": [
+        "PUB-T002-PAGE-001",
+        "PUB-T002-BLOCK-DIAGRAM-001"
+      ],
+      "statement": "Exact transceiver, MCU-side logic levels, termination/bias, voltage/current limits and power backfeed behavior remain unverified.",
+      "verification": [
+        "Obtain revision-matched component-level documentation or retain missing details as UNV.",
+        "Use separately approved isolated, current-limited electrical measurements after power-off identity and continuity gates."
+      ]
+    },
+    {
+      "id": "T002-BOOT-PASSIVITY-001",
+      "classification": "UNV",
+      "status": "unverified",
+      "baseSku": "T002",
+      "blockingMilestones": [
+        "M0",
+        "M1"
+      ],
+      "sourceIds": [
+        "PUB-T002-BLOCK-DIAGRAM-001"
+      ],
+      "statement": "No T002-specific component-level direction circuit or boot/reset/brownout A/B passivity is established.",
+      "verification": [
+        "Do not transfer A131 DE/transistor assumptions.",
+        "After scoped bench-power approval, observe the exact isolated module across power-on, reset, bootloader and recovery states before field attachment."
+      ]
+    }
+  ]
+}
