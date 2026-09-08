@@ -5,6 +5,7 @@
 namespace bootstrap { namespace ota {
 namespace {
 constexpr uint8_t magic[8] = {'D','M','O','T','A','1','\r','\n'};
+constexpr uint8_t packageMagic[8] = {'D','M','O','T','A','2','\r','\n'};
 uint32_t u32(const uint8_t* p) {
   return uint32_t(p[0]) | uint32_t(p[1]) << 8 | uint32_t(p[2]) << 16 | uint32_t(p[3]) << 24;
 }
@@ -39,6 +40,27 @@ void encodeManifest(const Manifest& m, uint8_t bytes[kManifestBytes]) {
   memcpy(bytes + 20, m.boardId, 16); memcpy(bytes + 36, m.buildId, 48);
   memcpy(bytes + 84, m.sha256, 32);
 }
+bool decodePackageManifest(const uint8_t* bytes, size_t size, Manifest& result) {
+  result = Manifest{};
+  if (!bytes || size != kPackageManifestBytes || memcmp(bytes, packageMagic, 8) ||
+      !textField(bytes + 120, 8)) return false;
+  uint8_t legacy[kManifestBytes];
+  memcpy(legacy, bytes, sizeof(legacy)); memcpy(legacy, magic, 8);
+  if (!decodeManifest(legacy, sizeof(legacy), result)) return false;
+  result.minUpdater = u32(bytes + 116); memcpy(result.channel, bytes + 120, 8);
+  return result.minUpdater >= 2;
+}
+void encodePackageManifest(const Manifest& m, uint8_t bytes[kPackageManifestBytes]) {
+  encodeManifest(m, bytes); memcpy(bytes, packageMagic, 8);
+  put32(bytes + 116, m.minUpdater); memcpy(bytes + 120, m.channel, 8);
+}
+const char* originName(Origin origin) {
+  switch (origin) {
+    case Origin::WebFile: return "web-file";
+    case Origin::GithubPull: return "github-pull";
+    default: return "legacy-push";
+  }
+}
 bool validToken(const char* token) {
   if (!token || strlen(token) != 32) return false;
   for (size_t i = 0; i < 32; ++i)
@@ -58,19 +80,32 @@ bool Updater::fail(const char* reason) {
   return false;
 }
 bool Updater::prepare(const uint8_t* bytes, size_t size, const char* token, uint32_t now) {
+  return prepareAs(bytes, size, token, Origin::LegacyPush, now);
+}
+bool Updater::preparePackage(const uint8_t* bytes, size_t size, const char* token, Origin origin, uint32_t now) {
+  if (origin != Origin::WebFile && origin != Origin::GithubPull) return false;
+  return prepareAs(bytes, size, token, origin, now);
+}
+bool Updater::prepareAs(const uint8_t* bytes, size_t size, const char* token, Origin origin, uint32_t now) {
   tick(now);
   if (phase_ != Phase::Idle && phase_ != Phase::Failed) { reason_ = "OTA_BUSY"; return false; }
   if (!enabled()) return fail("OTA_KEY_MISSING");
   Manifest candidate;
-  if (!bytes || size != kEnvelopeBytes || !decodeManifest(bytes, kManifestBytes, candidate))
+  const bool legacy = origin == Origin::LegacyPush;
+  const size_t manifestSize = legacy ? kManifestBytes : kPackageManifestBytes;
+  if (!bytes || size != manifestSize + 64 || !(legacy ? decodeManifest(bytes, manifestSize, candidate) :
+      decodePackageManifest(bytes, manifestSize, candidate)))
     return fail("MANIFEST_INVALID");
-  if (crypto_ed25519_check(bytes + kManifestBytes, key_, bytes, kManifestBytes))
+  if (crypto_ed25519_check(bytes + manifestSize, key_, bytes, manifestSize))
     return fail("SIGNATURE_INVALID");
+  if (!legacy && strcmp(candidate.channel, "stable")) return fail("CHANNEL_REJECTED");
+  if (candidate.minUpdater > kUpdaterProtocol) return fail("UPDATER_MISMATCH");
   if (strcmp(candidate.boardId, kBoardId)) return fail("BOARD_MISMATCH");
   if (candidate.minSchema > schema_) return fail("SCHEMA_MISMATCH");
   if (candidate.version <= version_) return fail("DOWNGRADE_REJECTED");
+  if (!writer_.available(candidate)) return fail("VERSION_QUARANTINED");
   if (!validToken(token)) return fail("TOKEN_INVALID");
-  manifest_ = candidate; memcpy(token_, token, sizeof(token_));
+  manifest_ = candidate; origin_ = origin; memcpy(token_, token, sizeof(token_));
   received_ = 0; started_ = progress_ = now; phase_ = Phase::Prepared; reason_ = "NONE";
   return true;
 }
@@ -81,6 +116,7 @@ bool Updater::start(const char* token, size_t size, uint32_t now) {
   if (size != manifest_.imageSize) return fail("IMAGE_SIZE_MISMATCH");
   // Consumed before the first flash side effect; a second start never reopens it.
   phase_ = Phase::Receiving; started_ = progress_ = now;
+  if (!writer_.authorize(manifest_, token_, origin_)) return fail("OTA_CONTEXT_FAILED");
   if (!writer_.begin(manifest_.imageSize)) return fail("OTA_BEGIN_FAILED");
   return true;
 }
@@ -107,6 +143,7 @@ void Updater::tick(uint32_t now) {
 void Updater::interrupt() { if (phase_ == Phase::Receiving) fail("UPLOAD_INTERRUPTED"); }
 void Updater::resetForBoot() {
   interrupt(); phase_ = Phase::Idle; reason_ = "NONE"; manifest_ = Manifest{};
+  origin_ = Origin::LegacyPush;
   started_ = progress_ = received_ = 0; memset(token_, 0, sizeof(token_));
 }
 const char* phaseName(Phase phase) {

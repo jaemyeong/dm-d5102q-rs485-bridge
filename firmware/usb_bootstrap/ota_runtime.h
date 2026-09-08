@@ -1,5 +1,6 @@
 #pragma once
 #include "ota_core.h"
+#include "ota_context.h"
 #include <esp_ota_ops.h>
 #include <esp_task_wdt.h>
 #include <esp_heap_caps.h>
@@ -23,6 +24,30 @@ constexpr size_t kJournalBytes = kManifestBytes + 32 + 4;
 class EspWriter final : public ImageWriter {
  public:
   explicit EspWriter(Storage& storage) : storage_(storage) {}
+  bool available(const Manifest& manifest) override {
+    Context prior;
+    const auto result = readContext(storage_, prior);
+    if (result == ContextRead::Valid) attemptVersion_ = prior.manifest.version;
+    // An accepted attempt is a durable quarantine fence, not a pre-boot
+    // high-water mark in efuse. The SDK may still roll back to the old slot.
+    return result == ContextRead::Missing ||
+      (result == ContextRead::Valid && manifest.version > prior.manifest.version);
+  }
+  bool authorize(const Manifest& manifest, const char* transaction, Origin origin) override {
+    authorized_ = Context{};
+    if (!validToken(transaction)) return false;
+    if (origin == Origin::LegacyPush) return true;
+    if ((origin != Origin::WebFile && origin != Origin::GithubPull) || !available(manifest)) return false;
+    Context context; context.manifest = manifest; context.origin = origin;
+    memcpy(context.transaction, transaction, sizeof(context.transaction));
+    // Commit before the first erase/write. Even a failed begin or a power cut
+    // cannot cause autonomous reinstallation of this same version forever.
+    if (!writeContext(storage_, context)) return false;
+    authorized_ = context; attemptVersion_ = manifest.version;
+    return true;
+  }
+  uint32_t attemptVersion() const { return attemptVersion_; }
+  void resetForBoot() { abort(); authorized_ = Context{}; attemptVersion_ = 0; }
   bool begin(uint32_t size) override {
     partition_ = esp_ota_get_next_update_partition(nullptr);
     const auto* running = esp_ota_get_running_partition();
@@ -45,6 +70,12 @@ class EspWriter final : public ImageWriter {
     return esp_ota_end(handle_) == ESP_OK && hashed;
   }
   bool select(const Manifest& manifest, const char* transaction) override {
+    if (authorized_.origin != Origin::LegacyPush) {
+      Context saved;
+      if (!contextMatches(authorized_, manifest, transaction) ||
+          readContext(storage_, saved) != ContextRead::Valid ||
+          !contextMatches(saved, manifest, transaction) || saved.origin != authorized_.origin) return false;
+    }
     uint8_t bytes[kJournalBytes] = {}, check[kJournalBytes];
     encodeManifest(manifest, bytes); memcpy(bytes + kManifestBytes, transaction, 32);
     const uint32_t crc = crc32(bytes, kJournalBytes - 4);
@@ -61,6 +92,8 @@ class EspWriter final : public ImageWriter {
   }
  private:
   Storage& storage_;
+  Context authorized_;
+  uint32_t attemptVersion_ = 0;
   esp_ota_handle_t handle_ = 0;
   const esp_partition_t* partition_ = nullptr;
   mbedtls_sha256_context hash_;
@@ -73,7 +106,9 @@ class Runtime {
     : writer(storage), updater(writer, key, kOtaVersion, kConfigSchema), storage_(storage) {}
   void arm(uint32_t now) {
     updater.resetForBoot();
-    pending_ = fatal_ = false; started_ = now; state_ = "USB_BASELINE";
+    writer.resetForBoot();
+    pending_ = fatal_ = contextError_ = observing_ = false; started_ = now; state_ = "USB_BASELINE";
+    origin_ = Origin::LegacyPush; healthyAt_ = lastPoll_ = now; attemptVersion_ = 0;
     transaction_[0] = 0; expected_ = Manifest{};
     const auto* running = esp_ota_get_running_partition();
     esp_ota_img_states_t imageState;
@@ -88,6 +123,10 @@ class Runtime {
   }
   void begin(uint32_t) {
     if (fatal_) return;
+    Context context;
+    const auto contextRead = readContext(storage_, context);
+    contextError_ = contextRead == ContextRead::Invalid;
+    if (contextRead == ContextRead::Valid) attemptVersion_ = context.manifest.version;
     uint8_t bytes[kJournalBytes];
     const size_t size = storage_.read("ota", bytes, sizeof(bytes));
     if (size) {
@@ -102,19 +141,29 @@ class Runtime {
         else state_ = matches() ? "VALID" : "ROLLED_BACK_OR_INTERRUPTED";
       }
     }
+    if (contextRead == ContextRead::Valid && contextMatches(context, expected_, transaction_)) origin_ = context.origin;
     if (pending_) {
-      if (fatal_ || !size || !matches()) { rollback(); return; }
+      if (fatal_ || contextError_ || !size || !matches()) { rollback(); return; }
       state_ = "PENDING_VERIFY";
     }
+    else if (contextError_) state_ = "OTA_CONTEXT_ERROR";
   }
-  void poll(uint32_t now) {
+  void poll(uint32_t now, bool healthy = false) {
     updater.tick(now);
-    if (pending_ && (fatal_ || elapsed(now, started_, kHealthMs))) rollback();
+    if (pending_ && (fatal_ || elapsed(now, started_, kHealthMs))) { rollback(); return; }
+    if (!pending_ || origin_ == Origin::LegacyPush) return;
+    if (!healthy || elapsed(now, lastPoll_, kHealthPollMaxMs)) observing_ = false;
+    lastPoll_ = now;
+    if (!healthy) return;
+    if (!observing_) { observing_ = true; healthyAt_ = now; }
+    if (elapsed(now, healthyAt_, kLocalHealthMs)) confirm(transaction_, true, now);
   }
   bool confirm(const char* transaction, bool healthy, uint32_t now) {
     if (fatal_ || !validToken(transaction) || !equalSecret(transaction_, transaction) || !matches()) return false;
     if (!pending_) return !strcmp(state_, "VALID"); // Idempotent ACK after a lost response.
     if (!healthy || elapsed(now, started_, kHealthMs)) return false;
+    if (origin_ != Origin::LegacyPush && (!observing_ || !elapsed(now, healthyAt_, kLocalHealthMs) ||
+        elapsed(now, lastPoll_, kHealthPollMaxMs))) return false;
     if (esp_ota_mark_app_valid_cancel_rollback() != ESP_OK) return false;
     pending_ = false; state_ = "VALID";
     return true;
@@ -124,11 +173,13 @@ class Runtime {
     // Keep a responsive faulted device available; do not create a reset loop.
     if (esp_task_wdt_reset() != ESP_OK) { fatal_ = true; state_ = "WATCHDOG_ERROR"; }
   }
-  bool canUpdate() const { return !pending_ && !fatal_ && updater.enabled(); }
+  bool canUpdate() const { return !pending_ && !fatal_ && !contextError_ && updater.enabled(); }
   bool pending() const { return pending_; }
   const char* bootState() const { return state_; }
   const char* transaction() const { return transaction_; }
   const char* expectedBuild() const { return expected_.buildId; }
+  Origin origin() const { return origin_; }
+  uint32_t attemptVersion() const { return attemptVersion_ > writer.attemptVersion() ? attemptVersion_ : writer.attemptVersion(); }
   EspWriter writer;
   Updater updater;
  private:
@@ -145,6 +196,9 @@ class Runtime {
   Manifest expected_;
   char transaction_[33] = {};
   uint32_t started_ = 0;
+  uint32_t healthyAt_ = 0, lastPoll_ = 0, attemptVersion_ = 0;
+  Origin origin_ = Origin::LegacyPush;
+  bool observing_ = false, contextError_ = false;
   bool pending_ = false, fatal_ = false;
   const char* state_ = "NOT_STARTED";
 };

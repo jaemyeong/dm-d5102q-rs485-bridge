@@ -8,7 +8,8 @@ import upgrade_signed_ota as upgrade
 
 class B1UpgradeGuardTest(unittest.TestCase):
     def test_exact_bundle_and_current_image(self):
-        upgrade.preflight()
+        with self.assertRaisesRegex(RuntimeError, "Source drifted"):
+            upgrade.preflight()  # Sealed 0.2.0 USB uploader cannot deploy this new checkout.
         current = bytearray(b"\xff" * upgrade.base.FLASH_SIZE)
         for offset, path, size, _ in upgrade.legacy.SEGMENTS:
             current[offset:offset + size] = path.read_bytes()

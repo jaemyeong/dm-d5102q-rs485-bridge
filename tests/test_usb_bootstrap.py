@@ -60,6 +60,12 @@ class UsbBootstrapTest(unittest.TestCase):
     def test_signed_ota_core_and_health_with_sanitizers(self):
         self.run_cpp("test_ota.cpp")
 
+    def test_github_parser_and_policy_with_sanitizers(self):
+        self.run_cpp("test_github.cpp")
+
+    def test_github_worker_with_tls_queue_fakes(self):
+        self.run_cpp("test_github_worker.cpp")
+
     def test_cpp_http_and_runtime_with_sanitizers(self):
         self.run_cpp("test_bootstrap_transport.cpp")
 
@@ -85,7 +91,10 @@ class UsbBootstrapTest(unittest.TestCase):
                        "-I", str(ROOT / SOURCE_DIR), "-I", str(ROOT / "tests/host/fakes"),
                        str(ROOT / SOURCE_DIR / "core.cpp"),
                        str(ROOT / SOURCE_DIR / "ota_core.cpp"),
+                       str(ROOT / SOURCE_DIR / "github_core.cpp"),
                        str(ROOT / "tests/host" / source), "-o", executable]
+            if source == "test_github_worker.cpp":
+                command[1:1] = ["-I", str(ROOT / "tests/host/pull_fakes")]
             for vendor in ("monocypher.c", "monocypher-ed25519.c"):
                 obj = str(Path(directory) / (vendor + ".o"))
                 build = subprocess.run([shutil.which("clang") or "cc", "-std=c99", "-Wall", "-Wextra", "-Werror",

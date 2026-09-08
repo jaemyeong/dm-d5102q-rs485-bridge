@@ -9,9 +9,12 @@ struct NoWrites : ImageWriter {
   void abort() override { __builtin_trap(); }
 };
 int main() {
-  uint8_t key[32], envelope[kEnvelopeBytes];
-  if (fread(key, 1, sizeof(key), stdin) != sizeof(key) ||
-      fread(envelope, 1, sizeof(envelope), stdin) != sizeof(envelope) || getchar() != EOF) return 2;
+  uint8_t key[32], envelope[kPackageHeaderBytes + 1];
+  if (fread(key, 1, sizeof(key), stdin) != sizeof(key)) return 2;
+  const size_t size = fread(envelope, 1, sizeof(envelope), stdin);
+  if (size != kEnvelopeBytes && size != kPackageHeaderBytes) return 2;
   NoWrites writer; Updater updater(writer, key, 200, 1);
-  return updater.prepare(envelope, sizeof(envelope), "0123456789abcdef0123456789abcdef", 0) ? 0 : 1;
+  const char* token = "0123456789abcdef0123456789abcdef";
+  return (size == kEnvelopeBytes ? updater.prepare(envelope, size, token, 0) :
+    updater.preparePackage(envelope, size, token, Origin::WebFile, 0)) ? 0 : 1;
 }

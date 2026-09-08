@@ -9,11 +9,13 @@ DM-D5102Q payload meaning.
 
 The public source repository is
 [jaemyeong/dm-d5102q-rs485-bridge](https://github.com/jaemyeong/dm-d5102q-rs485-bridge).
-Next planned delivery model: **device-initiated GitHub Release OTA plus manual
-firmware-file upload in the web dashboard**. See the
-[implementation plan](docs/cleanroom/github-release-ota-plan.md).
-These new paths are not implemented or enabled yet; current B1 uses authenticated
-Mac push. No Release or automated signing workflow has been published by this step.
+**GitHub Release pull OTA and authenticated dashboard file upload are implemented
+and host-tested in the 0.3.0/version 300 candidate.** See the
+[implementation and usage](docs/cleanroom/dmota2-updater.md) and
+[staged rollout plan](docs/cleanroom/github-release-ota-plan.md).
+Periodic automatic checking is deliberately disabled in this candidate until
+device recovery tests pass. No Release, signing workflow or device upload is
+part of this implementation step; the last verified installed version is 201.
 
 Milestone M0 (clean-room baseline and evidence sealing) is in progress. The
 historical GPIO-free heartbeat has now been replaced by standalone B0 onboarding.
@@ -96,13 +98,19 @@ OpenSSL 3 and C/C++ compilers:
 python3 -m unittest discover -s tests -p 'test_ota_controller.py' -v
 ```
 
-The full 98-test local result includes sealed bench-artifact/evidence checks;
+The current full 102-test local result includes sealed bench-artifact/evidence checks;
 do not expect a public clone lacking private artifacts to reproduce that result.
 Never download or fabricate private backups just to make those gates pass.
 The target build also requires the pinned toolchain and a deliberately supplied
 public verification-key header; absent that header the firmware disables OTA.
 Device-specific upload helpers contain historical exact-target/image guards and
 must not be used as generic upload commands or to reflash an already-updated unit.
+
+The single-file package tests also run without private bench evidence:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_dmota_package.py' -v
+```
 
 In the original private bench workspace, run the host-only M0 consistency check with:
 

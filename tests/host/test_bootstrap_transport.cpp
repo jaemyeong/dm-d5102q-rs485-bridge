@@ -320,6 +320,48 @@ void otaHttpBoundary() {
   CHECK(fakeNvs["active"] == preservedActive && fakeNvs["enroll"] == preservedEnroll && fakeNvs.count("ota"));
   CHECK(ESP.restarts == 0 && pendingReboot);
   CHECK(verifyRollbackLater());
+  uint8_t package[ota::kPackageHeaderBytes];
+  manifest.minUpdater = 2; strcpy(manifest.channel, "stable");
+  ota::encodePackageManifest(manifest, package);
+  crypto_ed25519_sign(package + ota::kPackageManifestBytes, secret, package, ota::kPackageManifestBytes);
+  for (unsigned kind = 0; kind < 5; ++kind) {
+    station();
+    if (kind == 2) applyAction(network.begin(ConfigState::Empty, fakeNow), fakeNow);
+    const auto head = headers("/api/v1/ota/file/prepare", sizeof(package), kind != 0, kind != 1);
+    if (kind == 3) package[191] ^= 1;
+    reply = drain(connectRequest(head + std::string(reinterpret_cast<const char*>(package), sizeof(package))));
+    if (kind == 3) package[191] ^= 1;
+    CHECK(!fakeOta().begins && !fakeNvs.count("otactx2"));
+    if (kind < 3) CHECK(applicationReads == head.size());
+    if (kind < 4) { CHECK(reply.find("uploadToken") == std::string::npos); continue; }
+    CHECK(reply.find("200 OK") != std::string::npos);
+    CHECK(otaRuntime.updater.origin() == ota::Origin::WebFile);
+    const std::string fileToken = otaRuntime.updater.transaction();
+    const auto active = fakeNvs["active"], enroll = fakeNvs["enroll"];
+    reply = drain(connectRequest(headers("/api/v1/ota/upload", image.size(), true, true, fileToken.c_str()) + image));
+    CHECK(reply.find("\"confirmationRequired\":false") != std::string::npos);
+    CHECK(reply.find("\"localHealthRequired\":true") != std::string::npos);
+    CHECK(fakeOta().selects == 1 && fakeNvs["ota"].size() == ota::kJournalBytes);
+    CHECK(fakeNvs.count("otactx2") && fakeNvs["active"] == active && fakeNvs["enroll"] == enroll);
+  }
+  for (unsigned kind = 0; kind < 5; ++kind) {
+    station();
+    CHECK(!githubPull.automatic() && !githubPull.busy());
+    if (kind == 2) applyAction(network.begin(ConfigState::Empty, fakeNow), fakeNow);
+    const unsigned before = writes;
+    const auto head = headers("/api/v1/ota/github/check", kind == 3 ? 1 : 0, kind != 0, kind != 1);
+    reply = drain(connectRequest(head + (kind == 3 ? "x" : "")));
+    CHECK(applicationReads == head.size() && writes == before && !fakeOta().begins);
+    CHECK(githubPull.busy() == (kind == 4));
+    if (kind < 4) CHECK(reply.find("202 Accepted") == std::string::npos);
+    else {
+      CHECK(reply.find("\"installIfNewer\":true") != std::string::npos);
+      reply = drain(connectRequest(headers("/api/v1/ota/github/check", 0, true, true)));
+      CHECK(reply.find("CHECK_BUSY_OR_RATE_LIMITED") != std::string::npos);
+      reply = drain(connectRequest(headers("/api/v1/ota/file/prepare", sizeof(package), true, true)));
+      CHECK(reply.find("OTA_BUSY") != std::string::npos);
+    }
+  }
 }
 int main(int argc, char** argv) {
   if (argc == 2 && !strcmp(argv[1], "--curl-server")) {

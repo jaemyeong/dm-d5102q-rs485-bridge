@@ -11,6 +11,11 @@
 #include "boot_button.h"
 #include "web_ui.h"
 #include "ota_runtime.h"
+#if defined(DM_HOST_TEST)
+#include <github_worker_fake.h>
+#else
+#include "github_worker.h"
+#endif
 
 #if defined(ARDUINO) && !defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
 #error "B1 requires a rollback-enabled pinned ESP32 SDK/bootloader"
@@ -38,6 +43,8 @@ class NvsStorage final : public Storage {
   }
 } storage;
 ota::Runtime otaRuntime(storage);
+github::Worker githubWorker;
+github::Pull githubPull(githubWorker, otaRuntime, kGithubAutomatic);
 ConfigStore configStore(storage);
 NetworkState network;
 BootResetGate bootReset;
@@ -59,7 +66,7 @@ Request request;
 size_t requestUsed = 0, bodyUsed = 0;
 bool bodyAllowed = false, uploadAllowed = false;
 char responseHeaders[768] = {};
-char responseJson[1536] = {};
+char responseJson[2304] = {};
 const char* responseBody = nullptr;
 size_t headersSent = 0, responseSent = 0, responseSize = 0;
 uint32_t connectedAt = 0, responseAt = 0, rateWindow = 0;
@@ -241,14 +248,18 @@ void headerGate(uint32_t now) {
   if (!strcmp(request.method, "GET") && request.contentLength == 0) {
     if (!strcmp(request.path, "/api/v1/status") || !strcmp(request.path, "/api/v1/ota/status")) {
       const bool configurable = network.mode() == Mode::Provisioning && configStore.state() == ConfigState::Empty;
-      snprintf(responseJson, sizeof(responseJson),
+      const auto& pull = githubPull.result();
+      const int length = snprintf(responseJson, sizeof(responseJson),
         "{\"buildId\":\"%s\",\"mode\":\"%s\",\"ip\":\"%s\",\"connected\":%s,\"configRevision\":%lu,"
         "\"canConfigure\":%s,\"apTimeoutEnabled\":false,\"apRemainingMs\":null,\"csrfToken\":\"%s\",\"txBlocked\":true,\"otaSupported\":%s,"
         "\"hostname\":\"%s\",\"mdnsUrl\":\"http://%s\",\"mdnsActive\":%s,"
         "\"deviceId\":\"%s\",\"boardId\":\"%s\",\"otaVersion\":%lu,\"configSchema\":%lu,"
         "\"otaPhase\":\"%s\",\"otaReason\":\"%s\",\"otaBootState\":\"%s\","
         "\"otaTransaction\":\"%s\",\"otaExpectedBuild\":\"%s\",\"otaHealthy\":%s,\"otaReceived\":%lu,"
-        "\"freeHeap\":%u,\"largestFreeBlock\":%u,\"otaKeyId\":\"%s\",\"releaseTag\":\"%s\"}",
+        "\"freeHeap\":%u,\"largestFreeBlock\":%u,\"otaKeyId\":\"%s\",\"releaseTag\":\"%s\","
+        "\"otaProtocol\":2,\"otaOrigin\":\"%s\",\"otaAttemptVersion\":%lu,\"updaterTag\":\"%s\","
+        "\"githubAutomatic\":%s,\"githubState\":\"%s\",\"githubResult\":\"%s\",\"githubHttpStatus\":%u,"
+        "\"githubNextCheckMs\":%lu,\"githubSampledMinHeap\":%lu,\"githubSampledMinBlock\":%lu,\"githubStackFreeBytes\":%lu}",
         kBuildId, modeName(), ip, WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0 ? "true" : "false",
         static_cast<unsigned long>(configStore.revision()), configurable ? "true" : "false",
         csrf, otaRuntime.updater.enabled() ? "true" : "false", localHostname, localHostname, mdnsActive ? "true" : "false",
@@ -257,7 +268,12 @@ void headerGate(uint32_t now) {
         otaRuntime.transaction(), otaRuntime.expectedBuild(), otaHealthy() ? "true" : "false",
         static_cast<unsigned long>(otaRuntime.updater.received()),
         static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
-        static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)), otaKeyId, kReleaseTag);
+        static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)), otaKeyId, kReleaseTag,
+        ota::originName(otaRuntime.origin()), static_cast<unsigned long>(otaRuntime.attemptVersion()), kUpdaterTag,
+        githubPull.automatic() ? "true" : "false", githubPull.state(), github::resultName(pull.code), pull.httpStatus,
+        static_cast<unsigned long>(githubPull.nextMs(now)), static_cast<unsigned long>(pull.sampledMinHeap),
+        static_cast<unsigned long>(pull.sampledMinBlock), static_cast<unsigned long>(pull.stackFreeBytes));
+      if (length < 0 || size_t(length) >= sizeof(responseJson)) { error(500, "Internal Server Error", "STATUS_BOUNDS"); return; }
       respond(200, "OK", responseJson);
       return;
     }
@@ -274,10 +290,21 @@ void headerGate(uint32_t now) {
       respond(200, "OK", "{\"confirmed\":true}"); return;
     }
     if (!otaRuntime.canUpdate() || !otaHealthy() || pendingReboot) { error(409, "Conflict", "OTA_NOT_READY"); return; }
+    if (!strcmp(request.path, "/api/v1/ota/github/check")) {
+      if (!request.hasLength || request.contentLength ||
+          (otaRuntime.updater.phase() != ota::Phase::Idle && otaRuntime.updater.phase() != ota::Phase::Failed) || !githubPull.request(now)) {
+        error(409, "Conflict", "CHECK_BUSY_OR_RATE_LIMITED"); return;
+      }
+      respond(202, "Accepted", "{\"checkScheduled\":true,\"installIfNewer\":true}"); return;
+    }
+    if (githubPull.busy()) { error(409, "Conflict", "OTA_BUSY"); return; }
     if (!request.hasLength || !request.contentLength || strcmp(request.contentType, "application/octet-stream")) {
       error(400, "Bad Request", "BINARY_LENGTH_REQUIRED"); return;
     }
     if (!strcmp(request.path, "/api/v1/ota/prepare") && request.contentLength == ota::kEnvelopeBytes) {
+      bodyAllowed = true; return;
+    }
+    if (!strcmp(request.path, "/api/v1/ota/file/prepare") && request.contentLength == ota::kPackageHeaderBytes) {
       bodyAllowed = true; return;
     }
     if (!strcmp(request.path, "/api/v1/ota/upload")) {
@@ -311,7 +338,10 @@ void saveConfig() {
 void processBody(uint32_t now) {
   if (!strcmp(request.path, "/api/v1/config")) { saveConfig(); return; }
   char token[33]; randomHex(token);
-  if (!otaRuntime.updater.prepare(reinterpret_cast<const uint8_t*>(body), bodyUsed, token, now)) {
+  const bool file = !strcmp(request.path, "/api/v1/ota/file/prepare");
+  const auto* bytes = reinterpret_cast<const uint8_t*>(body);
+  if (!(file ? otaRuntime.updater.preparePackage(bytes, bodyUsed, token, ota::Origin::WebFile, now) :
+        otaRuntime.updater.prepare(bytes, bodyUsed, token, now))) {
     error(422, "Unprocessable Content", otaRuntime.updater.reason()); return;
   }
   memset(body, 0, sizeof(body));
@@ -358,7 +388,9 @@ void serviceHttp(uint32_t now) {
     }
     if (otaRuntime.updater.phase() == ota::Phase::RebootPending) {
       uploadAllowed = false; pendingReboot = true;
-      respond(202, "Accepted", "{\"rebootScheduled\":true,\"confirmationRequired\":true}");
+      respond(202, "Accepted", otaRuntime.updater.origin() == ota::Origin::LegacyPush ?
+        "{\"rebootScheduled\":true,\"confirmationRequired\":true}" :
+        "{\"rebootScheduled\":true,\"confirmationRequired\":false,\"localHealthRequired\":true}");
     }
     return;
   }
@@ -417,6 +449,7 @@ void startApplication(bool resetRequested) {
 void setup() {
   Serial.begin(115200);
   otaRuntime.arm(millis()); // Covers initialization faults before NVS/network startup.
+  githubPull.begin(millis(), esp_random());
   Serial.print("BOOT_BUILD="); Serial.println(kBuildId);
   Serial.println("RS485_DISABLED SIGNED_OTA_BASELINE");
   prepareBootButton();
@@ -453,7 +486,9 @@ void loop() {
     startApplication(resetRequested);
     return;
   }
-  otaRuntime.poll(now);
+  otaRuntime.poll(now, otaHealthy());
+  githubPull.poll(now, !pendingReboot && otaHealthy(), esp_random(), randomHex);
+  if (githubPull.rebootReady() && network.mode() != Mode::Rebooting) pendingReboot = true;
   const bool connected = WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0;
   if (connected != wasConnected) {
     wasConnected = connected;

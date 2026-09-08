@@ -38,7 +38,8 @@ function browser(html, fetcher, random = crypto.webcrypto.getRandomValues.bind(c
   }
   const context = vm.createContext({document: {getElementById: id => {
     assert(elements.has(id), 'Page is missing element ' + id); return elements.get(id);
-  }}, crypto: {getRandomValues: random}, TextEncoder, AbortController, setTimeout, clearTimeout,
+  }}, crypto: {getRandomValues: random}, TextEncoder, AbortController,
+    setTimeout: (fn, ms) => setTimeout(fn, ms === 1500 ? 0 : ms), clearTimeout,
     fetch: fetcher, addEventListener: (type, callback) => { events[type] = callback; }});
   context.window = context;
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
@@ -119,7 +120,7 @@ async function main() {
   check(JSON.stringify(calls).includes(sha('installer:DM-BRIDGE-USB:' + key)), false);
 
   // Deterministic browser failure paths against an independent Digest verifier.
-  let nonce = '1'.repeat(32), puts = 0, failMode = '', nc = 0;
+  let nonce = '1'.repeat(32), puts = 0, failMode = '', nc = 0, prepares = 0, uploads = 0, uploaded = false;
   const reply = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
   const fake = async (path, options) => {
     if (path === '/api/v1/auth') {
@@ -142,9 +143,28 @@ async function main() {
       if (failMode === 'csrf') return reply(403, {error: 'CSRF_REJECTED'});
       return reply(202, {rebootScheduled: true});
     }
+    if (path === '/api/v1/ota/file/prepare') {
+      ++prepares; check(options.body.byteLength, 192);
+      check(options.headers['X-CSRF-Token'], '2'.repeat(32));
+      check(options.redirect, 'error');
+      return reply(200, {uploadToken: 'b'.repeat(32)});
+    }
+    if (path === '/api/v1/ota/upload') {
+      ++uploads; uploaded = true;
+      check(options.headers['X-OTA-Token'], 'b'.repeat(32));
+      check(options.redirect, 'error'); check(options.credentials, 'omit');
+      check(options.body.size, 64);
+      if (failMode === 'ota-lost') throw Error('Upload response lost after possible commit');
+      return reply(202, {rebootScheduled: true, localHealthRequired: true});
+    }
+    if (path === '/api/v1/ota/status' && uploaded) return reply(200, {
+      buildId: 'web-test-next', otaVersion: 301, otaTransaction: 'b'.repeat(32),
+      otaOrigin: 'web-file', otaBootState: 'VALID', otaPhase: 'IDLE'});
     return reply(200, {mode: failMode === 'station' ? 'STA' : 'AP', ip: '192.168.4.1',
       buildId: 'test', canConfigure: failMode !== 'station', csrfToken: '2'.repeat(32),
       configRevision: 0, apTimeoutEnabled: false, apRemainingMs: null,
+      otaVersion: 300, configSchema: 1, otaProtocol: 2, otaSupported: true, otaHealthy: true,
+      otaBootState: 'VALID', otaPhase: 'IDLE', otaReason: 'NONE', otaOrigin: 'legacy-push',
       mdnsUrl: 'http://dm-bridge-112233.local', mdnsActive: failMode === 'station'});
   };
   for (const mode of ['lost', 'csrf']) {
@@ -175,6 +195,30 @@ async function main() {
   check(station.element('management').hidden, false);
   check(station.element('save').disabled, true);
   check(station.element('message').textContent.includes('http://dm-bridge-112233.local (활성)'), true);
+  check(station.element('ota-panel').hidden, false);
+  const header = Buffer.alloc(192);
+  header.write('DMOTA2\r\n'); header.writeUInt32LE(301, 8); header.writeUInt32LE(64, 12);
+  header.writeUInt32LE(1, 16); header.write('m5stack-atom', 20); header.write('web-test-next', 36);
+  header.writeUInt32LE(2, 116); header.write('stable', 120);
+  const file = new Blob([header, Buffer.alloc(64)]); file.name = 'test.dmota';
+  for (const mode of ['', 'ota-lost']) {
+    failMode = 'station'; nc = prepares = uploads = 0; uploaded = false;
+    const ui = browser(page.text, fake); await ui.login();
+    ui.element('ota-file').files = [{name: 'raw.bin', size: 256}];
+    await ui.event('ota-file', 'change'); check(ui.element('ota-start').disabled, true);
+    ui.element('ota-file').files = [file]; await ui.event('ota-file', 'change');
+    check(prepares, 0); check(uploads, 0); check(ui.element('ota-start').disabled, false);
+    // Retain STA on the preflight response; simulate loss only at upload itself.
+    const uploadFake = async (path, options) => {
+      if (mode && path === '/api/v1/ota/upload') failMode = mode;
+      return fake(path, options);
+    };
+    ui.context.fetch = uploadFake;
+    await ui.event('ota-start', 'click');
+    check(prepares, 1); check(uploads, 1);
+    check(ui.element('ota-message').textContent.includes('정상 확정 완료'), true);
+    await ui.event('ota-start', 'click'); check(uploads, 1);
+  }
   station.events.pagehide();
   check(station.element('management').hidden, true);
   station.events.pageshow({persisted: true});

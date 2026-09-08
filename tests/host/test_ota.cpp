@@ -133,7 +133,101 @@ void health() {
   Runtime runtime(f.store, f.pub); runtime.arm(0); // NVS/init failed before begin().
   runtime.poll(kHealthMs); CHECK(fakeOta().rollbacks == 1);
 }
+void packageV2() {
+  for (size_t offset = 0; offset < kPackageHeaderBytes; ++offset) {
+    Fixture f; uint8_t header[kPackageHeaderBytes];
+    f.m.minUpdater = 2; strcpy(f.m.channel, "stable");
+    encodePackageManifest(f.m, header);
+    crypto_ed25519_sign(header + kPackageManifestBytes, f.secret, header, kPackageManifestBytes);
+    header[offset] ^= 1;
+    CHECK(!f.updater.preparePackage(header, sizeof(header), token, Origin::WebFile, 0));
+    CHECK(!fakeOta().begins && !fakeOta().selects && !f.store.values.count("otactx2"));
+  }
+  for (unsigned kind = 0; kind < 6; ++kind) {
+    Fixture f; uint8_t header[kPackageHeaderBytes];
+    f.m.minUpdater = kind == 1 ? 3 : 2;
+    strcpy(f.m.channel, kind == 2 ? "dev" : "stable");
+    if (kind == 3) f.m.version = kOtaVersion;
+    if (kind == 4) f.m.minSchema = 2;
+    if (kind == 5) strcpy(f.m.boardId, "wrong-board");
+    encodePackageManifest(f.m, header);
+    crypto_ed25519_sign(header + kPackageManifestBytes, f.secret, header, kPackageManifestBytes);
+    CHECK(!f.updater.preparePackage(header, sizeof(header), token,
+                                   kind == 0 ? Origin::LegacyPush : Origin::WebFile, 0));
+    CHECK(!fakeOta().begins);
+  }
+  for (const auto origin : {Origin::WebFile, Origin::GithubPull}) {
+    Fixture f; uint8_t header[kPackageHeaderBytes];
+    f.m.minUpdater = 2; strcpy(f.m.channel, "stable");
+    encodePackageManifest(f.m, header);
+    crypto_ed25519_sign(header + kPackageManifestBytes, f.secret, header, kPackageManifestBytes);
+    CHECK(f.updater.preparePackage(header, sizeof(header), token, origin, 0));
+    CHECK(f.updater.origin() == origin && !fakeOta().begins);
+    CHECK(!f.updater.prepare(f.envelope, sizeof(f.envelope), token, 1));
+    CHECK(f.updater.start(token, f.image.size(), 2));
+    CHECK(f.store.values.count("otactx2") && !f.store.values.count("ota"));
+    CHECK(f.send(3));
+    CHECK(f.store.values["ota"].size() == kJournalBytes); // Old image's reader contract.
+    Runtime previous(f.store, f.pub); previous.arm(0); previous.begin(0);
+    CHECK(!strcmp(previous.bootState(), "ROLLED_BACK_OR_INTERRUPTED"));
+    CHECK(previous.canUpdate()); // Management/recovery survives a failed candidate.
+    CHECK(!previous.updater.preparePackage(header, sizeof(header), token, origin, 1));
+    CHECK(!strcmp(previous.updater.reason(), "VERSION_QUARANTINED"));
+  }
+}
+void localConfirmation() {
+  for (unsigned kind = 0; kind < 8; ++kind) {
+    Fixture f; f.m.version = kOtaVersion; strcpy(f.m.buildId, kBuildId);
+    f.m.minUpdater = 2; strcpy(f.m.channel, "stable");
+    CHECK(f.writer.authorize(f.m, token, Origin::WebFile));
+    CHECK(f.writer.select(f.m, token));
+    if (kind == 1) f.store.values["otactx2"][10] ^= 1;
+    if (kind == 2) f.store.values["otactx2"].push_back(0);
+    if (kind == 3) f.store.values.erase("otactx2"); // Missing context never opts legacy into self-confirm.
+    fakeOta().state = ESP_OTA_IMG_PENDING_VERIFY;
+    Runtime runtime(f.store, f.pub); runtime.arm(UINT32_MAX - 1000); runtime.begin(0);
+    if (kind == 1 || kind == 2) { CHECK(fakeOta().rollbacks == 1); continue; }
+    if (kind != 3) CHECK(!runtime.confirm(token, true, 0));
+    for (uint32_t i = 0; i <= 5000; i += 100) runtime.poll(i, kind != 4);
+    if (kind == 3 || kind == 4) {
+      CHECK(!fakeOta().confirms);
+      runtime.poll(kHealthMs); CHECK(fakeOta().rollbacks == 1);
+    } else {
+      CHECK(fakeOta().confirms == 1 && !runtime.pending());
+      CHECK(!strcmp(runtime.bootState(), "VALID"));
+    }
+  }
+  Fixture f; f.m.version = kOtaVersion; strcpy(f.m.buildId, kBuildId);
+  CHECK(f.writer.authorize(f.m, token, Origin::GithubPull)); CHECK(f.writer.select(f.m, token));
+  fakeOta().state = ESP_OTA_IMG_PENDING_VERIFY;
+  Runtime runtime(f.store, f.pub); runtime.arm(0); runtime.begin(0);
+  runtime.poll(1, true); runtime.poll(6000, true); // A stalled loop is not five seconds of health.
+  CHECK(!fakeOta().confirms);
+  for (uint32_t i = 6100; i <= 11000; i += 100) runtime.poll(i, true);
+  CHECK(fakeOta().confirms == 1);
+}
+void interruptedContext() {
+  for (unsigned kind = 0; kind < 4; ++kind) {
+    Fixture f;
+    if (kind == 0) f.store.failWrite = true;
+    const bool accepted = f.writer.authorize(f.m, token, Origin::WebFile);
+    CHECK(accepted == (kind != 0));
+    if (kind == 0) { CHECK(!fakeOta().begins); continue; }
+    // Power cut before erase, during image receive, or before boot selection:
+    // only the atomic sidecar survives; the old ota blob is unchanged/absent.
+    if (kind >= 2) CHECK(f.writer.begin(f.image.size()));
+    if (kind == 3) CHECK(f.writer.write(f.image.data(), 100));
+    f.writer.abort();
+    Runtime reboot(f.store, f.pub); reboot.arm(0); reboot.begin(0);
+    CHECK(reboot.canUpdate() && !fakeOta().selects);
+    CHECK(!reboot.updater.prepare(f.envelope, sizeof(f.envelope), token, 0));
+    CHECK(!strcmp(reboot.updater.reason(), "VERSION_QUARANTINED"));
+    CHECK(f.store.values["enroll"] == std::vector<uint8_t>({1,2,3}));
+    CHECK(f.store.values["active"] == std::vector<uint8_t>({4,5,6}));
+  }
+}
 int main() {
   verifiedFlow(); rejection(); failures(); health();
+  packageV2(); localConfirmation(); interruptedContext();
   printf("%u OTA assertions passed\n", checks);
 }
