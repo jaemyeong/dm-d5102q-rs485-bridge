@@ -29,7 +29,8 @@ function wire(path, options = {}) {
 }
 
 function browser(html, fetcher, random = crypto.webcrypto.getRandomValues.bind(crypto.webcrypto)) {
-  const elements = new Map(), events = {};
+  const elements = new Map(), events = {}, polls = new Map();
+  let pollId = 0;
   for (const match of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {
     const tag = match[0], id = match[1];
     elements.set(id, {value: '', textContent: '', hidden: /\bhidden\b/.test(tag),
@@ -40,13 +41,17 @@ function browser(html, fetcher, random = crypto.webcrypto.getRandomValues.bind(c
   const context = vm.createContext({document: {getElementById: id => {
     assert(elements.has(id), 'Page is missing element ' + id); return elements.get(id);
   }}, crypto: {getRandomValues: random}, TextEncoder, AbortController,
-    setTimeout: (fn, ms) => setTimeout(fn, ms === 1500 ? 0 : ms), clearTimeout,
+    setTimeout: (fn, ms) => {
+      if (ms === 5000) { const id = 'poll-' + ++pollId; polls.set(id, fn); return id; }
+      return setTimeout(fn, ms === 1500 ? 0 : ms);
+    }, clearTimeout: id => { polls.delete(id); if (typeof id !== 'string') clearTimeout(id); },
     fetch: fetcher, addEventListener: (type, callback) => { events[type] = callback; }});
   context.window = context;
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
   check(scripts.length, 1);
   scripts.forEach(script => vm.runInContext(script, context, {timeout: 1000}));
-  return {context, element: id => elements.get(id), events,
+  return {context, element: id => elements.get(id), events, polls,
+    async poll() { const [id, fn] = polls.entries().next().value; polls.delete(id); await fn(); },
     async event(id, type) {
       let prevented = false;
       await elements.get(id).listeners[type]({preventDefault: () => { prevented = true; }});
@@ -96,6 +101,13 @@ async function main() {
   // Challenge rotation by a rejected request must not strand an open form.
   await app.event('refresh', 'click');
   check(app.element('setup').hidden, false);
+  check((await wire('/api/v1/system')).status, 401);
+  await app.event('system-view', 'click');
+  check(app.element('system-panel').hidden, false);
+  check(app.element('system-headroom').textContent, '252.8 KiB');
+  check(app.element('system-details').textContent.includes('ESP32-PICO-D4'), true);
+  check(app.polls.size, 1);
+  await app.event('control-view', 'click'); check(app.polls.size, 0);
   await app.event('logout', 'click');
   check(app.element('login').hidden, false);
   check(app.element('setup').hidden, true);
@@ -123,6 +135,7 @@ async function main() {
   // Deterministic browser failure paths against an independent Digest verifier.
   let nonce = '1'.repeat(32), puts = 0, failMode = '', nc = 0, prepares = 0, uploads = 0, uploaded = false;
   let automatic = false, autoPosts = 0, autoFail = false, autoSupported = true, autoStorageHealthy = true;
+  let systemCode = 200, systemReads = 0, systemUptime = 100, systemBuild = 'test';
   const reply = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
   const fake = async (path, options) => {
     if (path === '/api/v1/auth') {
@@ -138,6 +151,15 @@ async function main() {
     check(Number.parseInt(fields.nc, 16) > nc, true); nc = Number.parseInt(fields.nc, 16);
     check(fields.response, sha(sha('installer:DM-BRIDGE-USB:' + key) + ':' + nonce + ':' + fields.nc + ':' +
       fields.cnonce + ':auth:' + sha((options.method || 'GET') + ':' + path)));
+    if (path === '/api/v1/system') {
+      ++systemReads; check(options.method || 'GET', 'GET');
+      return reply(systemCode, {schemaVersion: 1, deviceId: 'test-device', buildId: systemBuild,
+        freeHeap: 160000, minimumFreeHeap: 80000, largestFreeBlock: 90000, uptimeSeconds: systemUptime++,
+        flashBytes: 4194304, imageBytes: 1051904, imageSizeKnown: true, uploadLimitBytes: 1310720,
+        firmwareHeadroomBytes: 258816, runningSlotBytes: 1572864, nextSlotBytes: 1572864,
+        chipModel: 'ESP32', chipRevision: 1, chipCores: 2, cpuMhz: 240, resetReasonCode: 1,
+        rssiDbm: null, ip: '192.168.1.55', nvs: {available: false}, diagnosticNvs: {available: false}});
+    }
     if (path.startsWith('/api/v1/ota/github/automatic/')) {
       ++autoPosts;
       check(options.method, 'POST'); check(options.body, '');
@@ -170,7 +192,7 @@ async function main() {
     if (path === '/api/v1/ota/status' && uploaded) return reply(200, {
       buildId: 'web-test-next', otaVersion: 301, otaTransaction: 'b'.repeat(32),
       otaOrigin: 'web-file', otaBootState: 'VALID', otaPhase: 'IDLE'});
-    return reply(200, {mode: failMode === 'station' ? 'STA' : 'AP', ip: '192.168.4.1',
+    return reply(200, {deviceId: 'test-device', mode: failMode === 'station' ? 'STA' : 'AP', ip: '192.168.4.1',
       buildId: 'test', canConfigure: failMode !== 'station', csrfToken: '2'.repeat(32),
       configRevision: 0, apTimeoutEnabled: false, apRemainingMs: null,
       githubAutomaticControl: autoSupported, githubAutomatic: automatic, githubAutomaticBootDefault: false,
@@ -179,6 +201,49 @@ async function main() {
       otaBootState: 'VALID', otaPhase: 'IDLE', otaReason: 'NONE', otaOrigin: 'legacy-push',
       mdnsUrl: 'http://dm-bridge-112233.local', mdnsActive: failMode === 'station'});
   };
+  const monitor = browser(page.text, fake); await monitor.login();
+  check(systemReads, 0); check(monitor.polls.size, 0);
+  await monitor.event('system-view', 'click');
+  check(systemReads, 1); check(monitor.polls.size, 1);
+  for (let i = 0; i < 65; ++i) await monitor.poll();
+  check(monitor.element('heap-line').attributes.points.split(' ').length, 60);
+  check(monitor.element('system-details').textContent.includes('통계 확인 불가'), true);
+  systemUptime = 1; await monitor.poll();
+  check(monitor.element('heap-line').attributes.points.split(' ').length, 1);
+  systemBuild = 'test-next'; await monitor.poll();
+  check(monitor.element('heap-line').attributes.points.split(' ').length, 1);
+  monitor.context.document.hidden = true; monitor.events.visibilitychange(); check(monitor.polls.size, 0);
+  const readBeforeHidden = systemReads;
+  await monitor.event('refresh', 'click'); check(systemReads, readBeforeHidden);
+  monitor.context.document.hidden = false; monitor.events.visibilitychange(); check(monitor.polls.size, 1);
+  systemCode = 409; await monitor.poll();
+  check(monitor.element('system-message').textContent.includes('OTA 작업 중'), true);
+  check(monitor.element('system-heap').textContent, '156.3 KiB');
+  systemCode = 429; await monitor.poll();
+  check(monitor.element('system-message').textContent.includes('마지막 성공 시점'), true);
+  systemCode = 401; await monitor.poll();
+  check(monitor.element('management').hidden, true); check(monitor.polls.size, 0);
+  check(monitor.element('system-heap').textContent, '—');
+  check(monitor.element('heap-line').attributes.points, '');
+  check(autoPosts, 0); check(uploads, 0); check(puts, 0);
+  systemCode = 200;
+  nc = 0;
+  let resumeSystem;
+  const delayed = browser(page.text, async (path, options) => {
+    const response = await fake(path, options);
+    if (path === '/api/v1/system') await new Promise(resolve => { resumeSystem = resolve; });
+    return response;
+  });
+  await delayed.login();
+  const pendingSystem = delayed.event('system-view', 'click');
+  while (!resumeSystem) await new Promise(resolve => setImmediate(resolve));
+  const pendingReads = systemReads;
+  await delayed.event('refresh', 'click');
+  await delayed.event('github-automatic', 'click');
+  check(systemReads, pendingReads); check(autoPosts, 0); // Shared lock prevents overlap.
+  delayed.events.pagehide(); resumeSystem(); await pendingSystem;
+  check(delayed.element('management').hidden, true); check(delayed.polls.size, 0);
+  check(delayed.element('system-heap').textContent, '—'); // Late response cannot restore the session.
   for (const mode of ['lost', 'csrf']) {
     failMode = ''; puts = nc = 0;
     const ui = browser(page.text, fake);

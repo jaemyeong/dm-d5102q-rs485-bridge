@@ -9,11 +9,20 @@ R"CLIENT(
   const otaPanel = byId('ota-panel'), otaFile = byId('ota-file'), otaStart = byId('ota-start'), otaMsg = byId('ota-message');
   let ha1 = '', cnonce = '', count = 0, state = null, busy = false;
   let selected = null, session = 0;
+  let systemOpen = false, systemTimer = null, samples = [], lastSystem = null;
   const supported = window.crypto && typeof window.crypto.getRandomValues === 'function' &&
     typeof sha256 === 'function' && typeof fetch === 'function' &&
     typeof AbortController === 'function' && typeof TextEncoder === 'function';
 
   function forget() {
+    systemOpen = false; clearTimeout(systemTimer); systemTimer = null;
+    samples = []; lastSystem = null;
+    byId('system-panel').hidden = true; byId('control-panel').hidden = false;
+    byId('system-view').setAttribute('aria-pressed', 'false');
+    byId('control-view').setAttribute('aria-pressed', 'true');
+    for (const id of ['system-heap', 'system-min-heap', 'system-block', 'system-headroom', 'system-image', 'system-details', 'system-chart-scale']) byId(id).textContent = '—';
+    byId('system-image-bar').value = 0;
+    byId('heap-line').setAttribute('points', ''); byId('block-line').setAttribute('points', '');
     ++session; selected = null; otaFile.value = ''; otaPanel.hidden = true;
     ha1 = cnonce = ''; count = 0; state = null;
     keyInput.value = passwordInput.value = '';
@@ -22,6 +31,8 @@ R"CLIENT(
   }
   function lock(locked) {
     busy = locked;
+    byId('system-view').disabled = byId('control-view').disabled = locked;
+    scheduleSystem();
     loginButton.disabled = !supported || locked;
     refresh.disabled = byId('logout').disabled = locked;
     save.disabled = locked || !state || !state.canConfigure;
@@ -31,6 +42,68 @@ R"CLIENT(
     byId('github-automatic').disabled = locked || !state || state.githubAutomaticControl !== true ||
       (!state.githubAutomatic && state.githubAutomaticStorageHealthy !== false && (!otaReady(state) || ['QUEUED', 'CHECKING_OR_DOWNLOADING'].includes(state.githubState)));
   }
+  function scheduleSystem() {
+    clearTimeout(systemTimer); systemTimer = null;
+    if (systemOpen && ha1 && !busy && !document.hidden)
+      systemTimer = setTimeout(loadSystem, 5000);
+  }
+  const kib = value => Number.isFinite(value) && value >= 0 ? (value / 1024).toFixed(1) + ' KiB' : '확인 불가';
+  function renderSystem(value) {
+    if (value.schemaVersion !== 1 || !state || value.deviceId !== state.deviceId ||
+        !['freeHeap', 'minimumFreeHeap', 'largestFreeBlock', 'uptimeSeconds'].every(key =>
+          Number.isSafeInteger(value[key]) && value[key] >= 0)) throw Error('시스템 응답 확인이 필요합니다.');
+    if (lastSystem && (value.uptimeSeconds < lastSystem.uptimeSeconds || value.buildId !== lastSystem.buildId)) samples = [];
+    lastSystem = value;
+    byId('system-heap').textContent = kib(value.freeHeap);
+    byId('system-min-heap').textContent = kib(value.minimumFreeHeap);
+    byId('system-block').textContent = kib(value.largestFreeBlock);
+    byId('system-headroom').textContent = value.imageSizeKnown ? kib(value.firmwareHeadroomBytes) : '확인 불가';
+    byId('system-image').textContent = '펌웨어 ' + (value.imageSizeKnown ? kib(value.imageBytes) : '확인 불가') + ' / 업로드 제한 ' + kib(value.uploadLimitBytes);
+    byId('system-image-bar').max = value.uploadLimitBytes || 1;
+    byId('system-image-bar').value = value.imageSizeKnown ? value.imageBytes : 0;
+    const nvs = data => data && data.available ? data.usedEntries + ' 사용 / ' + data.freeEntries + ' 여유 / ' + data.totalEntries + ' 전체 엔트리' : '통계 확인 불가';
+    const resetReasons = ['알 수 없음', '전원 인가', '외부 리셋', '소프트웨어', '패닉', '인터럽트 감시 타이머', '태스크 감시 타이머', '기타 감시 타이머', '딥 슬립', '저전압', 'SDIO'];
+    const seconds = value.uptimeSeconds;
+    byId('system-details').textContent = value.chipModel + ' · 리비전 ' + value.chipRevision + ' · ' + value.chipCores + ' 코어 · ' + value.cpuMhz + ' MHz\n' +
+      '가동 시간: ' + Math.floor(seconds / 86400) + '일 ' + Math.floor(seconds % 86400 / 3600) + '시간 ' + Math.floor(seconds % 3600 / 60) + '분 ' + seconds % 60 + '초\n' +
+      '재부팅 원인: ' + (resetReasons[value.resetReasonCode] || '기타') + ' (코드 ' + value.resetReasonCode + ')\n' +
+      '버전: ' + value.buildId + ' · IP: ' + value.ip + ' · Wi-Fi: ' + (value.rssiDbm === null ? '연결 안 됨 / AP' : value.rssiDbm + ' dBm') + '\n' +
+      '전체 플래시: ' + kib(value.flashBytes) + '\n실행 슬롯: ' + kib(value.runningSlotBytes) + ' · 다음 OTA 슬롯: ' + kib(value.nextSlotBytes) + '\n' +
+      '설정 NVS: ' + nvs(value.nvs) + '\n진단 NVS: ' + nvs(value.diagnosticNvs);
+    samples.push([value.freeHeap, value.largestFreeBlock]);
+    if (samples.length > 60) samples.shift();
+    const ceiling = Math.max(1, ...samples.map(sample => Math.max(...sample)));
+    for (const [index, id] of ['heap-line', 'block-line'].entries())
+      byId(id).setAttribute('points', samples.map((sample, i) => (i * 300 / Math.max(1, samples.length - 1)).toFixed(1) + ',' + (98 - sample[index] * 96 / ceiling).toFixed(1)).join(' '));
+    byId('system-chart-scale').textContent = '세로축: 0–' + kib(ceiling) + ' · ' + samples.length + '/60 샘플';
+    byId('system-message').textContent = '조회 성공 · ' + new Date().toLocaleTimeString() + ' · 5초 후 다시 조회';
+  }
+  async function loadSystem() {
+    if (busy || !systemOpen || !ha1 || document.hidden) return;
+    const activeSession = session;
+    lock(true);
+    try {
+      const value = await signed('/api/v1/system');
+      if (activeSession === session && systemOpen) renderSystem(value);
+    } catch (error) {
+      if (activeSession !== session) return;
+      if (error.status === 401) { forget(); msg.textContent = error.message; }
+      else byId('system-message').textContent = (error.status === 409 ? 'OTA 작업 중: 시스템 조회 대기.' : error.message) + ' 표시된 값은 마지막 성공 시점의 값입니다.';
+    } finally { if (activeSession === session) lock(false); }
+  }
+  byId('system-view').addEventListener('click', async () => {
+    if (busy || !state) return;
+    systemOpen = true; byId('system-panel').hidden = false; byId('control-panel').hidden = true;
+    byId('system-view').setAttribute('aria-pressed', 'true'); byId('control-view').setAttribute('aria-pressed', 'false');
+    await loadSystem();
+  });
+  byId('control-view').addEventListener('click', () => {
+    if (busy) return;
+    systemOpen = false; byId('system-panel').hidden = true; byId('control-panel').hidden = false;
+    byId('system-view').setAttribute('aria-pressed', 'false'); byId('control-view').setAttribute('aria-pressed', 'true');
+    scheduleSystem();
+  });
+  window.addEventListener('visibilitychange', scheduleSystem);
   function otaReady(value) {
     return value && value.mode === 'STA' && value.otaProtocol === 2 && value.otaSupported === true &&
       value.otaHealthy === true && ['VALID', 'USB_BASELINE', 'ROLLED_BACK_OR_INTERRUPTED'].includes(value.otaBootState) &&
@@ -217,6 +290,7 @@ R"CLIENT(
   });
   refresh.addEventListener('click', async () => {
     if (busy) return;
+    if (systemOpen) { await loadSystem(); return; }
     lock(true);
     try { await status(); }
     catch (error) { forget(); msg.textContent = error.message; }

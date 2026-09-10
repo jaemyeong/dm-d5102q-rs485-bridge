@@ -5,6 +5,7 @@
 constexpr int MALLOC_CAP_8BIT = 1;
 inline size_t& fakeFreeHeap() { static size_t value = 160000; return value; }
 inline size_t& fakeLargestBlock() { static size_t value = 90000; return value; }
+inline size_t heap_caps_get_minimum_free_size(int) { return 80000; }
 inline size_t& fakeScratchLive() { static size_t value = 0; return value; }
 inline size_t& fakeScratchPeak() { static size_t value = 0; return value; }
 inline unsigned& fakeScratchCalls() { static unsigned value = 0; return value; }

@@ -441,7 +441,53 @@ void rejectionStatusDiagnostics() {
   CHECK(githubPull.rejection().sequence == UINT32_MAX); // Reads do not clear evidence.
   rejected = github::Rejection{};
 }
+void systemTelemetry() {
+  reset();
+  const auto beforeWrites = writes, beforeVerifies = fakeImageVerifies();
+  auto response = drain(connectRequest("GET /api/v1/system HTTP/1.1\r\nHost: 192.168.4.1\r\n\r\n"));
+  CHECK(response.find("401 Unauthorized") != std::string::npos);
+  CHECK(response.find("freeHeap") == std::string::npos);
+  response = drain(connectRequest("GET /api/v1/system HTTP/1.1\r\nHost: attacker.invalid\r\n\r\n"));
+  CHECK(response.find("403 Forbidden") != std::string::npos);
+  rotateNonce(fakeNow);
+  response = drain(connectRequest("POST /api/v1/system HTTP/1.1\r\nHost: 192.168.4.1\r\nContent-Length: 0\r\n" + digest("POST", "/api/v1/system") + "\r\n"));
+  CHECK(response.find("405 Method Not Allowed") != std::string::npos);
+  auto get = []() { rotateNonce(fakeNow); return drain(connectRequest("GET /api/v1/system HTTP/1.1\r\nHost: 192.168.4.1\r\n" + digest("GET", "/api/v1/system") + "\r\n")); };
+  response = get();
+  CHECK(response.find("200 OK") != std::string::npos);
+  CHECK(response.find("Cache-Control: no-store") != std::string::npos);
+  CHECK(response.find("\"imageBytes\":1051904") != std::string::npos);
+  CHECK(response.find("\"firmwareHeadroomBytes\":258816") != std::string::npos);
+  CHECK(response.find("\"rssiDbm\":null") != std::string::npos);
+  CHECK(response.find("\"minimumFreeHeap\":80000") != std::string::npos);
+  CHECK(response.find(installKey) == std::string::npos && response.find(csrf) == std::string::npos);
+  WiFi.linked = true;
+  response = get();
+  CHECK(response.find("\"rssiDbm\":-57") != std::string::npos);
+  fakeStatsFail() = true;
+  response = get();
+  CHECK(response.find("\"available\":false,\"usedEntries\":0,\"freeEntries\":0") != std::string::npos);
+  fakeStatsFail() = false;
+  CHECK(githubPull.request(fakeNow));
+  CHECK(get().find("409 Conflict") != std::string::npos);
+  githubPull.begin(fakeNow, 500);
+  fakeUptimeOffset() = INT64_MAX - int64_t(fakeNow) * 1000;
+  fakeFreeHeap() = fakeLargestBlock() = UINT32_MAX;
+  // Worst scalar widths fit the unchanged shared response buffer; tiny buffers fail closed at caller.
+  const int length = systemJson(responseJson, sizeof(responseJson));
+  CHECK(length > 0 && size_t(length) < sizeof(responseJson));
+  char small[8]; CHECK(systemJson(small, sizeof(small)) >= int(sizeof(small)) && small[7] == 0);
+  fakeUptimeOffset() = 0; fakeFreeHeap() = 160000; fakeLargestBlock() = 90000;
+  CHECK(writes == beforeWrites && fakeImageVerifies() == beforeVerifies);
+  CHECK(fakeOta().begins == 0 && fakeOta().writes == 0 && ESP.restarts == 0);
+  fakeImageInvalid() = true; cacheSystemImage(); CHECK(systemImageBytes == 0);
+  systemJson(responseJson, sizeof(responseJson));
+  CHECK(strstr(responseJson, "\"imageSizeKnown\":false") && strstr(responseJson, "\"firmwareHeadroomBytes\":0"));
+  fakeImageInvalid() = false;
+  reset();
+}
 int main(int argc, char** argv) {
+  if (argc == 1) systemTelemetry();
   if (argc == 2 && !strcmp(argv[1], "--curl-server")) {
     reset();
     const int listener = socket(AF_INET, SOCK_STREAM, 0);

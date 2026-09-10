@@ -25,6 +25,7 @@ struct FakeWiFi {
   IPAddress localIP() { return IPAddress(linked ? 1 : 0); }
   void begin(const char*, const char*) { ++attempts; }
   int status() { return linked ? WL_CONNECTED : 0; }
+  int32_t RSSI() { return -57; }
 };
 extern FakeWiFi WiFi;
 class WiFiClient {

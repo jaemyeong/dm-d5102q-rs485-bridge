@@ -3,6 +3,8 @@
 #include <ESPmDNS.h>
 #include <nvs.h>
 #include <esp_system.h>
+#include <esp_timer.h>
+#include <esp_image_format.h>
 #include <mbedtls/sha256.h>
 #include <lwip/sockets.h>
 #include <errno.h>
@@ -74,6 +76,19 @@ size_t headersSent = 0, responseSent = 0, responseSize = 0;
 uint32_t connectedAt = 0, responseAt = 0, rateWindow = 0;
 unsigned requestsInWindow = 0, authFailures = 0;
 bool pendingReboot = false, wasConnected = false;
+uint32_t systemImageBytes = 0;
+
+// Verify/cache once at boot, never scan the running image on a monitoring GET.
+void cacheSystemImage() {
+  systemImageBytes = 0;
+  const auto* running = esp_ota_get_running_partition();
+  if (!running) return;
+  const esp_partition_pos_t position = {running->address, running->size};
+  esp_image_metadata_t metadata{};
+  if (esp_image_verify(ESP_IMAGE_VERIFY_SILENT, &position, &metadata) == ESP_OK &&
+      metadata.image_len > 0 && metadata.image_len <= running->size)
+    systemImageBytes = metadata.image_len;
+}
 
 void randomHex(char out[33]) {
   uint8_t bytes[16];
@@ -230,6 +245,41 @@ github::HealthSample otaHealthSample() {
   return value;
 }
 bool otaHealthy() { return otaHealthSample().failed == 0; }
+int systemJson(char* out, size_t capacity) {
+  const auto* running = esp_ota_get_running_partition();
+  const auto* next = esp_ota_get_next_update_partition(nullptr);
+  nvs_stats_t nvs{}, diagnostics{};
+  const bool nvsOk = nvs_get_stats("nvs", &nvs) == ESP_OK;
+  const bool diagnosticsOk = nvs_get_stats("diag_nvs", &diagnostics) == ESP_OK;
+  if (!nvsOk) nvs = {};
+  if (!diagnosticsOk) diagnostics = {};
+  const bool connected = WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0;
+  const IPAddress address = WiFi.getMode() == WIFI_AP ? WiFi.softAPIP() : WiFi.localIP();
+  char ip[16];
+  snprintf(ip, sizeof(ip), "%u.%u.%u.%u", address[0], address[1], address[2], address[3]);
+  char rssi[16] = "null";
+  if (connected) snprintf(rssi, sizeof(rssi), "%ld", static_cast<long>(WiFi.RSSI()));
+  const uint32_t limit = next && next->size < kUploadMax ? next->size : (next ? kUploadMax : 0);
+  return snprintf(out, capacity,
+    "{\"schemaVersion\":1,\"deviceId\":\"%s\",\"buildId\":\"%s\","
+    "\"chipModel\":\"%s\",\"chipRevision\":%u,\"chipCores\":%u,\"cpuMhz\":%u,"
+    "\"uptimeSeconds\":%llu,\"resetReasonCode\":%u,\"rssiDbm\":%s,\"ip\":\"%s\","
+    "\"freeHeap\":%u,\"minimumFreeHeap\":%u,\"largestFreeBlock\":%u,"
+    "\"flashBytes\":%u,\"imageBytes\":%u,\"imageSizeKnown\":%s,"
+    "\"runningSlotBytes\":%u,\"runningSlotAddress\":%u,\"nextSlotBytes\":%u,"
+    "\"uploadLimitBytes\":%u,\"firmwareHeadroomBytes\":%u,"
+    "\"filesystemBytes\":0,\"nvs\":{\"available\":%s,\"usedEntries\":%u,\"freeEntries\":%u,\"totalEntries\":%u},"
+    "\"diagnosticNvs\":{\"available\":%s,\"usedEntries\":%u,\"freeEntries\":%u,\"totalEntries\":%u}}",
+    deviceName, kBuildId, ESP.getChipModel(), unsigned(ESP.getChipRevision()), unsigned(ESP.getChipCores()),
+    unsigned(getCpuFrequencyMhz()), static_cast<unsigned long long>(esp_timer_get_time() / 1000000),
+    unsigned(esp_reset_reason()), rssi, ip, unsigned(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
+    unsigned(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)), unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)),
+    unsigned(ESP.getFlashChipSize()), unsigned(systemImageBytes), systemImageBytes ? "true" : "false",
+    running ? unsigned(running->size) : 0, running ? unsigned(running->address) : 0, next ? unsigned(next->size) : 0,
+    unsigned(limit), unsigned(systemImageBytes && limit > systemImageBytes ? limit - systemImageBytes : 0),
+    nvsOk ? "true" : "false", unsigned(nvs.used_entries), unsigned(nvs.free_entries), unsigned(nvs.total_entries),
+    diagnosticsOk ? "true" : "false", unsigned(diagnostics.used_entries), unsigned(diagnostics.free_entries), unsigned(diagnostics.total_entries));
+}
 void headerGate(uint32_t now) {
   if (!parseHeaders(requestBytes, request)) { error(400, "Bad Request", "BAD_HEADERS"); return; }
   const IPAddress address = client.localIP();
@@ -254,6 +304,16 @@ void headerGate(uint32_t now) {
     return;
   }
   if (!strcmp(request.method, "GET") && request.contentLength == 0) {
+    if (!strcmp(request.path, "/api/v1/system")) {
+      // Monitoring is optional; prioritize the existing updater and writer.
+      if (githubPull.busy() || pendingReboot ||
+          (otaRuntime.updater.phase() != ota::Phase::Idle && otaRuntime.updater.phase() != ota::Phase::Failed)) {
+        error(409, "Conflict", "SYSTEM_BUSY"); return;
+      }
+      const int length = systemJson(responseJson, sizeof(responseJson));
+      if (length < 0 || size_t(length) >= sizeof(responseJson)) { error(500, "Internal Server Error", "SYSTEM_BOUNDS"); return; }
+      respond(200, "OK", responseJson); return;
+    }
     if (!strcmp(request.path, "/api/v1/status") || !strcmp(request.path, "/api/v1/ota/status")) {
       const bool configurable = network.mode() == Mode::Provisioning && configStore.state() == ConfigState::Empty;
       const auto& pull = githubPull.result();
@@ -465,6 +525,7 @@ void serviceHttp(uint32_t now) {
 
 void startApplication(bool resetRequested) {
   applicationStarted = true;
+  cacheSystemImage();
   WiFi.persistent(false);
   WiFi.setAutoReconnect(false);
   if (nvs_open("dmboot", NVS_READWRITE, &storage.handle) != ESP_OK) { fault("NVS_OPEN_FAILED"); return; }
