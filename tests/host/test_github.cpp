@@ -158,6 +158,43 @@ void coordinator() {
   pull.poll(830000 + kJobMs, true, 0, token); CHECK(pipe.cancels == 1 && pull.busy());
   CHECK(!pull.request(830001 + kJobMs)); // Timed-out worker must finish before another owns the writer.
 }
+void automaticPolicy() {
+  using namespace bootstrap;
+  fakeOta() = FakeOta{};
+  Store store; Pipe pipe; ota::Runtime runtime(store); runtime.arm(0); runtime.begin(0);
+  Pull pull(pipe, runtime, false); pull.begin(0, 0);
+  const auto before = store.values;
+  const uint32_t base = UINT32_MAX - 100;
+  pull.setAutomatic(true, base, 0);
+  CHECK(pull.automatic() && pull.nextMs(base) == 30000);
+  pull.setAutomatic(true, base + 10, 30000); // Idempotent ON never postpones.
+  CHECK(pull.nextMs(base + 10) == 29990);
+  pull.poll(base + 29999, true, 0, token); CHECK(!pipe.starts);
+  pull.poll(base + 30000, false, 0, token); CHECK(!pipe.starts);
+  pull.poll(base + 30000, true, 0, token); CHECK(pipe.starts == 1);
+  pull.setAutomatic(false, base + 30001, 0);
+  CHECK(!pull.automatic() && pull.busy() && !pipe.cancels);
+  Message done; done.result.code = ResultCode::RateLimit; done.result.waitMs = 800000;
+  pipe.messages.push_back(done); pull.poll(base + 30002, true, 0, token);
+  pull.setAutomatic(true, base + 90000, 0);
+  CHECK(!pull.request(base + 90000)); // Toggle cannot bypass Retry-After.
+  pull.poll(base + 830001, true, 0, token); CHECK(pipe.starts == 1);
+  pull.setAutomatic(false, base + 830002, 0);
+  pull.poll(base + 830002, true, 0, token); CHECK(pipe.starts == 1);
+  pull.setAutomatic(true, base + 830002, 0);
+  pull.poll(base + 830002, true, 0, token); CHECK(pipe.starts == 2);
+  done.result.code = ResultCode::NoUpdate; done.result.waitMs = kPollMs;
+  pipe.messages.push_back(done); pull.poll(base + 830003, true, 0, token);
+  pull.poll(base + 1130002, true, 0, token); CHECK(pipe.starts == 2);
+  pull.poll(base + 1130003, true, 0, token); CHECK(pipe.starts == 3);
+  pipe.messages.push_back(done); pull.poll(base + 1130004, true, 0, token);
+  pull.setAutomatic(false, base + 1130005, 0);
+  CHECK(pull.request(base + 1200000)); // Explicit manual work is independent.
+  pull.setAutomatic(false, base + 1200001, 0);
+  pull.poll(base + 1200001, true, 0, token); CHECK(pipe.starts == 4);
+  CHECK(store.values == before && !fakeOta().begins && !pipe.cancels);
+  Pull rebooted(pipe, runtime, false); CHECK(!rebooted.automatic());
+}
 void crossCoreMessageTime() {
   using namespace bootstrap;
   // Fresh chunk/header, wrap, idle expiry, job expiry, health loss, writer failure.
@@ -200,6 +237,6 @@ void crossCoreMessageTime() {
   }
 }
 int main() {
-  metadata(); urlsAndHeaders(); bodies(); coordinator(); crossCoreMessageTime();
+  metadata(); urlsAndHeaders(); bodies(); coordinator(); automaticPolicy(); crossCoreMessageTime();
   printf("%u GitHub parser/policy assertions passed\n", checks);
 }

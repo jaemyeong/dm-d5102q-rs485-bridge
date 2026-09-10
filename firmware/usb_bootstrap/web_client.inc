@@ -28,6 +28,8 @@ R"CLIENT(
     otaFile.disabled = locked;
     otaStart.disabled = locked || !selected || !otaReady(state);
     byId('github-check').disabled = locked || !otaReady(state);
+    byId('github-automatic').disabled = locked || !state || state.githubAutomaticControl !== true ||
+      (!state.githubAutomatic && state.githubAutomaticStorageHealthy !== false && (!otaReady(state) || ['QUEUED', 'CHECKING_OR_DOWNLOADING'].includes(state.githubState)));
   }
   function otaReady(value) {
     return value && value.mode === 'STA' && value.otaProtocol === 2 && value.otaSupported === true &&
@@ -76,9 +78,33 @@ R"CLIENT(
     otaPanel.hidden = state.mode !== 'STA' || state.otaProtocol !== 2;
     if (!otaPanel.hidden) otaMsg.textContent = '현재: ' + state.buildId + ' · ' + state.otaBootState + '\n' +
       '업데이트 상태: ' + state.otaPhase + ' / ' + state.otaReason + ' · 방식: ' + state.otaOrigin;
-    byId('github-message').textContent = '자동 확인: ' + (state.githubAutomatic ? '켜짐 (약 5분마다)' : '꺼짐 (검증 후 별도 활성화)') +
+    byId('github-automatic').textContent = state.githubAutomaticStorageHealthy === false ? '자동 업데이트 꺼짐 저장' :
+      (state.githubAutomatic ? '자동 업데이트 끄기' : '자동 업데이트 켜기');
+    byId('github-automatic').setAttribute('aria-pressed', state.githubAutomatic ? 'true' : 'false');
+    byId('github-message').textContent = '자동 확인: ' + (state.githubAutomatic ? '켜짐 (정상 조회 후 약 5분마다, 오류 시 대기 연장)' : '꺼짐') +
+      (state.githubAutomaticPersistent ? (state.githubAutomaticStorageHealthy === false ? ' · 저장 결과 불명: 재부팅 후 상태 보장 불가' :
+        ' · 재부팅 후 유지: ' + (state.githubAutomaticSaved ? '켜짐' : '꺼짐')) :
+        (state.githubAutomaticControl ? ' · 재부팅 기본값: ' + (state.githubAutomaticBootDefault ? '켜짐' : '꺼짐') : '')) +
       ' · ' + (state.githubState || '') + ' · 최근 결과: ' + (state.githubResult || '확인 전');
   }
+  byId('github-automatic').addEventListener('click', async () => {
+    if (busy || !state || state.githubAutomaticControl !== true ||
+        (!state.githubAutomatic && state.githubAutomaticStorageHealthy !== false && (!otaReady(state) || ['QUEUED', 'CHECKING_OR_DOWNLOADING'].includes(state.githubState)))) return;
+    const enabled = state.githubAutomaticStorageHealthy === false ? false : !state.githubAutomatic, activeSession = session;
+    lock(true);
+    try {
+      const result = await signed('/api/v1/ota/github/automatic/' + (enabled ? 'enable' : 'disable'),
+        {method: 'POST', headers: {'X-CSRF-Token': state.csrfToken}, body: ''});
+      if (session !== activeSession) return;
+      if (result.githubAutomatic !== enabled || result.persistent !== (state.githubAutomaticPersistent === true)) throw Error('설정 응답 확인이 필요합니다.');
+      await status();
+    } catch (error) {
+      if (session === activeSession) {
+        state = null; // An ambiguous response requires a fresh GET, never another toggle.
+        byId('github-message').textContent = error.message + ' 자동 재요청하지 않습니다. 상태를 새로고침하세요.';
+      }
+    } finally { if (session === activeSession) lock(false); }
+  });
   byId('github-check').addEventListener('click', async () => {
     if (busy || !otaReady(state)) return;
     lock(true);

@@ -83,6 +83,12 @@ class Pull {
   }
   bool busy() const { return busy_ || requested_; }
   bool automatic() const { return automatic_; }
+  // RAM-only policy, owned by the loop. Never cancel an in-flight/manual job
+  // or shorten an existing retry/backoff when toggled off and on.
+  void setAutomatic(bool enabled, uint32_t now, uint32_t random) {
+    if (enabled && !automatic_ && !startedOnce_) schedule_.begin(now, random);
+    automatic_ = enabled;
+  }
   bool rebootReady() const { return reboot_; }
   const Result& result() const { return result_; }
   const Rejection& rejection() const { return rejection_; }
@@ -150,7 +156,7 @@ class Pull {
  private:
   Port& port_;
   ota::Runtime& runtime_;
-  const bool automatic_;
+  bool automatic_;
   bool busy_ = false, requested_ = false, reboot_ = false, startedOnce_ = false, rateLimited_ = false;
   uint32_t started_ = 0;
   unsigned failures_ = 0;

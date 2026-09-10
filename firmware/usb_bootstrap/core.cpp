@@ -409,7 +409,7 @@ bool ConfigStore::resumeReset() {
   if (!size) return true;
   state_ = ConfigState::Corrupt;
   if (size != sizeof(marker) || memcmp(bytes, marker, sizeof(marker))) return false;
-  const char* keys[] = {"active", "trial", "cfgA", "cfgB", "reset"};
+  const char* keys[] = {"active", "trial", "cfgA", "cfgB", "ghauto", "reset"};
   for (const auto key : keys) {
     if (!storage_.erase(key) || storage_.read(key, bytes, sizeof(bytes)) != 0) return false;
   }

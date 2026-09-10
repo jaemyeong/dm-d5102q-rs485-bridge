@@ -29,6 +29,9 @@ small{display:block;line-height:1.6;color:#415862}#message,#ota-message{white-sp
 <section id="ota-panel" hidden><h2>펌웨어 업데이트</h2>
 <p id="ota-message" role="status" aria-live="polite">서명된 .dmota 파일을 선택하세요.</p>
 <p id="github-message" role="status" aria-live="polite">GitHub 확인 상태</p>
+<button id="github-automatic" type="button" class="secondary" aria-pressed="false" disabled>자동 업데이트 켜기</button>
+<small>설정은 재부팅 후에도 유지됩니다. 켜면 새 정식 서명 버전을 자동 설치할 수 있습니다.
+끄기는 이후 자동 조회만 막으며, 이미 시작한 조회·설치는 중단하지 않습니다. 버튼 초기화 시 꺼짐으로 돌아갑니다.</small>
 <button id="github-check" type="button" class="secondary">GitHub 확인 후 업데이트</button>
 <small>새 정식 Release가 있으면 서명 검증 후 설치합니다. 장비에서 인터넷에 연결할 수 있어야 합니다.</small>
 <label for="ota-file">펌웨어 파일 (.dmota)</label><input id="ota-file" type="file" accept=".dmota">

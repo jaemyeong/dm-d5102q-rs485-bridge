@@ -29,6 +29,7 @@ bool fakeButtonPressed = false;
 esp_reset_reason_t fakeResetReason = ESP_RST_POWERON;
 static std::map<std::string, std::vector<uint8_t>> fakeNvs;
 static unsigned writes = 0;
+static bool failPolicyWrite = false;
 esp_err_t nvs_open(const char*, int, nvs_handle_t* handle) { *handle = 1; return ESP_OK; }
 esp_err_t nvs_get_blob(nvs_handle_t, const char* key, void* out, size_t* size) {
   if (!fakeNvs.count(key)) return ESP_ERR_NVS_NOT_FOUND;
@@ -37,6 +38,7 @@ esp_err_t nvs_get_blob(nvs_handle_t, const char* key, void* out, size_t* size) {
   memcpy(out, bytes.data(), bytes.size()); *size = bytes.size(); return ESP_OK;
 }
 esp_err_t nvs_set_blob(nvs_handle_t, const char* key, const void* in, size_t size) {
+  if (failPolicyWrite && !strcmp(key, "ghauto")) return 99;
   const auto* bytes = static_cast<const uint8_t*>(in);
   fakeNvs[key] = std::vector<uint8_t>(bytes, bytes + size); ++writes; return ESP_OK;
 }
@@ -54,6 +56,7 @@ unsigned checks = 0;
 void reset() {
   closeClient();
   fakeNvs.clear(); writes = 0;
+  failPolicyWrite = false;
   fakeOta() = FakeOta{};
   memset(installKey, 0, sizeof(installKey));
   fakeNow = 0; ESP.restarts = 0; WiFi = FakeWiFi{};
@@ -275,6 +278,52 @@ void bootButtonAndMdns() {
   fakeNow += 4000; loop(); CHECK(fakeNvs == afterReset);
   CHECK(drain(connectRequest("GET / HTTP/1.1\r\nHost: " + host + "\r\n\r\n")).find("HOST_REJECTED") != std::string::npos);
 }
+void automaticHttpBoundary() {
+  for (unsigned kind = 0; kind < 9; ++kind) {
+    reset(); githubPull.setAutomatic(false, fakeNow, 0);
+    if (kind != 2) {
+      WifiConfig config; strcpy(config.ssid, "host-test"); strcpy(config.password, "password-only-fixture");
+      CHECK(configStore.stage(config) && configStore.promote());
+      applyAction(network.begin(ConfigState::Active, fakeNow), fakeNow); WiFi.linked = true;
+    }
+    if (kind == 7) WiFi.linked = false;
+    const unsigned before = writes;
+    const std::string path = "/api/v1/ota/github/automatic/enable";
+    const std::string method = kind == 6 ? "GET" : "POST";
+    const auto head = method + " " + path + " HTTP/1.1\r\nHost: 192.168.4.1\r\n" +
+      (kind == 4 ? "" : kind == 3 ? "Content-Length: 1\r\n" : "Content-Length: 0\r\n") +
+      "Origin: http://192.168.4.1\r\nX-CSRF-Token: " + (kind == 1 ? "wrong" : csrf) + "\r\n" +
+      (kind == 0 ? "" : digest(method, path)) + "\r\n";
+    auto response = drain(connectRequest(head + (kind == 3 ? "x" : "")));
+    const bool accepted = kind == 5 || kind == 8;
+    CHECK(githubPull.automatic() == accepted);
+    CHECK((response.find("200 OK") != std::string::npos) == accepted);
+    CHECK(applicationReads == head.size() && writes == before + (accepted ? 1 : 0) && !fakeOta().begins);
+    if (!accepted) continue;
+    CHECK(response.find("\"persistent\":true") != std::string::npos);
+    CHECK(automaticPolicy.load() && automaticPolicy.enabled());
+    // Simulated software reboot reloads the persisted ON policy, no HTTP toggle.
+    startApplication(false);
+    CHECK(githubPull.automatic());
+    // Authenticated OFF works after health loss while HTTP is still serviced.
+    WiFi.linked = false; rotateNonce(++fakeNow);
+    const std::string off = "/api/v1/ota/github/automatic/disable";
+    failPolicyWrite = kind == 8;
+    response = drain(connectRequest("POST " + off + " HTTP/1.1\r\nHost: 192.168.4.1\r\nContent-Length: 0\r\n"
+      "Origin: http://192.168.4.1\r\nX-CSRF-Token: " + std::string(csrf) + "\r\n" + digest("POST", off) + "\r\n"));
+    CHECK(!githubPull.automatic() && !fakeOta().begins);
+    if (failPolicyWrite) {
+      CHECK(response.find("AUTOMATIC_STORAGE_UNCERTAIN") != std::string::npos);
+      CHECK(!automaticPolicy.healthy() && writes == before + 1);
+      failPolicyWrite = false;
+      CHECK(automaticPolicy.load() && automaticPolicy.enabled()); // Old ON survived.
+    } else {
+      CHECK(response.find("200 OK") != std::string::npos && writes == before + 2);
+      CHECK(automaticPolicy.load() && !automaticPolicy.enabled());
+      startApplication(false); CHECK(!githubPull.automatic());
+    }
+  }
+}
 void otaHttpBoundary() {
   const auto station = []() {
     reset();
@@ -417,7 +466,7 @@ int main(int argc, char** argv) {
   }
   firstChunkAuth(); fragmentedSaveAndReboot(); boundsAndDeadlines(); failedTrialReturnsToAp(); publicLoginAndUnlimitedAp();
   bootButtonAndMdns();
-  otaHttpBoundary();
+  automaticHttpBoundary(); otaHttpBoundary();
   rejectionStatusDiagnostics();
   printf("USB bootstrap transport/runtime fakes: %u assertions passed\n", checks);
 }

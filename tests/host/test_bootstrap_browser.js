@@ -33,7 +33,8 @@ function browser(html, fetcher, random = crypto.webcrypto.getRandomValues.bind(c
   for (const match of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {
     const tag = match[0], id = match[1];
     elements.set(id, {value: '', textContent: '', hidden: /\bhidden\b/.test(tag),
-      disabled: /\bdisabled\b/.test(tag), listeners: {},
+      disabled: /\bdisabled\b/.test(tag), listeners: {}, attributes: {},
+      setAttribute(name, value) { this.attributes[name] = value; },
       addEventListener(type, callback) { this.listeners[type] = callback; }});
   }
   const context = vm.createContext({document: {getElementById: id => {
@@ -121,6 +122,7 @@ async function main() {
 
   // Deterministic browser failure paths against an independent Digest verifier.
   let nonce = '1'.repeat(32), puts = 0, failMode = '', nc = 0, prepares = 0, uploads = 0, uploaded = false;
+  let automatic = false, autoPosts = 0, autoFail = false, autoSupported = true, autoStorageHealthy = true;
   const reply = (status, data) => ({status, ok: status >= 200 && status < 300, json: async () => data});
   const fake = async (path, options) => {
     if (path === '/api/v1/auth') {
@@ -136,6 +138,14 @@ async function main() {
     check(Number.parseInt(fields.nc, 16) > nc, true); nc = Number.parseInt(fields.nc, 16);
     check(fields.response, sha(sha('installer:DM-BRIDGE-USB:' + key) + ':' + nonce + ':' + fields.nc + ':' +
       fields.cnonce + ':auth:' + sha((options.method || 'GET') + ':' + path)));
+    if (path.startsWith('/api/v1/ota/github/automatic/')) {
+      ++autoPosts;
+      check(options.method, 'POST'); check(options.body, '');
+      check(options.headers['X-CSRF-Token'], '2'.repeat(32));
+      automatic = path.endsWith('/enable');
+      if (autoFail) throw Error('Setting response lost after commit');
+      return reply(200, {githubAutomatic: automatic, persistent: true});
+    }
     if (path === '/api/v1/config') {
       ++puts;
       check(options.headers['X-CSRF-Token'], '2'.repeat(32));
@@ -163,6 +173,8 @@ async function main() {
     return reply(200, {mode: failMode === 'station' ? 'STA' : 'AP', ip: '192.168.4.1',
       buildId: 'test', canConfigure: failMode !== 'station', csrfToken: '2'.repeat(32),
       configRevision: 0, apTimeoutEnabled: false, apRemainingMs: null,
+      githubAutomaticControl: autoSupported, githubAutomatic: automatic, githubAutomaticBootDefault: false,
+      githubAutomaticPersistent: true, githubAutomaticSaved: automatic, githubAutomaticStorageHealthy: autoStorageHealthy,
       otaVersion: 300, configSchema: 1, otaProtocol: 2, otaSupported: true, otaHealthy: true,
       otaBootState: 'VALID', otaPhase: 'IDLE', otaReason: 'NONE', otaOrigin: 'legacy-push',
       mdnsUrl: 'http://dm-bridge-112233.local', mdnsActive: failMode === 'station'});
@@ -196,6 +208,29 @@ async function main() {
   check(station.element('save').disabled, true);
   check(station.element('message').textContent.includes('http://dm-bridge-112233.local (활성)'), true);
   check(station.element('ota-panel').hidden, false);
+  check(station.element('github-automatic').disabled, false);
+  await station.event('github-automatic', 'click');
+  check(autoPosts, 1); check(automatic, true);
+  check(station.element('github-automatic').attributes['aria-pressed'], 'true');
+  await station.event('github-automatic', 'click');
+  check(autoPosts, 2); check(automatic, false);
+  autoFail = true;
+  await station.event('github-automatic', 'click');
+  check(autoPosts, 3); check(automatic, true);
+  check(station.element('github-automatic').disabled, true);
+  await station.event('github-automatic', 'click'); check(autoPosts, 3);
+  autoFail = false; await station.event('refresh', 'click');
+  check(station.element('github-automatic').attributes['aria-pressed'], 'true');
+  await station.event('github-automatic', 'click'); check(automatic, false);
+  autoSupported = false; await station.event('refresh', 'click');
+  check(station.element('github-automatic').disabled, true);
+  await station.event('github-automatic', 'click'); check(autoPosts, 4);
+  autoSupported = true;
+  autoStorageHealthy = false; await station.event('refresh', 'click');
+  check(station.element('github-message').textContent.includes('저장 결과 불명'), true);
+  check(station.element('github-automatic').textContent, '자동 업데이트 꺼짐 저장');
+  await station.event('github-automatic', 'click'); check(autoPosts, 5); check(automatic, false);
+  autoStorageHealthy = true; await station.event('refresh', 'click');
   const header = Buffer.alloc(192);
   header.write('DMOTA2\r\n'); header.writeUInt32LE(301, 8); header.writeUInt32LE(64, 12);
   header.writeUInt32LE(1, 16); header.write('m5stack-atom', 20); header.write('web-test-next', 36);

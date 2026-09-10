@@ -1,5 +1,35 @@
 # DMOTA2: GitHub pull and manual web update
 
+## Current persistence candidate (314, 2026-09-10; not installed)
+
+314 adds an independent versioned 8-byte `dmboot/ghauto` NVS policy record.
+Only an exact ON/OFF record is accepted; missing, malformed or unreadable records
+start OFF. There is no schema/partition/key/Wi-Fi credential migration. The
+existing runtime endpoints now persist and read back the value before success;
+repeated successful same-value requests do not write flash. Stored ON resumes
+after reboot/OTA only through existing health, pending-verify, STA and scheduling
+gates. Build-time ON is no longer a boot-policy override; missing policy is OFF.
+
+Status reports `githubAutomaticPersistent:true`, `githubAutomaticSaved` and
+`githubAutomaticStorageHealthy`; the compiled fallback remains
+`githubAutomaticBootDefault:false`. A commit/readback failure returns
+`AUTOMATIC_STORAGE_UNCERTAIN` and stops future automatic starts in RAM. The old
+ON record may still survive reboot: storageHealthy false means saved is UNKNOWN,
+not confirmed OFF. The UI requires GET refresh after uncertain responses and
+offers an explicit OFF-save recovery action, never automatic mutation retry.
+Policy corruption alone does not take down Wi-Fi/manual OTA. Physical button
+reset erases ghauto before clearing the existing durable reset-intent marker;
+interrupted resets therefore resume without silently retaining automatic ON.
+
+313 ignores this new key if rollback occurs; do not claim persistent policy on
+older firmware. Initial 313-to-314 transfer is planned with auto OFF, no enable
+POST, no Release publication. ON/reboot persistence on hardware is a separate
+bounded test because ON can install any newer trusted signed Release.
+Host persistence/failure/browser tests and the 314 build are not field-OTA or
+power-cut evidence. The installed field image remains last-verified313.
+
+The sections below retain the historical implementation and verification record.
+
 Status, 2026-09-09 KST: **implemented and host/build verified, not device verified**.
 User approval of the [plan](github-release-ota-plan.md) authorizes this G1–G3
 implementation. Candidate: `usb-bootstrap-0.3.0`, integer version `300`.
@@ -7,6 +37,33 @@ The last measured device image remains `0.2.1/201`; it was not accessed this tur
 No Release, CI secret or automated deployment service was created.
 
 ## Operation after the separate bootstrap installation
+
+### Historical runtime automatic switch (313; superseded by 314 candidate)
+
+The authenticated dashboard now offers a RAM-only automatic-update switch.
+Bodyless POST routes `/api/v1/ota/github/automatic/enable` and
+`/api/v1/ota/github/automatic/disable` require Digest SHA-256, allowed Host,
+same Origin, CSRF and explicit `Content-Length: 0`; no request body is consumed.
+ON requires healthy, update-ready, idle STA operation. OFF remains available
+while HTTP is serviced, including a busy worker or failed health gate. It only
+blocks future automatic starts: queued manual checks and current transfers still
+finish under the existing writer/timeout rules. It cannot cancel a reboot.
+
+The setting is not saved to NVS. Reboot (including successful OTA) restores
+`DM_GITHUB_AUTO_UPDATE`, currently OFF. Status exposes `githubAutomaticControl`,
+`githubAutomaticPersistent:false` and `githubAutomaticBootDefault` so an older
+firmware has no enabled switch and the boot policy is visible. An ambiguous
+write response disables further toggles until a read-only status refresh;
+the browser never retries a mutation automatically.
+
+First activation before any job schedules a 30–60 second delay. Repeated ON is
+idempotent. After a job, OFF/ON preserves the existing polling/retry deadline,
+including rate limiting; an already expired deadline can run on the next healthy
+loop. Normal successful checks retain the existing roughly five-minute cadence.
+ON is permission to install newer signed firmware, not a metadata-only mode.
+This temporary switch is not persistent unattended operation or G6 qualification.
+
+### Existing file/check operations
 
 - Log in to the device dashboard on the configured LAN/VPN connection.
   Select one signed `.dmota` file, review board/version/size, then press the
@@ -21,10 +78,10 @@ No Release, CI secret or automated deployment service was created.
   from confirming its own healthy boot; closing it mid-upload is not success.
 - **GitHub 확인 후 업데이트** explicitly checks and installs a newer valid Release.
   It is not a read-only preview. The action is authenticated and rate-limited.
-- Periodic checking is implemented but **off** (`DM_GITHUB_AUTO_UPDATE=0`) in
-  this candidate. An eventual, separately verified build with value `1` checks
-  after 30–60 seconds and then every 5 minutes ±30 seconds, without the Mac.
-  There is no unauthenticated toggle, background Mac watcher or hidden activation.
+- Periodic checking boots **off** (`DM_GITHUB_AUTO_UPDATE=0`). The RAM-only
+  authenticated switch above can activate it until reboot. Persistent automatic
+  operation still requires a separately verified boot-policy rollout. There is
+  no unauthenticated toggle, background Mac watcher or hidden activation.
 
 Manual file upload needs no GitHub connection; actual offline-LAN/iPad Safari
 tests are still pending. Management HTTP has the existing Digest authentication

@@ -8,6 +8,7 @@
 #include <errno.h>
 
 #include "core.h"
+#include "automatic_policy.h"
 #include "boot_button.h"
 #include "web_ui.h"
 #include "ota_runtime.h"
@@ -44,7 +45,8 @@ class NvsStorage final : public Storage {
 } storage;
 ota::Runtime otaRuntime(storage);
 github::Worker githubWorker;
-github::Pull githubPull(githubWorker, otaRuntime, kGithubAutomatic);
+github::Pull githubPull(githubWorker, otaRuntime, false);
+AutomaticPolicy automaticPolicy(storage);
 ConfigStore configStore(storage);
 NetworkState network;
 BootResetGate bootReset;
@@ -265,6 +267,8 @@ void headerGate(uint32_t now) {
         "\"otaTransaction\":\"%s\",\"otaExpectedBuild\":\"%s\",\"otaHealthy\":%s,\"otaReceived\":%lu,"
         "\"freeHeap\":%u,\"largestFreeBlock\":%u,\"otaKeyId\":\"%s\",\"releaseTag\":\"%s\","
         "\"otaProtocol\":2,\"otaOrigin\":\"%s\",\"otaAttemptVersion\":%lu,\"updaterTag\":\"%s\","
+        "\"githubAutomaticControl\":true,\"githubAutomaticPersistent\":true,\"githubAutomaticBootDefault\":false,"
+        "\"githubAutomaticSaved\":%s,\"githubAutomaticStorageHealthy\":%s,"
         "\"githubAutomatic\":%s,\"githubState\":\"%s\",\"githubResult\":\"%s\",\"githubHttpStatus\":%u,"
         "\"githubNextCheckMs\":%lu,\"githubSampledMinHeap\":%lu,\"githubSampledMinBlock\":%lu,\"githubStackFreeBytes\":%lu,"
         "\"githubTlsAttempted\":%s,\"githubTlsConnectResult\":%d,\"githubTlsConnectMs\":%lu,"
@@ -282,6 +286,7 @@ void headerGate(uint32_t now) {
         static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_8BIT)),
         static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)), otaKeyId, kReleaseTag,
         ota::originName(otaRuntime.origin()), static_cast<unsigned long>(otaRuntime.attemptVersion()), kUpdaterTag,
+        automaticPolicy.enabled() ? "true" : "false", automaticPolicy.healthy() ? "true" : "false",
         githubPull.automatic() ? "true" : "false", githubPull.state(), github::resultName(pull.code), pull.httpStatus,
         static_cast<unsigned long>(githubPull.nextMs(now)), static_cast<unsigned long>(pull.sampledMinHeap),
         static_cast<unsigned long>(pull.sampledMinBlock), static_cast<unsigned long>(pull.stackFreeBytes),
@@ -303,6 +308,28 @@ void headerGate(uint32_t now) {
   if (!strncmp(request.path, "/api/v1/ota/", 12)) {
     if (strcmp(request.method, "POST")) { error(405, "Method Not Allowed", "UNSUPPORTED_ROUTE"); return; }
     if (!sameOrigin(request, ip, csrf, hostname)) { error(403, "Forbidden", "CSRF_REJECTED"); return; }
+    const bool autoEnable = !strcmp(request.path, "/api/v1/ota/github/automatic/enable");
+    const bool autoDisable = !strcmp(request.path, "/api/v1/ota/github/automatic/disable");
+    if (autoEnable || autoDisable) {
+      if (!request.hasLength || request.contentLength) { error(400, "Bad Request", "EMPTY_BODY_REQUIRED"); return; }
+      // OFF remains available when unhealthy or busy. It stops future automatic
+      // starts only; the existing writer must finish under its normal guards.
+      if (autoEnable && (!otaRuntime.canUpdate() || !otaHealthy() || pendingReboot || githubPull.busy() ||
+          (otaRuntime.updater.phase() != ota::Phase::Idle && otaRuntime.updater.phase() != ota::Phase::Failed))) {
+        error(409, "Conflict", "OTA_NOT_READY"); return;
+      }
+      // Stop future automatic starts even when an OFF commit fails. Never claim
+      // persisted OFF in that case: the old ON value may survive a reboot.
+      if (!autoEnable) githubPull.setAutomatic(false, now, esp_random());
+      if (!automaticPolicy.save(autoEnable)) {
+        githubPull.setAutomatic(false, now, esp_random());
+        error(500, "Internal Server Error", "AUTOMATIC_STORAGE_UNCERTAIN"); return;
+      }
+      githubPull.setAutomatic(autoEnable, now, esp_random());
+      respond(200, "OK", autoEnable ? "{\"githubAutomatic\":true,\"persistent\":true}" :
+        "{\"githubAutomatic\":false,\"persistent\":true}");
+      return;
+    }
     if (!strcmp(request.path, "/api/v1/ota/confirm")) {
       if (!request.hasLength || request.contentLength ||
           !otaRuntime.confirm(request.uploadToken, otaHealthy(), now)) {
@@ -448,6 +475,8 @@ void startApplication(bool resetRequested) {
   if (resetRequested || resetPending) Serial.println("WIFI_RESET_COMPLETE INSTALL_KEY_PRESERVED");
   const ConfigState state = configStore.load();
   if (state == ConfigState::Corrupt) { fault("CONFIG_CORRUPT USB_RECOVERY_REQUIRED"); return; }
+  automaticPolicy.load(); // Policy faults keep network/manual OTA available, auto OFF.
+  githubPull.setAutomatic(automaticPolicy.enabled(), millis(), esp_random());
   if (!WiFi.mode(WIFI_STA)) { fault("WIFI_INIT_FAILED"); return; }
   if (!enrollment(state == ConfigState::Empty)) { fault("ENROLLMENT_CORRUPT USB_RECOVERY_REQUIRED"); return; }
   const uint64_t mac = ESP.getEfuseMac();

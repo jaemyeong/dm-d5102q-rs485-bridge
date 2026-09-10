@@ -16,7 +16,7 @@ VENDOR_SHA256 = "4de27631e00b4708d207819cc9630e18313ceac8348fb36ed5f374903e54577
 BOOT_AMENDMENT_PATH = "docs/design/BOOT-RESET-MDNS-AMENDMENT-2026-09-09.md"
 BOOT_AMENDMENT_SHA256 = "459358390c8e52e3350e13927746bbbfc381f1e74e508cdaed8eaf91171b964e"
 BUTTON_SHA256 = "cdf2a70e897a3e67edfcad491a3c1619f2b57b667a5e7b621d7380512f7aca5d"
-SOURCE_FILES = {"config.h", "core.h", "core.cpp", "main.cpp", "web_ui.h", "web_sha256.inc", "web_client.inc", "boot_button.h", "ota_core.h", "ota_core.cpp", "ota_runtime.h", "ota_context.h", "github_core.h", "github_core.cpp", "github_pull.h", "github_worker.h"}
+SOURCE_FILES = {"config.h", "core.h", "core.cpp", "main.cpp", "web_ui.h", "web_sha256.inc", "web_client.inc", "boot_button.h", "ota_core.h", "ota_core.cpp", "ota_runtime.h", "ota_context.h", "github_core.h", "github_core.cpp", "github_pull.h", "github_worker.h", "automatic_policy.h"}
 OTA_VENDOR_HASHES = {
     "monocypher.c": "f1f838cdd483bdebe0df0ff5c5ed60535e496f769c6a2f933ac4c0b114207123",
     "monocypher.h": "fcaf6ed771358bb4f40fba016f6518ae86ec02b1b877d2cc35ad92d3a26fd7b3",

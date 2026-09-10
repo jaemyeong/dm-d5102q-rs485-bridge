@@ -1,4 +1,5 @@
 #include "core.h"
+#include "automatic_policy.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -321,8 +322,46 @@ void testMalformedCorpus() {
   }
 }
 }
+void testAutomaticPolicy() {
+  FakeStorage storage;
+  AutomaticPolicy policy(storage);
+  CHECK(policy.load() && !policy.enabled());
+  CHECK(policy.save(true));
+  const auto saved = storage.data;
+  AutomaticPolicy reboot(storage);
+  CHECK(reboot.load() && reboot.enabled());
+  const auto operations = storage.operations;
+  CHECK(reboot.save(true) && storage.operations == operations);
+  CHECK(reboot.save(false));
+  CHECK(policy.load() && !policy.enabled());
+  // Every one-bit record corruption and every truncation fails closed.
+  for (unsigned bit = 0; bit < 64; ++bit) {
+    storage.data = saved; storage.data["ghauto"][bit / 8] ^= 1U << (bit % 8);
+    CHECK(!policy.load() && !policy.enabled() && !policy.healthy());
+  }
+  for (unsigned length = 0; length < 8; ++length) {
+    storage.data = saved; storage.data["ghauto"].resize(length);
+    CHECK(!policy.load() && !policy.enabled());
+  }
+  for (bool persisted : {false, true}) {
+    for (int failure : {1, 2}) {
+      storage.data = saved; storage.failAt = -1;
+      CHECK(policy.load() && policy.enabled());
+      storage.failAt = storage.operations + failure;
+      storage.persistedFailure = persisted;
+      CHECK(!policy.save(false) && !policy.enabled() && !policy.healthy());
+      storage.failAt = -1;
+      CHECK(reboot.load()); // Old or new exact record may survive: never fake a commit.
+    }
+  }
+  storage.data = saved; storage.failAt = -1;
+  ConfigStore config(storage);
+  CHECK(config.resetWifi());
+  CHECK(!storage.data.count("ghauto") && policy.load() && !policy.enabled());
+}
 int main() {
   testJsonAndRecords(); testStorage(); testNetwork(); testHeadersAndAuth(); testMalformedCorpus();
   testBootResetAndStorage(); testMdnsOrigin();
+  testAutomaticPolicy();
   printf("USB bootstrap host core: %u assertions passed\n", checks);
 }
