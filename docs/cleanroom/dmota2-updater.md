@@ -125,9 +125,61 @@ bundle. CA freshness and actual target handshake compatibility remain bench gate
 - A dedicated core-0 FreeRTOS worker with a static 16 KiB stack owns TLS. Static
   one-request/two-message queues and per-chunk ACKs cross to the main loop, which
   alone owns OTA/NVS/flash. All three entrypoints share its busy state.
-  TLS connect timeout is 3 s, worker idle 8 s, job 180 s; the existing image writer
+  The 303 candidate assigns TLS connection setup at most 15 s, capped by the
+  remaining job budget. Worker idle stays 8 s, job 180 s; the existing image writer
   also retains its 120 s receive limit. The synchronous DNS/SDK cancellation
   latency, web latency and watchdog behavior require real-target measurement.
+
+### TLS diagnostics (302 bench candidate)
+
+The authenticated status endpoints now include six scalar fields for the last
+TLS connection in a **completed** GitHub job. During a running job they still
+describe the preceding completed job, not live handshake progress:
+
+| Field | Meaning |
+| --- | --- |
+| `githubTlsAttempted` | Connection setup was attempted, including allocation failure |
+| `githubTlsConnectResult` | ESP-TLS result: 1 connected, 0 timeout/in progress, -1 failed; meaningful only if attempted |
+| `githubTlsConnectMs` | Unsigned elapsed setup/handshake milliseconds, including clock wrap |
+| `githubTlsEspError` | ESP-IDF error captured before the TLS handle is destroyed; 0 means none captured |
+| `githubTlsError` | Underlying TLS library error code, or 0 |
+| `githubTlsVerifyFlags` | Certificate-verification flags, or 0 |
+
+Allocation failure reports `ESP_ERR_NO_MEM`. A new connection or job resets the
+diagnostics; asset/redirect connections replace the preceding metadata connection.
+No credentials, certificate content, response headers or signed redirect URLs
+are included. These fields do not change trust, connection timeouts, retries,
+signature checks, boot policy or automatic-polling activation.
+
+The first standalone301 GitHub bench attempt on 2026-09-09 returned
+`TIME_UNAVAILABLE`; one later explicit check returned `TLS_OR_NETWORK_FAILED`
+with HTTP status0, without any firmware transfer. The installed image remained
+healthy301. This does **not** establish whether the cause is DNS, connection
+timeout or certificate validation. The 3-second SDK limit is a hypothesis only;
+302 is a diagnostic candidate, not a verified TLS fix. Existing heap minima are
+samples outside the synchronous handshake and can miss its lowest free heap.
+Host fake tests and a successful build do not close the actual GitHub TLS,
+download, recovery or automatic-activation gates.
+
+### Bounded connection-budget candidate (303)
+
+The subsequent 302 bench recheck reached ESP-TLS but returned SDK `0x8006`
+(`ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT`) after 5676 ms, without an HTTP response.
+It remained healthy `VALID`; certificate validation success was not established.
+303 changes only the connection-budget policy: 3000 to at most 15000 ms, reduced
+to the remaining 180-second job budget for each connection, including redirects.
+Expired/cancelled jobs do not start another connection; a connection that returns
+after the global deadline is rejected before sending HTTP. Millisecond subtraction
+remains unsigned and tested across wrap. CA bundle, exact hostname/SNI, signed
+package validation, backoff, idle/writer limits, boot policy, and automatic-OFF
+default are unchanged.
+
+This is a candidate, not a proven TLS fix or a hard wall-clock cancellation bound:
+the [pinned SDK synchronous loop](https://github.com/espressif/esp-idf/blob/v4.4.7/components/esp-tls/esp_tls.c#L461)
+checks elapsed time after a pending low-level step. DNS/SDK calls can overrun and
+cannot be interrupted by this budget alone. Target TLS result, heap/stack, web
+responsiveness and recovery must be measured before Release/automatic activation.
+
 - Authenticated status exposes result/HTTP code/next check and sampled minimum
   heap/largest block/stack headroom, not payload or secrets. IDF's stack watermark
   is already in **bytes**. Sampling and static RAM figures are not soak evidence.

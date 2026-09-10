@@ -259,7 +259,9 @@ void headerGate(uint32_t now) {
         "\"freeHeap\":%u,\"largestFreeBlock\":%u,\"otaKeyId\":\"%s\",\"releaseTag\":\"%s\","
         "\"otaProtocol\":2,\"otaOrigin\":\"%s\",\"otaAttemptVersion\":%lu,\"updaterTag\":\"%s\","
         "\"githubAutomatic\":%s,\"githubState\":\"%s\",\"githubResult\":\"%s\",\"githubHttpStatus\":%u,"
-        "\"githubNextCheckMs\":%lu,\"githubSampledMinHeap\":%lu,\"githubSampledMinBlock\":%lu,\"githubStackFreeBytes\":%lu}",
+        "\"githubNextCheckMs\":%lu,\"githubSampledMinHeap\":%lu,\"githubSampledMinBlock\":%lu,\"githubStackFreeBytes\":%lu,"
+        "\"githubTlsAttempted\":%s,\"githubTlsConnectResult\":%d,\"githubTlsConnectMs\":%lu,"
+        "\"githubTlsEspError\":%d,\"githubTlsError\":%d,\"githubTlsVerifyFlags\":%d}",
         kBuildId, modeName(), ip, WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0 ? "true" : "false",
         static_cast<unsigned long>(configStore.revision()), configurable ? "true" : "false",
         csrf, otaRuntime.updater.enabled() ? "true" : "false", localHostname, localHostname, mdnsActive ? "true" : "false",
@@ -272,7 +274,9 @@ void headerGate(uint32_t now) {
         ota::originName(otaRuntime.origin()), static_cast<unsigned long>(otaRuntime.attemptVersion()), kUpdaterTag,
         githubPull.automatic() ? "true" : "false", githubPull.state(), github::resultName(pull.code), pull.httpStatus,
         static_cast<unsigned long>(githubPull.nextMs(now)), static_cast<unsigned long>(pull.sampledMinHeap),
-        static_cast<unsigned long>(pull.sampledMinBlock), static_cast<unsigned long>(pull.stackFreeBytes));
+        static_cast<unsigned long>(pull.sampledMinBlock), static_cast<unsigned long>(pull.stackFreeBytes),
+        pull.tls.attempted ? "true" : "false", pull.tls.connectResult, static_cast<unsigned long>(pull.tls.connectMs),
+        pull.tls.espError, pull.tls.tlsError, pull.tls.verifyFlags);
       if (length < 0 || size_t(length) >= sizeof(responseJson)) { error(500, "Internal Server Error", "STATUS_BOUNDS"); return; }
       respond(200, "OK", responseJson);
       return;

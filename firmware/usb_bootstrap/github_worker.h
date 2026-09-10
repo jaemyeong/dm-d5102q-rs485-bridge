@@ -38,6 +38,7 @@ class Worker final : public Port {
  private:
   struct Ack { uint32_t sequence; bool accepted; };
   static constexpr size_t kStackBytes = 16384;
+  static constexpr uint32_t kConnectMs = 15000;
   bool initialize() {
     requests_ = xQueueCreateStatic(1, sizeof(CheckRequest), requestStorage_, &requestQueue_);
     messages_ = xQueueCreateStatic(2, sizeof(Message), messageStorage_, &messageQueue_);
@@ -59,7 +60,12 @@ class Worker final : public Port {
       heap_caps_get_free_size(MALLOC_CAP_8BIT) >= 65536;
   }
   void close() {
-    if (tls_) esp_tls_conn_destroy(tls_);
+    if (tls_) {
+      // Read before destroy: the IDF error handle belongs to this connection.
+      result_.tls.espError = esp_tls_get_and_clear_last_error(
+        tls_->error_handle, &result_.tls.tlsError, &result_.tls.verifyFlags);
+      esp_tls_conn_destroy(tls_);
+    }
     tls_ = nullptr; rawUsed_ = rawSize_ = 0;
   }
   bool exchange(MessageKind kind, size_t size) {
@@ -87,13 +93,30 @@ class Worker final : public Port {
   bool open(const Url& url, bool metadata, const char* etag, HttpHead& head) {
     close();
     if (!alive() || time(nullptr) < 1767225600) return false;
+    const uint32_t jobAge = uint32_t(millis()) - jobAt_;
+    if (jobAge >= kJobMs) return false;
+    const uint32_t remaining = kJobMs - jobAge;
     esp_tls_cfg_t config{};
-    config.timeout_ms = 3000; config.non_block = true;
+    // 302 hit the 3 s SDK budget before HTTP. Allow a bounded 15 s candidate,
+    // capped by this job's remaining time (including redirects). The SDK may
+    // overrun during a low-level step; alive() below still rejects late success.
+    config.timeout_ms = int(remaining < kConnectMs ? remaining : kConnectMs);
+    config.non_block = true;
     config.crt_bundle_attach = esp_crt_bundle_attach;
     // common_name=null means exact hostname/SNI validation. Never disable it,
     // install a caller-provided CA, or permit plaintext when TLS fails.
+    result_.tls = TlsDiagnostics{};
+    result_.tls.attempted = true;
+    const uint32_t connectAt = millis();
     tls_ = esp_tls_init();
-    if (!tls_ || esp_tls_conn_new_sync(url.host, strlen(url.host), 443, &config, tls_) != 1 || !alive()) return false;
+    if (!tls_) {
+      result_.tls.connectResult = -1; result_.tls.espError = ESP_ERR_NO_MEM;
+      result_.tls.connectMs = uint32_t(millis()) - connectAt;
+      return false;
+    }
+    result_.tls.connectResult = esp_tls_conn_new_sync(url.host, strlen(url.host), 443, &config, tls_);
+    result_.tls.connectMs = uint32_t(millis()) - connectAt;
+    if (result_.tls.connectResult != 1 || !alive()) return false;
     const int size = snprintf(buffer_, sizeof(buffer_),
       "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: dmbridge-ota/2\r\nAccept: %s\r\n"
       "X-GitHub-Api-Version: %s\r\nAccept-Encoding: identity\r\nConnection: close\r\n%s%s%s\r\n",

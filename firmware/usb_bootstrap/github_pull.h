@@ -24,10 +24,19 @@ inline const char* resultName(ResultCode value) {
   }
 }
 struct CheckRequest { uint32_t floor = 0; unsigned failures = 0; char etag[kEtagMax] = {}; };
+// Scalar diagnostics for the last TLS connection in a completed job. Never carry
+// certificates, headers, signed redirect URLs or credentials across tasks.
+struct TlsDiagnostics {
+  bool attempted = false;
+  int connectResult = 0;
+  uint32_t connectMs = 0;
+  int espError = 0, tlsError = 0, verifyFlags = 0;
+};
 struct Result {
   ResultCode code = ResultCode::None;
   unsigned httpStatus = 0;
   uint32_t waitMs = kPollMs, sampledMinHeap = 0, sampledMinBlock = 0, stackFreeBytes = 0;
+  TlsDiagnostics tls;
   char etag[kEtagMax] = {};
   Release release;
 };

@@ -213,6 +213,8 @@ void publicLoginAndUnlimitedAp() {
   status = drain(connectRequest("GET /api/v1/status HTTP/1.1\r\nHost: 192.168.4.1\r\n" + digest("GET", "/api/v1/status") + "\r\n"));
   CHECK(status.find("200 OK") != std::string::npos);
   CHECK(status.find("\"apTimeoutEnabled\":false,\"apRemainingMs\":null") != std::string::npos);
+  CHECK(status.find("\"githubTlsAttempted\":false,\"githubTlsConnectResult\":0,\"githubTlsConnectMs\":0") != std::string::npos);
+  CHECK(status.find("\"githubTlsEspError\":0,\"githubTlsError\":0,\"githubTlsVerifyFlags\":0") != std::string::npos);
   CHECK(writes == originalWrites);
   const auto badRoot = "GET / HTTP/1.1\r\nHost: 192.168.4.1\r\nContent-Length: 1\r\n\r\nx";
   CHECK(drain(connectRequest(badRoot)).find("200 OK") == std::string::npos);

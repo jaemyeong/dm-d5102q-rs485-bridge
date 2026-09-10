@@ -14,11 +14,23 @@ extern "C" esp_err_t esp_crt_bundle_attach(void*) { return ESP_OK; }
 void esp_fill_random(void* bytes, size_t size) { memset(bytes, 7, size); }
 namespace bootstrap { namespace github {
 struct WorkerHarness {
+  static bool open(Worker& worker, uint32_t age, bool cancelled = false) {
+    worker.jobAt_ = uint32_t(fakeNow) - age;
+    worker.cancelled_.store(cancelled);
+    Url url; strcpy(url.host, "api.github.com"); strcpy(url.path, kLatestPath);
+    HttpHead head;
+    const bool result = worker.open(url, true, "", head);
+    worker.close();
+    return result;
+  }
   static bool messages(Worker& worker, QueueHandle_t queue) { return worker.messages_ == queue; }
   static Result execute(Worker& worker, bool cached = false, bool current = false) {
     CheckRequest request; assert(xQueueReceive(worker.requests_, &request, 0) == pdTRUE);
     if (cached) strcpy(request.etag, "\"fixture\"");
     if (current) ++request.floor;
+    auto& previous = worker.result_.tls; // Must not leak from an earlier job.
+    previous.attempted = true; previous.connectResult = -1; previous.connectMs = 99;
+    previous.espError = 123; previous.tlsError = -456; previous.verifyFlags = 8;
     worker.execute(request);
     assert(xQueueSend(worker.messages_, &worker.outgoing_, 0) == pdTRUE);
     return worker.result_;
@@ -44,7 +56,7 @@ std::string response(const std::string& body, const char* type = "application/js
 }
 void token(char output[33]) { strcpy(output, "0123456789abcdef0123456789abcdef"); }
 int main() {
-  for (unsigned kind = 0; kind < 19; ++kind) {
+  for (unsigned kind = 0; kind < 24; ++kind) {
     fakeNow = 60000; testEpoch = 1780000000; fakeOta() = FakeOta{}; tlsFake = TlsFake{};
     uint8_t seed[32] = {9}, secret[64], pub[32]; crypto_ed25519_key_pair(secret, pub, seed);
     std::string image(2300, 'x');
@@ -78,6 +90,14 @@ int main() {
     if (kind == 17) for (unsigned hop = 0; hop < 4; ++hop)
       tlsFake.responses.push_back("HTTP/1.1 302 Found\r\nLocation: https://release-assets.githubusercontent.com/loop\r\nContent-Length: 0\r\n\r\n");
     if (kind == 18) download = "HTTP/1.1 302 Found\r\nLocation: https://evil.example/x\r\n\r\n";
+    if (kind == 19) { tlsFake.timeoutConnect = true; tlsFake.connectDelayMs = 15001; tlsFake.error = {0x8006, 0, 0}; }
+    if (kind == 20) tlsFake.failInit = true;
+    if (kind == 21) {
+      fakeNow = UINT32_MAX - 6;
+      tlsFake.responses.front() = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+    }
+    if (kind == 22) tlsFake.failWrite = true;
+    if (kind == 23) tlsFake.failRead = true;
     tlsFake.responses.push_back(download);
     Store store; Worker worker; ota::Runtime runtime(store, pub); runtime.arm(fakeNow); runtime.begin(fakeNow);
     Pull pull(worker, runtime, false); pull.begin(fakeNow, 0);
@@ -87,6 +107,22 @@ int main() {
     CHECK(pull.request(fakeNow)); pull.poll(fakeNow, true, 0, token);
     const Result result = WorkerHarness::execute(worker, kind == 14, kind == 15);
     CHECK(tlsFake.allocated == tlsFake.destroyed);
+    CHECK(tlsFake.errorsRead == tlsFake.allocated);
+    CHECK(result.tls.attempted == (kind != 4));
+    if (kind == 4) {
+      CHECK(result.tls.connectResult == 0 && result.tls.connectMs == 0);
+      CHECK(result.tls.espError == 0 && result.tls.tlsError == 0 && result.tls.verifyFlags == 0);
+    } else if (kind == 20) {
+      CHECK(result.tls.connectResult == -1 && result.tls.espError == ESP_ERR_NO_MEM);
+      CHECK(result.tls.connectMs == 0 && !tlsFake.allocated);
+    } else {
+      CHECK(result.tls.connectMs == tlsFake.connectDelayMs);
+      CHECK(result.tls.connectResult == (kind == 5 ? -1 : kind == 19 ? 0 : 1));
+      const bool error = kind == 5 || kind == 19 || kind == 22 || kind == 23;
+      CHECK(result.tls.espError == (error ? tlsFake.error.error : 0));
+      CHECK(result.tls.tlsError == (error ? tlsFake.error.code : 0));
+      CHECK(result.tls.verifyFlags == (error ? tlsFake.error.flags : 0));
+    }
     const bool updated = kind < 2 || kind == 12;
     CHECK(fakeOta().selects == (updated ? 1U : 0U));
     CHECK(pull.rebootReady() == updated);
@@ -104,8 +140,30 @@ int main() {
     if (kind == 16) CHECK(result.code == ResultCode::RateLimit && result.waitMs >= 900000);
     if (kind == 17) CHECK(result.code == ResultCode::Http && tlsFake.hosts.size() == 5 && !fakeOta().begins);
     if (kind == 18) CHECK(result.code == ResultCode::Http && tlsFake.hosts.size() == 2 && !fakeOta().begins);
+    if (kind == 5 || kind == 19 || kind == 20 || kind == 22 || kind == 23)
+      CHECK(result.code == ResultCode::Network && !fakeOta().begins && !fakeOta().writes && !fakeOta().selects);
+    if (kind == 21) CHECK(result.code == ResultCode::NoRelease && !fakeOta().begins);
     for (const auto& request : tlsFake.requests) { CHECK(request.find("Authorization:") == std::string::npos); CHECK(request.find("Accept-Encoding: identity") != std::string::npos || request.empty()); }
     queueSent = {};
+  }
+  // Exercise the real adapter's budget calculation, not SDK handshake timing.
+  static_assert(kJobMs == 180000, "Keep the global job limit");
+  static_assert(ota::kIdleMs == 8000, "Keep the HTTP/writer idle limit");
+  for (unsigned kind = 0; kind < 8; ++kind) {
+    fakeNow = kind == 7 ? UINT32_MAX - 100 : 60000;
+    testEpoch = 1780000000; tlsFake = TlsFake{};
+    tlsFake.responses.push_back("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
+    tlsFake.connectDelayMs = kind == 0 || kind == 7 ? 5676 : kind == 5 ? 250 : 0;
+    const uint32_t age = kind == 1 || kind == 5 ? kJobMs - 250 :
+      kind == 2 ? kJobMs - 1 : kind == 3 ? kJobMs : kind == 4 ? kJobMs + 1 : 0;
+    Worker worker;
+    const bool opened = WorkerHarness::open(worker, age, kind == 6);
+    const bool skipped = kind == 3 || kind == 4 || kind == 6;
+    CHECK(opened == (!skipped && kind != 5));
+    CHECK(tlsFake.timeouts.size() == (skipped ? 0U : 1U));
+    if (!skipped) CHECK(tlsFake.timeouts.front() == (kind == 1 || kind == 5 ? 250 : kind == 2 ? 1 : 15000));
+    if (kind == 5) CHECK(tlsFake.requests.front().empty()); // Late success must not send HTTP.
+    CHECK(tlsFake.allocated == tlsFake.destroyed && tlsFake.errorsRead == tlsFake.allocated);
   }
   printf("%u GitHub worker/TLS adapter fake assertions passed (not real TLS or RTOS timing)\n", checks);
 }
