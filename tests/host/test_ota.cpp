@@ -226,8 +226,60 @@ void interruptedContext() {
     CHECK(f.store.values["active"] == std::vector<uint8_t>({4,5,6}));
   }
 }
+// Characterize the existing policy, not a proposed timeout increase. Continuous
+// progress resets idle time only; the transfer deadline is absolute from start.
+void transferDeadline() {
+  for (const auto origin : {Origin::LegacyPush, Origin::WebFile, Origin::GithubPull}) {
+    for (const uint32_t base : {15000U, UINT32_MAX - 60000U}) {
+      for (unsigned kind = 0; kind < 3; ++kind) {
+        Fixture f;
+        f.image.assign(1048000, 0xa5); f.m.imageSize = f.image.size();
+        mbedtls_sha256_ret(f.image.data(), f.image.size(), f.m.sha256, 0);
+        // Preparing 29s earlier must not consume the receiving deadline.
+        if (origin == Origin::LegacyPush) { f.sign(); f.prepared(base - 29000U); }
+        else {
+          uint8_t header[kPackageHeaderBytes];
+          f.m.minUpdater = 2; strcpy(f.m.channel, "stable");
+          encodePackageManifest(f.m, header);
+          crypto_ed25519_sign(header + kPackageManifestBytes, f.secret, header, kPackageManifestBytes);
+          CHECK(f.updater.preparePackage(header, sizeof(header), token, origin, base - 29000U));
+        }
+        CHECK(f.updater.start(token, f.image.size(), base));
+        if (kind == 2) {
+          CHECK(f.updater.chunk(f.image.data(), 1024, base + 100));
+          f.updater.tick(base + 100 + kIdleMs - 1);
+          CHECK(f.updater.phase() == Phase::Receiving);
+          f.updater.tick(base + 100 + kIdleMs);
+        } else {
+          const size_t target = kind == 0 ? 754688 : f.image.size();
+          const size_t chunks = (target + 1023) / 1024;
+          for (size_t i = 0, off = 0; off < target; ++i) {
+            const size_t count = target - off < 1024 ? target - off : 1024;
+            const uint32_t age = uint64_t(i + 1) * (kTransferMs - 1) / chunks;
+            CHECK(f.updater.chunk(f.image.data() + off, count, base + age));
+            off += count;
+          }
+          CHECK(f.updater.received() == target);
+          if (kind == 1) {
+            CHECK(f.updater.phase() == Phase::RebootPending && fakeOta().selects == 1);
+            continue;
+          }
+          CHECK(f.updater.phase() == Phase::Receiving);
+          const unsigned writes = fakeOta().writes;
+          CHECK(!f.updater.chunk(f.image.data() + target, 1024, base + kTransferMs));
+          CHECK(fakeOta().writes == writes); // Even a fresh chunk is rejected.
+        }
+        CHECK(f.updater.phase() == Phase::Failed);
+        CHECK(!strcmp(f.updater.reason(), "UPLOAD_TIMEOUT"));
+        CHECK(fakeOta().aborts == 1 && !fakeOta().selects);
+        f.updater.interrupt();
+        CHECK(!strcmp(f.updater.reason(), "UPLOAD_TIMEOUT"));
+      }
+    }
+  }
+}
 int main() {
   verifiedFlow(); rejection(); failures(); health();
-  packageV2(); localConfirmation(); interruptedContext();
+  packageV2(); localConfirmation(); interruptedContext(); transferDeadline();
   printf("%u OTA assertions passed\n", checks);
 }

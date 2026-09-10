@@ -180,7 +180,32 @@ checks elapsed time after a pending low-level step. DNS/SDK calls can overrun an
 cannot be interrupted by this budget alone. Target TLS result, heap/stack, web
 responsiveness and recovery must be measured before Release/automatic activation.
 
-### Phase-local scratch candidate (309, host-only)
+### Bounded resource sampling candidate (311, host-only)
+
+310 reached the receiver's absolute120s transfer limit. Host operation counts
+showed over3million heap API calls for a1048000-byte image: rawByte called alive
+even for every already-buffered byte.311 keeps cancellation/job checks per byte,
+but samples heap at TLS read boundaries (before and after every result, including
+WANT_READ/WANT_WRITE), existing control/ACK-wait checks, and before publishing a
+Header/Chunk to the writer. The loop's independent health gate remains intact.
+No buffer size, heap threshold, TLS setting, idle/transfer/job deadline changes.
+
+At most1024 raw bytes may be parsed between samples, without allocation or flash
+write in that parsing path. This is a byte bound, not a wall-clock sampling SLA:
+preemption can lengthen the interval. Transient dips that recover between samples
+may be missed. Sampled minima are not directly comparable to prior per-byte
+minima as equivalent-resolution evidence. Cancellation/job checks remain cheap
+and per-byte; low resources are rejected before another TLS read or publication.
+Pending ACK polling retains resource checks. SDK blocking overruns and cross-core
+races are not eliminated, and a host count reduction is not a device speedup.
+
+Host tests cover buffered cancellation/deadline and bounded-copy heap deferral,
+low heap before/after TLS, WANT_READ, expiry across wraparound, pre-publication
+rejection and heap/cancel/deadline during ACK wait. Existing framing/signature/
+full-image/receiver deadline tests remain. Target throughput/OTA success require
+a separately scoped receiver311 and higher-candidate trial; no deployment here.
+
+### Phase-local scratch candidate (309, historical host result)
 
 The308 trial's first decision recorded heap78848 below81920, healthFailed64,
 and a negative Chunk ACK. The allocation source of that transient dip is not

@@ -31,8 +31,13 @@ inline int xQueueSend(QueueHandle_t queue, const void* value, uint32_t) {
   if (queueSent) queueSent(queue);
   return pdTRUE;
 }
+inline std::function<void()>& fakeQueueWait() { static std::function<void()> hook; return hook; }
 inline int xQueueReceive(QueueHandle_t queue, void* value, uint32_t ticks) {
-  if (queue->data.empty()) { fakeNow += ticks; return 0; }
+  if (queue->data.empty()) {
+    fakeNow += ticks;
+    if (ticks && fakeQueueWait()) fakeQueueWait()();
+    return 0;
+  }
   memcpy(value, queue->data.front().data(), queue->item); queue->data.pop_front();
   fakeNow += queueReceiveAdvance;
   return pdTRUE;

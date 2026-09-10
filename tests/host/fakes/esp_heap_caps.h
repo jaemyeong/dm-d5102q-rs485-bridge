@@ -18,5 +18,7 @@ inline void* heap_caps_malloc(size_t size, int) {
   return value;
 }
 inline void heap_caps_free(void* value) { if (value) { assert(fakeScratchLive()); fakeScratchLive() = 0; free(value); } }
-inline size_t heap_caps_get_free_size(int) { return fakeFreeHeap() - fakeScratchLive(); }
-inline size_t heap_caps_get_largest_free_block(int) { return fakeLargestBlock(); }
+inline size_t& fakeFreeHeapCalls() { static size_t value = 0; return value; }
+inline size_t& fakeLargestBlockCalls() { static size_t value = 0; return value; }
+inline size_t heap_caps_get_free_size(int) { ++fakeFreeHeapCalls(); return fakeFreeHeap() - fakeScratchLive(); }
+inline size_t heap_caps_get_largest_free_block(int) { ++fakeLargestBlockCalls(); return fakeLargestBlock(); }

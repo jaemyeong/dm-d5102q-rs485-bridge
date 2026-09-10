@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <string.h>
 #include <assert.h>
+#include <functional>
 constexpr int ESP_TLS_ERR_SSL_WANT_READ = -100, ESP_TLS_ERR_SSL_WANT_WRITE = -101;
 constexpr int ESP_ERR_NO_MEM = 0x101;
 struct esp_tls_cfg_t {
@@ -31,6 +32,10 @@ struct TlsFake {
   uint32_t connectDelayMs = 13;
   FakeTlsError error{0x8007, -9984, 8};
   unsigned allocated = 0, destroyed = 0, errorsRead = 0;
+  size_t readFragment = 17, readCalls = 0, readBytes = 0;
+  unsigned wantReads = 0;
+  int wantCode = ESP_TLS_ERR_SSL_WANT_READ;
+  std::function<void()> afterRead;
 };
 extern TlsFake tlsFake;
 extern uint32_t fakeNow;
@@ -54,9 +59,18 @@ inline int esp_tls_conn_write(esp_tls_t* tls, const void* bytes, size_t size) {
   tlsFake.requests.back().append(static_cast<const char*>(bytes), size); return int(size);
 }
 inline int esp_tls_conn_read(esp_tls_t* tls, void* bytes, size_t size) {
+  ++tlsFake.readCalls;
+  if (tlsFake.wantReads) {
+    --tlsFake.wantReads;
+    if (tlsFake.afterRead) tlsFake.afterRead();
+    return tlsFake.wantCode;
+  }
   if (tlsFake.failRead) { tls->error = tlsFake.error; return tlsFake.error.code; }
-  size = std::min({size, size_t(17), tls->response.size() - tls->offset}); // Fragment TLS records.
-  memcpy(bytes, tls->response.data() + tls->offset, size); tls->offset += size; return int(size);
+  size = std::min({size, tlsFake.readFragment, tls->response.size() - tls->offset});
+  tlsFake.readBytes += size;
+  memcpy(bytes, tls->response.data() + tls->offset, size); tls->offset += size;
+  if (tlsFake.afterRead) tlsFake.afterRead();
+  return int(size);
 }
 inline esp_err_t esp_tls_get_and_clear_last_error(FakeTlsError* handle, int* code, int* flags) {
   assert(handle); ++tlsFake.errorsRead;

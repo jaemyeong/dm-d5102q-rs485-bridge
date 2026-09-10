@@ -15,6 +15,35 @@ extern "C" esp_err_t esp_crt_bundle_attach(void*) { return ESP_OK; }
 void esp_fill_random(void* bytes, size_t size) { memset(bytes, 7, size); }
 namespace bootstrap { namespace github {
 struct WorkerHarness {
+  static void rawSetup(Worker& worker, bool buffered) {
+    worker.jobAt_ = worker.progressAt_ = fakeNow;
+    worker.result_ = Result{};
+    worker.result_.sampledMinHeap = worker.result_.sampledMinBlock = UINT32_MAX;
+    worker.tls_ = new esp_tls_t;
+    worker.tls_->response.assign(2048, 'x');
+    memset(worker.raw_, 'x', sizeof(worker.raw_));
+    worker.rawUsed_ = 0; worker.rawSize_ = buffered ? sizeof(worker.raw_) : 0;
+  }
+  static int raw(Worker& worker) { return worker.rawByte(); }
+  static void closeRaw(Worker& worker) { worker.close(); }
+  static Result guardedExchange(Worker& worker) {
+    assert(worker.initialize());
+    worker.jobAt_ = fakeNow; worker.result_ = Result{};
+    assert(!worker.exchange(MessageKind::Chunk, 1024));
+    assert(worker.messages_->data.empty()); // Reject BEFORE publishing to writer.
+    return worker.result_;
+  }
+  static Result pendingExchange(Worker& worker, unsigned kind) {
+    assert(worker.initialize()); worker.jobAt_ = fakeNow; worker.result_ = Result{};
+    fakeQueueWait() = [&] {
+      if (kind == 0) fakeFreeHeap() = 65535;
+      else if (kind == 1) worker.cancel();
+      else fakeNow = worker.jobAt_ + kJobMs;
+    };
+    assert(!worker.exchange(MessageKind::Chunk, 1024));
+    fakeQueueWait() = {};
+    return worker.result_;
+  }
   static bool enqueue(Worker& worker, const Message& message) {
     return xQueueSend(worker.messages_, &message, 0) == pdTRUE;
   }
@@ -78,16 +107,64 @@ std::string response(const std::string& body, const char* type = "application/js
   return "HTTP/1.1 200 OK\r\nContent-Type: " + std::string(type) + "\r\nContent-Length: " + std::to_string(body.size()) + "\r\nETag: \"fixture\"\r\n\r\n" + body;
 }
 void token(char output[33]) { strcpy(output, "0123456789abcdef0123456789abcdef"); }
+void samplingBoundaries() {
+  // Buffered bytes require cheap cancellation/time checks, not heap queries.
+  // A low heap during that bounded copy is rejected at refill or publication.
+  for (unsigned kind = 0; kind < 10; ++kind) {
+    fakeNow = UINT32_MAX - 100; tlsFake = TlsFake{};
+    fakeFreeHeap() = 160000; fakeFreeHeapCalls() = fakeLargestBlockCalls() = 0;
+    Worker worker; WorkerHarness::rawSetup(worker, kind < 3);
+    if (kind == 0) {
+      fakeFreeHeap() = 65535;
+      for (unsigned i = 0; i < 1024; ++i) CHECK(WorkerHarness::raw(worker) == 'x');
+      CHECK(fakeFreeHeapCalls() == 0 && fakeLargestBlockCalls() == 0);
+      CHECK(WorkerHarness::raw(worker) == -1 && tlsFake.readCalls == 0);
+    } else if (kind == 1 || kind == 2) {
+      if (kind == 1) worker.cancel(); else fakeNow += kJobMs;
+      CHECK(WorkerHarness::raw(worker) == -1 && tlsFake.readCalls == 0);
+    } else if (kind == 3) {
+      fakeFreeHeap() = 65535;
+      CHECK(WorkerHarness::raw(worker) == -1 && tlsFake.readCalls == 0);
+    } else if (kind == 4 || kind == 5 || kind == 9) {
+      tlsFake.wantReads = kind == 4 ? 0 : 1;
+      if (kind == 9) tlsFake.wantCode = ESP_TLS_ERR_SSL_WANT_WRITE;
+      tlsFake.afterRead = [] { fakeFreeHeap() = 65535; };
+      CHECK(WorkerHarness::raw(worker) == -1 && tlsFake.readCalls == 1);
+    } else if (kind == 6 || kind == 7) {
+      tlsFake.afterRead = [&] { if (kind == 6) worker.cancel(); else fakeNow += kJobMs; };
+      CHECK(WorkerHarness::raw(worker) == -1 && tlsFake.readCalls == 1);
+    } else {
+      fakeNow += ota::kIdleMs;
+      CHECK(WorkerHarness::raw(worker) == -1 && tlsFake.readCalls == 0);
+    }
+    WorkerHarness::closeRaw(worker);
+  }
+  tlsFake = TlsFake{}; queueSent = {};
+  { Worker worker; fakeFreeHeap() = 65535;
+    CHECK(WorkerHarness::guardedExchange(worker).exchangeFailure == ExchangeFailure::Resources); }
+  fakeFreeHeap() = 160000;
+  for (unsigned kind = 0; kind < 3; ++kind) {
+    Worker worker; fakeFreeHeap() = 160000; fakeNow = UINT32_MAX - 10;
+    const Result result = WorkerHarness::pendingExchange(worker, kind);
+    const ExchangeFailure expected[] = {ExchangeFailure::Resources, ExchangeFailure::Cancelled, ExchangeFailure::JobTimeout};
+    CHECK(result.exchangeFailure == expected[kind]);
+    CHECK(result.exchangeWaitMs == (kind == 2 ? kJobMs : 20));
+  }
+  fakeFreeHeap() = 160000;
+}
 int main() {
-  for (unsigned kind = 0; kind < 37; ++kind) {
+  samplingBoundaries();
+  for (unsigned kind = 0; kind < 39; ++kind) {
     fakeNow = 60000; testEpoch = 1780000000; fakeOta() = FakeOta{}; tlsFake = TlsFake{};
     CHECK(fakeScratchLive() == 0);
     fakeScratchCalls() = 0; fakeScratchPeak() = 0;
+    fakeFreeHeapCalls() = fakeLargestBlockCalls() = 0;
+    if (kind == 38) tlsFake.readFragment = 1024;
     fakeScratchFailAt() = kind >= 32 && kind <= 34 ? kind - 31 : 0;
     queueReceiveAdvance = kind >= 24 ? 2 : 0;
     if (kind == 25) fakeNow = UINT32_MAX - 30;
     uint8_t seed[32] = {9}, secret[64], pub[32]; crypto_ed25519_key_pair(secret, pub, seed);
-    std::string image(2300, 'x');
+    std::string image(kind >= 37 ? 1048000 : 2300, 'x');
     ota::Manifest manifest; manifest.version = kOtaVersion + 1; manifest.imageSize = image.size(); manifest.minSchema = 1;
     manifest.minUpdater = 2; strcpy(manifest.boardId, ota::kBoardId); strcpy(manifest.buildId, "worker-test"); strcpy(manifest.channel, "stable");
     mbedtls_sha256_ret(reinterpret_cast<const uint8_t*>(image.data()), image.size(), manifest.sha256, 0);
@@ -160,6 +237,17 @@ int main() {
     };
     CHECK(pull.request(fakeNow)); pull.poll(fakeNow, true, 0, token);
     const Result result = WorkerHarness::execute(worker, kind == 14, kind == 15);
+    if (kind >= 37) {
+      // Count real Worker operations; fake heap/TLS timings are NOT ESP32 timings.
+      CHECK(imageMessages == (image.size() + 1023) / 1024);
+      CHECK(tlsFake.readBytes > image.size());
+      CHECK(fakeFreeHeapCalls() + fakeLargestBlockCalls() < image.size() / 2);
+      CHECK(fakeLargestBlockCalls() < image.size() / 4);
+      CHECK(tlsFake.readCalls < fakeLargestBlockCalls());
+      printf("worker cost: fragment=%zu image=%zu heap=%zu block=%zu TLSreads=%zu TLSbytes=%zu imageACKs=%u\n",
+        tlsFake.readFragment, image.size(), fakeFreeHeapCalls(), fakeLargestBlockCalls(),
+        tlsFake.readCalls, tlsFake.readBytes, imageMessages);
+    }
     CHECK(fakeScratchLive() == 0);
     CHECK(fakeScratchPeak() <= kJsonMax + 1);
     if (kind == 0) CHECK(fakeScratchCalls() == 3 && fakeScratchPeak() == kJsonMax + 1);

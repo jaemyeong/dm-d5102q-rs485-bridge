@@ -70,8 +70,11 @@ class Worker final : public Port {
   }
   bool alive() {
     sampleResources();
-    return !cancelled_.load() && !elapsed(millis(), jobAt_, kJobMs) &&
+    return running() &&
       heap_caps_get_free_size(MALLOC_CAP_8BIT) >= 65536;
+  }
+  bool running() const {
+    return !cancelled_.load() && !elapsed(millis(), jobAt_, kJobMs);
   }
   void close() {
     if (tls_) {
@@ -86,6 +89,10 @@ class Worker final : public Port {
     outgoing_.kind = kind; outgoing_.size = size; outgoing_.sequence = ++sequence_;
     outgoing_.created = millis(); outgoing_.result = result_;
     const uint32_t sentAt = millis();
+    // Buffered parsing may defer resource sampling, but never publication to
+    // the writer. The loop independently applies its stricter health gate.
+    if (!alive()) return exchangeFailed(cancelled_.load() ? ExchangeFailure::Cancelled :
+      elapsed(millis(), jobAt_, kJobMs) ? ExchangeFailure::JobTimeout : ExchangeFailure::Resources, sentAt);
     if (xQueueSend(messages_, &outgoing_, pdMS_TO_TICKS(100)) != pdTRUE)
       return exchangeFailed(ExchangeFailure::QueueSend, sentAt);
     const uint32_t at = millis();
@@ -107,10 +114,15 @@ class Worker final : public Port {
     return false;
   }
   int rawByte() {
-    while (alive()) {
+    while (running()) {
+      // No allocation or flash write here. At most one 1024-byte raw buffer is
+      // consumed without a heap sample; cancellation/job checks stay per byte.
       if (rawUsed_ < rawSize_) return raw_[rawUsed_++];
-      if (elapsed(millis(), progressAt_, ota::kIdleMs)) return -1;
+      if (!alive() || elapsed(millis(), progressAt_, ota::kIdleMs)) return -1;
       const int count = esp_tls_conn_read(tls_, raw_, sizeof(raw_));
+      // TLS may allocate, block, or yield; do not consume its bytes on a failed
+      // resource/cancel/job check, including WANT_READ/WANT_WRITE responses.
+      if (!alive()) return -1;
       if (count > 0) { rawSize_ = size_t(count); rawUsed_ = 0; progressAt_ = millis(); continue; }
       if (count != ESP_TLS_ERR_SSL_WANT_READ && count != ESP_TLS_ERR_SSL_WANT_WRITE) return -1;
       vTaskDelay(pdMS_TO_TICKS(1));
