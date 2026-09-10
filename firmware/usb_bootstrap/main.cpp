@@ -215,13 +215,19 @@ void challenge(uint32_t now) {
   snprintf(header, sizeof(header), "WWW-Authenticate: Digest realm=\"%s\", nonce=\"%s\", algorithm=SHA-256, qop=\"auth\"\r\n", kRealm, auth.nonce());
   respond(401, "Unauthorized", "{\"error\":\"AUTH_REQUIRED\"}", "application/json", header);
 }
-bool otaHealthy() {
-  return applicationStarted && configStore.state() == ConfigState::Active &&
-    network.mode() == Mode::Station && WiFi.status() == WL_CONNECTED &&
-    uint32_t(WiFi.localIP()) != 0 && bool(server) &&
-    heap_caps_get_free_size(MALLOC_CAP_8BIT) >= 81920 &&
-    heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) >= 32768;
+github::HealthSample otaHealthSample() {
+  github::HealthSample value;
+  value.heap = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  value.block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  value.failed = (!applicationStarted ? 1U : 0U) |
+    (configStore.state() != ConfigState::Active ? 2U : 0U) |
+    (network.mode() != Mode::Station ? 4U : 0U) |
+    (WiFi.status() != WL_CONNECTED ? 8U : 0U) |
+    (uint32_t(WiFi.localIP()) == 0 ? 16U : 0U) | (!bool(server) ? 32U : 0U) |
+    (value.heap < 81920 ? 64U : 0U) | (value.block < 32768 ? 128U : 0U);
+  return value;
 }
+bool otaHealthy() { return otaHealthSample().failed == 0; }
 void headerGate(uint32_t now) {
   if (!parseHeaders(requestBytes, request)) { error(400, "Bad Request", "BAD_HEADERS"); return; }
   const IPAddress address = client.localIP();
@@ -249,6 +255,7 @@ void headerGate(uint32_t now) {
     if (!strcmp(request.path, "/api/v1/status") || !strcmp(request.path, "/api/v1/ota/status")) {
       const bool configurable = network.mode() == Mode::Provisioning && configStore.state() == ConfigState::Empty;
       const auto& pull = githubPull.result();
+      const auto& rejected = githubPull.rejection();
       const int length = snprintf(responseJson, sizeof(responseJson),
         "{\"buildId\":\"%s\",\"mode\":\"%s\",\"ip\":\"%s\",\"connected\":%s,\"configRevision\":%lu,"
         "\"canConfigure\":%s,\"apTimeoutEnabled\":false,\"apRemainingMs\":null,\"csrfToken\":\"%s\",\"txBlocked\":true,\"otaSupported\":%s,"
@@ -261,7 +268,10 @@ void headerGate(uint32_t now) {
         "\"githubAutomatic\":%s,\"githubState\":\"%s\",\"githubResult\":\"%s\",\"githubHttpStatus\":%u,"
         "\"githubNextCheckMs\":%lu,\"githubSampledMinHeap\":%lu,\"githubSampledMinBlock\":%lu,\"githubStackFreeBytes\":%lu,"
         "\"githubTlsAttempted\":%s,\"githubTlsConnectResult\":%d,\"githubTlsConnectMs\":%lu,"
-        "\"githubTlsEspError\":%d,\"githubTlsError\":%d,\"githubTlsVerifyFlags\":%d}",
+        "\"githubTlsEspError\":%d,\"githubTlsError\":%d,\"githubTlsVerifyFlags\":%d,"
+        "\"githubExchange\":%u,\"githubExchangeSequence\":%lu,\"githubExchangeWaitMs\":%lu,\"githubExchangeKind\":%lu,"
+        "\"githubRejection\":{\"present\":%s,\"kind\":%u,\"sequence\":%lu,\"received\":%lu,"
+        "\"messageAge\":%lu,\"jobAge\":%lu,\"gates\":%lu,\"heap\":%lu,\"block\":%lu,\"healthFailed\":%lu,\"reason\":\"%s\"}}",
         kBuildId, modeName(), ip, WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0 ? "true" : "false",
         static_cast<unsigned long>(configStore.revision()), configurable ? "true" : "false",
         csrf, otaRuntime.updater.enabled() ? "true" : "false", localHostname, localHostname, mdnsActive ? "true" : "false",
@@ -276,7 +286,14 @@ void headerGate(uint32_t now) {
         static_cast<unsigned long>(githubPull.nextMs(now)), static_cast<unsigned long>(pull.sampledMinHeap),
         static_cast<unsigned long>(pull.sampledMinBlock), static_cast<unsigned long>(pull.stackFreeBytes),
         pull.tls.attempted ? "true" : "false", pull.tls.connectResult, static_cast<unsigned long>(pull.tls.connectMs),
-        pull.tls.espError, pull.tls.tlsError, pull.tls.verifyFlags);
+        pull.tls.espError, pull.tls.tlsError, pull.tls.verifyFlags,
+        static_cast<unsigned>(pull.exchangeFailure), static_cast<unsigned long>(pull.exchangeSequence),
+        static_cast<unsigned long>(pull.exchangeWaitMs), static_cast<unsigned long>(pull.exchangeKind), rejected.present ? "true" : "false",
+        static_cast<unsigned>(rejected.kind), static_cast<unsigned long>(rejected.sequence),
+        static_cast<unsigned long>(rejected.received), static_cast<unsigned long>(rejected.messageAge),
+        static_cast<unsigned long>(rejected.jobAge), static_cast<unsigned long>(rejected.gates),
+        static_cast<unsigned long>(rejected.health.heap), static_cast<unsigned long>(rejected.health.block),
+        static_cast<unsigned long>(rejected.health.failed), rejected.reason);
       if (length < 0 || size_t(length) >= sizeof(responseJson)) { error(500, "Internal Server Error", "STATUS_BOUNDS"); return; }
       respond(200, "OK", responseJson);
       return;
@@ -491,7 +508,9 @@ void loop() {
     return;
   }
   otaRuntime.poll(now, otaHealthy());
-  githubPull.poll(now, !pendingReboot && otaHealthy(), esp_random(), randomHex);
+  auto health = otaHealthSample();
+  if (pendingReboot) health.failed |= 256U;
+  githubPull.poll(now, health.failed == 0, esp_random(), randomHex, health);
   if (githubPull.rebootReady() && network.mode() != Mode::Rebooting) pendingReboot = true;
   const bool connected = WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0;
   if (connected != wasConnected) {

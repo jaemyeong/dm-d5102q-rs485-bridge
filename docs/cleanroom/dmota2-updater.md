@@ -180,7 +180,34 @@ checks elapsed time after a pending low-level step. DNS/SDK calls can overrun an
 cannot be interrupted by this budget alone. Target TLS result, heap/stack, web
 responsiveness and recovery must be measured before Release/automatic activation.
 
-### Cross-core receipt timestamp candidate (305)
+### Rejection diagnostics candidate (307, host-only)
+
+The authenticated status includes `githubRejection`, a loop-owned first negative
+ACK snapshot retained through Done and GETs, cleared on the next successfully
+started job (or reboot). Fields: present, kind (0 Header/1 Chunk), sequence,
+received image bytes, messageAge/jobAge in ms, gates, heap/block, healthFailed,
+and an updater-owned fixed reason label. Gate bits1/2/4/8 mean message idle,
+job timeout, health false, runtime not eligible. Zero gates with rejection means
+Header validation/start or Chunk writer processing rejected; inspect reason.
+HealthFailed bits1/2/4/8/16/32/64/128/256 mean application/config/station/Wi-Fi/
+IP/server/heap/block/pending reboot. Heap/block and mask are the same loop input
+sample used for the decision, taken before dequeue; not an atomic cross-core
+system snapshot. Heap81920/block32768 and worker heap65536 limits are unchanged.
+
+Completed worker result adds githubExchange (0 none,1 queue send,2 negative ACK,
+3 ACK timeout,4 cancellation,5 job timeout,6 resources), githubExchangeSequence,
+githubExchangeWaitMs, and githubExchangeKind (0 none,1 Header,2 Chunk). The first
+failed exchange is retained; worker result resets on execute and is copied to
+the loop only at Done. During a new job these completed-result fields may still
+describe the prior job, while githubRejection belongs to the current job.
+No shared mutable diagnostic buffers, secret material or new NVS writes.
+
+Host tests cover injected failures, first-record retention/reset, actual health
+predicate threshold edges, authenticated-only serialization and scalar width.
+These are diagnostic fields, not a fix or proof of the unique306 target cause.
+Candidate307 is not deployed by these tests; future trial requires explicit scope.
+
+### Cross-core receipt timestamp candidate (305) details
 
 The 304 bench pull reached HTTP200 and RECEIVING, then UPDATE_REJECTED with
 UPLOAD_INTERRUPTED; installed303 stayed VALID. Host regression reproduces one

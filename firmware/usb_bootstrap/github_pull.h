@@ -32,15 +32,28 @@ struct TlsDiagnostics {
   uint32_t connectMs = 0;
   int espError = 0, tlsError = 0, verifyFlags = 0;
 };
+enum class ExchangeFailure { None, QueueSend, NegativeAck, AckTimeout, Cancelled, JobTimeout, Resources };
 struct Result {
   ResultCode code = ResultCode::None;
   unsigned httpStatus = 0;
   uint32_t waitMs = kPollMs, sampledMinHeap = 0, sampledMinBlock = 0, stackFreeBytes = 0;
   TlsDiagnostics tls;
+  ExchangeFailure exchangeFailure = ExchangeFailure::None;
+  uint32_t exchangeSequence = 0, exchangeWaitMs = 0, exchangeKind = 0;
   char etag[kEtagMax] = {};
   Release release;
 };
 enum class MessageKind { Header, Chunk, Done };
+struct HealthSample {
+  uint32_t heap = 0, block = 0, failed = 0;
+};
+struct Rejection {
+  bool present = false;
+  MessageKind kind = MessageKind::Done;
+  uint32_t sequence = 0, received = 0, messageAge = 0, jobAge = 0, gates = 0;
+  HealthSample health;
+  char reason[32] = {};
+};
 struct Message {
   MessageKind kind = MessageKind::Done;
   uint32_t sequence = 0, created = 0;
@@ -72,9 +85,10 @@ class Pull {
   bool automatic() const { return automatic_; }
   bool rebootReady() const { return reboot_; }
   const Result& result() const { return result_; }
+  const Rejection& rejection() const { return rejection_; }
   const char* state() const { return busy_ ? "CHECKING_OR_DOWNLOADING" : requested_ ? "QUEUED" : automatic_ ? "WAITING" : "AUTOMATIC_DISABLED"; }
   uint32_t nextMs(uint32_t now) const { return schedule_.remaining(now); }
-  void poll(uint32_t now, bool healthy, uint32_t random, void (*randomToken)(char[33])) {
+  void poll(uint32_t now, bool healthy, uint32_t random, void (*randomToken)(char[33]), const HealthSample& health = HealthSample{}) {
     if (busy_) {
       if (elapsed(now, started_, kJobMs)) {
         port_.cancel();
@@ -97,7 +111,10 @@ class Pull {
         return;
       }
       bool accepted = false;
-      if (!elapsed(now, message.created, ota::kIdleMs) && !elapsed(now, started_, kJobMs) && healthy && runtime_.canUpdate()) {
+      const uint32_t gates = (elapsed(now, message.created, ota::kIdleMs) ? 1U : 0U) |
+        (elapsed(now, started_, kJobMs) ? 2U : 0U) | (!healthy ? 4U : 0U) |
+        (!runtime_.canUpdate() ? 8U : 0U);
+      if (!gates) {
         if (message.kind == MessageKind::Header && message.size == ota::kPackageHeaderBytes) {
           ota::Manifest preview;
           char token[33]; randomToken(token);
@@ -109,6 +126,14 @@ class Pull {
           accepted = runtime_.updater.chunk(message.bytes, message.size, now);
         }
       }
+      if (!accepted && !rejection_.present) {
+        rejection_.present = true; rejection_.kind = message.kind;
+        rejection_.sequence = message.sequence; rejection_.received = runtime_.updater.received();
+        rejection_.messageAge = now - message.created; rejection_.jobAge = now - started_;
+        rejection_.gates = gates; rejection_.health = health;
+        // Only updater-owned constant labels, never package or request content.
+        strncpy(rejection_.reason, runtime_.updater.reason(), sizeof(rejection_.reason) - 1);
+      }
       port_.reply(message.sequence, accepted);
       return;
     }
@@ -118,7 +143,7 @@ class Pull {
     CheckRequest request; request.floor = kOtaVersion > runtime_.attemptVersion() ? kOtaVersion : runtime_.attemptVersion();
     request.failures = failures_; memcpy(request.etag, etag_, sizeof(etag_));
     requested_ = false; started_ = now; startedOnce_ = true;
-    if (port_.start(request)) busy_ = true;
+    if (port_.start(request)) { rejection_ = Rejection{}; busy_ = true; }
     else { result_.code = ResultCode::Resources; schedule_.after(now, 60000); }
     (void)random; // The network worker owns the post-request jitter sample.
   }
@@ -132,5 +157,6 @@ class Pull {
   char etag_[kEtagMax] = {};
   Schedule schedule_;
   Result result_;
+  Rejection rejection_;
 };
 }}

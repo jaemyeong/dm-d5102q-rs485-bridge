@@ -365,6 +365,33 @@ void otaHttpBoundary() {
     }
   }
 }
+void rejectionStatusDiagnostics() {
+  reset();
+  fakeFreeHeap() = 81920; fakeLargestBlock() = 32768;
+  CHECK(!(otaHealthSample().failed & (64U | 128U)));
+  fakeFreeHeap() = 81919;
+  CHECK(otaHealthSample().failed & 64U);
+  fakeFreeHeap() = 80156;
+  CHECK(otaHealthSample().heap == 80156 && !otaHealthy());
+  fakeLargestBlock() = 32767;
+  CHECK(otaHealthSample().failed & 128U);
+  fakeFreeHeap() = 160000; fakeLargestBlock() = 90000;
+  // Exercise serialization at maximum scalar widths; synthetic state only.
+  auto& rejected = const_cast<github::Rejection&>(githubPull.rejection());
+  rejected.present = true; rejected.kind = github::MessageKind::Chunk;
+  rejected.sequence = rejected.received = rejected.messageAge = rejected.jobAge = rejected.gates = UINT32_MAX;
+  rejected.health.heap = rejected.health.block = rejected.health.failed = UINT32_MAX;
+  memset(rejected.reason, 'X', sizeof(rejected.reason) - 1);
+  auto response = drain(connectRequest("GET /api/v1/status HTTP/1.1\r\nHost: 192.168.4.1\r\n\r\n"));
+  CHECK(response.find("401 Unauthorized") != std::string::npos);
+  CHECK(response.find("githubRejection") == std::string::npos);
+  response = drain(connectRequest("GET /api/v1/status HTTP/1.1\r\nHost: 192.168.4.1\r\n" + digest("GET", "/api/v1/status") + "\r\n"));
+  CHECK(response.find("200 OK") != std::string::npos && response.find("STATUS_BOUNDS") == std::string::npos);
+  CHECK(response.find("\"githubRejection\":{\"present\":true") != std::string::npos);
+  CHECK(response.find("\"healthFailed\":4294967295") != std::string::npos);
+  CHECK(githubPull.rejection().sequence == UINT32_MAX); // Reads do not clear evidence.
+  rejected = github::Rejection{};
+}
 int main(int argc, char** argv) {
   if (argc == 2 && !strcmp(argv[1], "--curl-server")) {
     reset();
@@ -391,5 +418,6 @@ int main(int argc, char** argv) {
   firstChunkAuth(); fragmentedSaveAndReboot(); boundsAndDeadlines(); failedTrialReturnsToAp(); publicLoginAndUnlimitedAp();
   bootButtonAndMdns();
   otaHttpBoundary();
+  rejectionStatusDiagnostics();
   printf("USB bootstrap transport/runtime fakes: %u assertions passed\n", checks);
 }

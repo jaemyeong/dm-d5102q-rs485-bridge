@@ -28,6 +28,24 @@ struct WorkerHarness {
     return result;
   }
   static bool messages(Worker& worker, QueueHandle_t queue) { return worker.messages_ == queue; }
+  static bool chunk(Worker& worker) { return worker.outgoing_.kind == MessageKind::Chunk; }
+  static Result exchangeFailure(Worker& worker, unsigned kind) {
+    assert(worker.initialize());
+    worker.jobAt_ = fakeNow; worker.result_ = Result{};
+    if (kind == 0) {
+      Message message;
+      assert(enqueue(worker, message) && enqueue(worker, message));
+    }
+    if (kind == 2) worker.cancel();
+    if (kind == 3) worker.jobAt_ = fakeNow - kJobMs;
+    if (kind == 4) fakeFreeHeap() = 65535;
+    assert(!worker.exchange(MessageKind::Header, 192));
+    const Result first = worker.result_;
+    worker.exchangeFailed(ExchangeFailure::NegativeAck, fakeNow);
+    assert(worker.result_.exchangeFailure == first.exchangeFailure);
+    fakeFreeHeap() = 160000;
+    return first;
+  }
   static Result execute(Worker& worker, bool cached = false, bool current = false) {
     CheckRequest request; assert(xQueueReceive(worker.requests_, &request, 0) == pdTRUE);
     if (cached) strcpy(request.etag, "\"fixture\"");
@@ -35,6 +53,7 @@ struct WorkerHarness {
     auto& previous = worker.result_.tls; // Must not leak from an earlier job.
     previous.attempted = true; previous.connectResult = -1; previous.connectMs = 99;
     previous.espError = 123; previous.tlsError = -456; previous.verifyFlags = 8;
+    worker.result_.exchangeFailure = ExchangeFailure::QueueSend;
     worker.execute(request);
     assert(xQueueSend(worker.messages_, &worker.outgoing_, 0) == pdTRUE);
     return worker.result_;
@@ -60,7 +79,7 @@ std::string response(const std::string& body, const char* type = "application/js
 }
 void token(char output[33]) { strcpy(output, "0123456789abcdef0123456789abcdef"); }
 int main() {
-  for (unsigned kind = 0; kind < 27; ++kind) {
+  for (unsigned kind = 0; kind < 32; ++kind) {
     fakeNow = 60000; testEpoch = 1780000000; fakeOta() = FakeOta{}; tlsFake = TlsFake{};
     queueReceiveAdvance = kind >= 24 ? 2 : 0;
     if (kind == 25) fakeNow = UINT32_MAX - 30;
@@ -107,10 +126,23 @@ int main() {
     tlsFake.responses.push_back(download);
     Store store; Worker worker; ota::Runtime runtime(store, pub); runtime.arm(fakeNow); runtime.begin(fakeNow);
     Pull pull(worker, runtime, false); pull.begin(fakeNow, 0);
+    unsigned imageMessages = 0;
     queueSent = [&](QueueHandle_t queue) {
       // Producer can enqueue after loop cached now; dequeue itself can advance
       // the clock. Exercise the real Worker's post-dequeue clock sampling.
-      if (kind != 26 && WorkerHarness::messages(worker, queue)) pull.poll(kind >= 24 ? fakeNow - 1 : fakeNow, true, 0, token);
+      if (kind == 26 || !WorkerHarness::messages(worker, queue)) return;
+      const bool chunk = WorkerHarness::chunk(worker);
+      if (chunk) ++imageMessages;
+      // Model the loop's health input dropping only after one accepted chunk,
+      // or at the final chunk. This is not a measurement of target heap timing.
+      const bool healthy = !((kind == 27 && imageMessages == 2) ||
+                             (kind == 28 && imageMessages == 3));
+      if (chunk && kind == 29 && imageMessages == 2) fakeOta().writeError = ESP_FAIL;
+      if (chunk && kind == 30) fakeOta().endError = ESP_FAIL;
+      if (chunk && kind == 31) fakeOta().selectError = ESP_FAIL;
+      HealthSample sample; sample.heap = healthy ? 160000 : 80156;
+      sample.block = 69620; sample.failed = healthy ? 0 : 64;
+      pull.poll(kind >= 24 ? fakeNow - 1 : fakeNow, healthy, 0, token, sample);
     };
     CHECK(pull.request(fakeNow)); pull.poll(fakeNow, true, 0, token);
     const Result result = WorkerHarness::execute(worker, kind == 14, kind == 15);
@@ -132,9 +164,10 @@ int main() {
       CHECK(result.tls.verifyFlags == (error ? tlsFake.error.flags : 0));
     }
     const bool updated = kind < 2 || kind == 12 || kind == 24 || kind == 25;
-    CHECK(fakeOta().selects == (updated ? 1U : 0U));
+    CHECK(fakeOta().selects == (updated || kind == 31 ? 1U : 0U));
     CHECK(pull.rebootReady() == updated);
     if (updated) { CHECK(result.code == ResultCode::Updated); CHECK(fakeOta().image == std::vector<uint8_t>(image.begin(), image.end())); }
+    if (updated || kind == 4) CHECK(result.exchangeFailure == ExchangeFailure::None && !result.exchangeSequence);
     if (kind == 4) CHECK(tlsFake.hosts.empty() && result.code == ResultCode::Time);
     if (kind == 9) CHECK(result.code == ResultCode::NoRelease && !fakeOta().begins);
     if (kind == 10) CHECK(result.code == ResultCode::RateLimit && result.waitMs >= 800000 && result.waitMs < 801000);
@@ -152,10 +185,46 @@ int main() {
       CHECK(result.code == ResultCode::Network && !fakeOta().begins && !fakeOta().writes && !fakeOta().selects);
     if (kind == 21) CHECK(result.code == ResultCode::NoRelease && !fakeOta().begins);
     if (kind == 26) CHECK(result.code == ResultCode::Rejected && fakeNow >= 60000 + ota::kIdleMs && !fakeOta().begins);
+    if (kind >= 27) {
+      const char* reason = kind <= 28 ? "UPLOAD_INTERRUPTED" : kind == 29 ?
+        "OTA_WRITE_FAILED" : kind == 30 ? "IMAGE_INVALID" : "BOOT_SELECT_FAILED";
+      CHECK(result.code == ResultCode::Rejected && result.httpStatus == 200);
+      CHECK(result.exchangeFailure == ExchangeFailure::NegativeAck);
+      CHECK(result.exchangeKind == 2);
+      CHECK(pull.rejection().present);
+      CHECK(pull.rejection().kind == MessageKind::Chunk);
+      CHECK(pull.rejection().received == runtime.updater.received());
+      CHECK((pull.rejection().gates & 4U) == (kind <= 28 ? 4U : 0U));
+      CHECK(pull.rejection().health.heap == (kind <= 28 ? 80156U : 160000U));
+      CHECK(pull.rejection().health.failed == (kind <= 28 ? 64U : 0U));
+      CHECK(runtime.updater.phase() == ota::Phase::Failed);
+      CHECK(!strcmp(runtime.updater.reason(), reason));
+      CHECK(fakeOta().begins == 1 && !pull.rebootReady());
+      CHECK(runtime.attemptVersion() == manifest.version && store.values.count("otactx2"));
+      CHECK(fakeOta().writes == (kind == 27 ? 1U : kind <= 29 ? 2U : 3U));
+      CHECK(fakeOta().ends == (kind >= 30 ? 1U : 0U));
+      CHECK(!fakeOta().confirms && !fakeOta().rollbacks);
+      printf("negative-ACK case %u: %s, accepted bytes %u\n", kind, reason, runtime.updater.received());
+      const auto first = pull.rejection();
+      pull.poll(fakeNow + 1, true, 0, token);
+      CHECK(pull.rejection().sequence == first.sequence && pull.rejection().gates == first.gates);
+      CHECK(pull.request(fakeNow + 60000));
+      pull.poll(fakeNow + 60000, true, 0, token);
+      CHECK(!pull.rejection().present);
+    }
     for (const auto& request : tlsFake.requests) { CHECK(request.find("Authorization:") == std::string::npos); CHECK(request.find("Accept-Encoding: identity") != std::string::npos || request.empty()); }
     queueSent = {};
   }
   queueReceiveAdvance = 0;
+  for (unsigned kind = 0; kind < 5; ++kind) {
+    Worker worker; fakeNow = 60000;
+    const Result result = WorkerHarness::exchangeFailure(worker, kind);
+    const ExchangeFailure expected[] = {ExchangeFailure::QueueSend, ExchangeFailure::AckTimeout,
+      ExchangeFailure::Cancelled, ExchangeFailure::JobTimeout, ExchangeFailure::Resources};
+    CHECK(result.exchangeFailure == expected[kind] && result.exchangeSequence == 1);
+    CHECK(result.exchangeKind == 1);
+    if (kind == 1) CHECK(result.exchangeWaitMs == ota::kIdleMs);
+  }
   {
     Worker worker; Message incoming, outgoing; uint32_t receivedAt = 123;
     CHECK(!worker.take(outgoing, receivedAt) && receivedAt == 123);

@@ -75,11 +75,24 @@ class Worker final : public Port {
   bool exchange(MessageKind kind, size_t size) {
     outgoing_.kind = kind; outgoing_.size = size; outgoing_.sequence = ++sequence_;
     outgoing_.created = millis(); outgoing_.result = result_;
-    if (xQueueSend(messages_, &outgoing_, pdMS_TO_TICKS(100)) != pdTRUE) return false;
+    const uint32_t sentAt = millis();
+    if (xQueueSend(messages_, &outgoing_, pdMS_TO_TICKS(100)) != pdTRUE)
+      return exchangeFailed(ExchangeFailure::QueueSend, sentAt);
     const uint32_t at = millis();
     while (alive() && !elapsed(millis(), at, ota::kIdleMs)) {
       Ack ack;
-      if (xQueueReceive(acks_, &ack, pdMS_TO_TICKS(20)) == pdTRUE && ack.sequence == sequence_) return ack.accepted;
+      if (xQueueReceive(acks_, &ack, pdMS_TO_TICKS(20)) == pdTRUE && ack.sequence == sequence_)
+        return ack.accepted ? true : exchangeFailed(ExchangeFailure::NegativeAck, at);
+    }
+    return exchangeFailed(cancelled_.load() ? ExchangeFailure::Cancelled :
+      elapsed(millis(), jobAt_, kJobMs) ? ExchangeFailure::JobTimeout :
+      heap_caps_get_free_size(MALLOC_CAP_8BIT) < 65536 ? ExchangeFailure::Resources : ExchangeFailure::AckTimeout, at);
+  }
+  bool exchangeFailed(ExchangeFailure failure, uint32_t at) {
+    if (result_.exchangeFailure == ExchangeFailure::None) {
+      result_.exchangeFailure = failure; result_.exchangeSequence = sequence_;
+      result_.exchangeKind = static_cast<uint32_t>(outgoing_.kind) + 1;
+      result_.exchangeWaitMs = millis() - at;
     }
     return false;
   }
