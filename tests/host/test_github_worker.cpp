@@ -79,8 +79,11 @@ std::string response(const std::string& body, const char* type = "application/js
 }
 void token(char output[33]) { strcpy(output, "0123456789abcdef0123456789abcdef"); }
 int main() {
-  for (unsigned kind = 0; kind < 32; ++kind) {
+  for (unsigned kind = 0; kind < 37; ++kind) {
     fakeNow = 60000; testEpoch = 1780000000; fakeOta() = FakeOta{}; tlsFake = TlsFake{};
+    CHECK(fakeScratchLive() == 0);
+    fakeScratchCalls() = 0; fakeScratchPeak() = 0;
+    fakeScratchFailAt() = kind >= 32 && kind <= 34 ? kind - 31 : 0;
     queueReceiveAdvance = kind >= 24 ? 2 : 0;
     if (kind == 25) fakeNow = UINT32_MAX - 30;
     uint8_t seed[32] = {9}, secret[64], pub[32]; crypto_ed25519_key_pair(secret, pub, seed);
@@ -123,6 +126,16 @@ int main() {
     }
     if (kind == 22) tlsFake.failWrite = true;
     if (kind == 23) tlsFake.failRead = true;
+    if (kind == 35) tlsFake.responses.front() = response(json + std::string(kJsonMax - json.size(), ' '));
+    if (kind == 36) {
+      const size_t end = download.find("\r\n\r\n");
+      size_t extra = kHttpHeadMax - (end + 4);
+      std::string padding;
+      while (extra > 1500) { padding += "X-Pad: " + std::string(991, 'x') + "\r\n"; extra -= 1000; }
+      padding += "X-Pad: " + std::string(extra - 9, 'x') + "\r\n";
+      download.insert(end + 2, padding);
+      CHECK(download.find("\r\n\r\n") + 4 == kHttpHeadMax);
+    }
     tlsFake.responses.push_back(download);
     Store store; Worker worker; ota::Runtime runtime(store, pub); runtime.arm(fakeNow); runtime.begin(fakeNow);
     Pull pull(worker, runtime, false); pull.begin(fakeNow, 0);
@@ -132,6 +145,7 @@ int main() {
       // the clock. Exercise the real Worker's post-dequeue clock sampling.
       if (kind == 26 || !WorkerHarness::messages(worker, queue)) return;
       const bool chunk = WorkerHarness::chunk(worker);
+      CHECK(fakeScratchLive() == 0); // Header, Chunk and Done must own no scratch.
       if (chunk) ++imageMessages;
       // Model the loop's health input dropping only after one accepted chunk,
       // or at the final chunk. This is not a measurement of target heap timing.
@@ -146,6 +160,10 @@ int main() {
     };
     CHECK(pull.request(fakeNow)); pull.poll(fakeNow, true, 0, token);
     const Result result = WorkerHarness::execute(worker, kind == 14, kind == 15);
+    CHECK(fakeScratchLive() == 0);
+    CHECK(fakeScratchPeak() <= kJsonMax + 1);
+    if (kind == 0) CHECK(fakeScratchCalls() == 3 && fakeScratchPeak() == kJsonMax + 1);
+    if (kind >= 32 && kind <= 34) CHECK(result.code == ResultCode::Resources && !fakeOta().begins && !fakeOta().writes && !fakeOta().selects);
     CHECK(tlsFake.allocated == tlsFake.destroyed);
     CHECK(tlsFake.errorsRead == tlsFake.allocated);
     CHECK(result.tls.attempted == (kind != 4));
@@ -163,7 +181,8 @@ int main() {
       CHECK(result.tls.tlsError == (error ? tlsFake.error.code : 0));
       CHECK(result.tls.verifyFlags == (error ? tlsFake.error.flags : 0));
     }
-    const bool updated = kind < 2 || kind == 12 || kind == 24 || kind == 25;
+    const bool updated = kind < 2 || kind == 12 || kind == 24 || kind == 25 || kind >= 35;
+    if (kind >= 35) fprintf(stderr, "maximum-buffer case%u result%s reason%s\n", kind, resultName(result.code), runtime.updater.reason());
     CHECK(fakeOta().selects == (updated || kind == 31 ? 1U : 0U));
     CHECK(pull.rebootReady() == updated);
     if (updated) { CHECK(result.code == ResultCode::Updated); CHECK(fakeOta().image == std::vector<uint8_t>(image.begin(), image.end())); }
@@ -185,7 +204,7 @@ int main() {
       CHECK(result.code == ResultCode::Network && !fakeOta().begins && !fakeOta().writes && !fakeOta().selects);
     if (kind == 21) CHECK(result.code == ResultCode::NoRelease && !fakeOta().begins);
     if (kind == 26) CHECK(result.code == ResultCode::Rejected && fakeNow >= 60000 + ota::kIdleMs && !fakeOta().begins);
-    if (kind >= 27) {
+    if (kind >= 27 && kind <= 31) {
       const char* reason = kind <= 28 ? "UPLOAD_INTERRUPTED" : kind == 29 ?
         "OTA_WRITE_FAILED" : kind == 30 ? "IMAGE_INVALID" : "BOOT_SELECT_FAILED";
       CHECK(result.code == ResultCode::Rejected && result.httpStatus == 200);
@@ -216,6 +235,7 @@ int main() {
     queueSent = {};
   }
   queueReceiveAdvance = 0;
+  fakeScratchFailAt() = 0;
   for (unsigned kind = 0; kind < 5; ++kind) {
     Worker worker; fakeNow = 60000;
     const Result result = WorkerHarness::exchangeFailure(worker, kind);

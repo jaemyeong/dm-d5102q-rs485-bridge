@@ -180,7 +180,30 @@ checks elapsed time after a pending low-level step. DNS/SDK calls can overrun an
 cannot be interrupted by this budget alone. Target TLS result, heap/stack, web
 responsiveness and recovery must be measured before Release/automatic activation.
 
-### Rejection diagnostics candidate (307, host-only)
+### Phase-local scratch candidate (309, host-only)
+
+The308 trial's first decision recorded heap78848 below81920, healthFailed64,
+and a negative Chunk ACK. The allocation source of that transient dip is not
+identified.309 reduces a known permanent cost: Worker previously reserved a
+16385-byte parsing buffer even while receiving firmware image chunks.
+
+Worker now owns one RAII scratch allocation per parsing phase: at most8193 bytes
+for request/HTTP headers, at most16385 for release JSON. Header scratch ends when
+open returns; JSON scratch ends before asset download. No scratch remains at
+Header/Chunk/Done exchange, and the buffers never overlap. Allocation failure
+returns RESOURCE_LIMIT before image begin; every return frees scratch. JSON16KiB,
+headers8KiB, per-line limits and image-chunk1024 limits are unchanged. Metadata
+peak still needs its full buffer plus allocator overhead; this is not a universal
+peak-memory reduction claim. No task-stack/TLS configuration/health threshold or
+timeout changes, and no status polling suppression.
+
+Pinned build static RAM drops96288->79904 bytes (16384 saved); Worker symbol
+38824->22440. Host fakes verify lifetimes, allocation failures at each phase,
+maximum valid JSON/header sizes and existing error paths. Target free heap,
+largest block/fragmentation and GitHub completion remain unverified until a
+separate receiver309 and higher candidate310 trial.
+
+### Rejection diagnostics candidate (307) details
 
 The authenticated status includes `githubRejection`, a loop-owned first negative
 ACK snapshot retained through Done and GETs, cleared on the next successfully

@@ -40,6 +40,16 @@ class Worker final : public Port {
   }
   void cancel() override { cancelled_.store(true); }
  private:
+  // Phase-local, worker-owned scratch. Never overlaps another scratch buffer,
+  // and no scratch allocation survives into image Header/Chunk exchange.
+  class Scratch {
+   public:
+    explicit Scratch(size_t size) : data(static_cast<char*>(heap_caps_malloc(size, MALLOC_CAP_8BIT))) {}
+    ~Scratch() { heap_caps_free(data); }
+    Scratch(const Scratch&) = delete;
+    Scratch& operator=(const Scratch&) = delete;
+    char* const data;
+  };
   struct Ack { uint32_t sequence; bool accepted; };
   static constexpr size_t kStackBytes = 16384;
   static constexpr uint32_t kConnectMs = 15000;
@@ -134,16 +144,19 @@ class Worker final : public Port {
     result_.tls.connectResult = esp_tls_conn_new_sync(url.host, strlen(url.host), 443, &config, tls_);
     result_.tls.connectMs = uint32_t(millis()) - connectAt;
     if (result_.tls.connectResult != 1 || !alive()) return false;
-    const int size = snprintf(buffer_, sizeof(buffer_),
+    Scratch scratch(kHttpHeadMax + 1);
+    if (!scratch.data) { result_.code = ResultCode::Resources; return false; }
+    char* const buffer = scratch.data;
+    const int size = snprintf(buffer, kHttpHeadMax + 1,
       "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: dmbridge-ota/2\r\nAccept: %s\r\n"
       "X-GitHub-Api-Version: %s\r\nAccept-Encoding: identity\r\nConnection: close\r\n%s%s%s\r\n",
       url.path, url.host, metadata ? "application/vnd.github+json" : "application/octet-stream", kApiVersion,
       metadata && *etag ? "If-None-Match: " : "", metadata ? etag : "", metadata && *etag ? "\r\n" : "");
-    if (size < 0 || size_t(size) >= sizeof(buffer_)) return false;
+    if (size < 0 || size_t(size) >= kHttpHeadMax + 1) return false;
     progressAt_ = millis();
     for (size_t sent = 0; sent < size_t(size) && alive();) {
       if (elapsed(millis(), progressAt_, ota::kIdleMs)) return false;
-      const int count = esp_tls_conn_write(tls_, buffer_ + sent, size_t(size) - sent);
+      const int count = esp_tls_conn_write(tls_, buffer + sent, size_t(size) - sent);
       if (count > 0) { sent += size_t(count); progressAt_ = millis(); }
       else if (count == ESP_TLS_ERR_SSL_WANT_WRITE || count == ESP_TLS_ERR_SSL_WANT_READ) vTaskDelay(pdMS_TO_TICKS(1));
       else return false;
@@ -151,8 +164,8 @@ class Worker final : public Port {
     size_t used = 0;
     while (used < kHttpHeadMax) {
       const int value = rawByte(); if (value < 0) return false;
-      buffer_[used++] = char(value);
-      if (used >= 4 && !memcmp(buffer_ + used - 4, "\r\n\r\n", 4)) return parseHead(buffer_, used, head);
+      buffer[used++] = char(value);
+      if (used >= 4 && !memcmp(buffer + used - 4, "\r\n\r\n", 4)) return parseHead(buffer, used, head);
     }
     return false;
   }
@@ -178,7 +191,7 @@ class Worker final : public Port {
     snprintf(url.path, sizeof(url.path), "%s/releases/assets/%" PRIu64, kRepositoryPath, result_.release.asset);
     HttpHead head;
     for (unsigned hop = 0;; ++hop) {
-      if (!open(url, false, "", head)) { result_.code = ResultCode::Network; return; }
+      if (!open(url, false, "", head)) { if (result_.code != ResultCode::Resources) result_.code = ResultCode::Network; return; }
       if (!responsePolicy(head, request)) return;
       if (head.status == 200) break;
       if ((head.status != 302 && head.status != 301 && head.status != 307 && head.status != 308) || hop >= 3 ||
@@ -213,17 +226,21 @@ class Worker final : public Port {
     if (time(nullptr) < 1767225600) { result_.code = ResultCode::Time; return; }
     Url url; strcpy(url.host, "api.github.com"); strcpy(url.path, kLatestPath);
     HttpHead head;
-    if (!open(url, true, request.etag, head)) { result_.code = ResultCode::Network; return; }
+    if (!open(url, true, request.etag, head)) { if (result_.code != ResultCode::Resources) result_.code = ResultCode::Network; return; }
     if (!responsePolicy(head, request)) return;
     if (head.status == 404) { result_.code = ResultCode::NoRelease; return; }
     if (head.status == 304) { result_.code = request.etag[0] ? ResultCode::Unchanged : ResultCode::Metadata; return; }
     if (head.status != 200) { result_.code = ResultCode::Http; return; }
     if (!head.json) { result_.code = ResultCode::Metadata; return; }
-    Body body(head, kJsonMax);
-    const int size = bodyBytes(body, reinterpret_cast<uint8_t*>(buffer_), kJsonMax);
-    uint8_t extra;
-    if (size < 0 || bodyBytes(body, &extra, 1) != 0 || !body.complete() ||
-        !parseRelease(buffer_, size_t(size), result_.release)) { result_.code = ResultCode::Metadata; return; }
+    {
+      Scratch scratch(kJsonMax + 1);
+      if (!scratch.data) { result_.code = ResultCode::Resources; return; }
+      Body body(head, kJsonMax);
+      const int size = bodyBytes(body, reinterpret_cast<uint8_t*>(scratch.data), kJsonMax);
+      uint8_t extra;
+      if (size < 0 || bodyBytes(body, &extra, 1) != 0 || !body.complete() ||
+          !parseRelease(scratch.data, size_t(size), result_.release)) { result_.code = ResultCode::Metadata; return; }
+    } // Release the16KiB JSON scratch before opening the firmware asset.
     memcpy(result_.etag, head.etag, sizeof(result_.etag));
     close();
     if (result_.release.version <= request.floor) { result_.code = ResultCode::NoUpdate; return; }
@@ -261,7 +278,6 @@ class Worker final : public Port {
   std::atomic<bool> cancelled_{false};
   bool timeStarted_ = false;
   esp_tls_t* tls_ = nullptr;
-  char buffer_[kJsonMax + 1];
   uint8_t raw_[1024];
   size_t rawUsed_ = 0, rawSize_ = 0;
   uint32_t jobAt_ = 0, progressAt_ = 0, sequence_ = 0;
