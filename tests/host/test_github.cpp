@@ -93,12 +93,14 @@ struct Store : bootstrap::Storage {
 };
 struct Pipe : Port {
   unsigned starts = 0, cancels = 0;
+  uint32_t dequeueAdvance = 0;
   CheckRequest request;
   std::vector<Message> messages;
   std::vector<bool> acknowledgements;
   bool start(const CheckRequest& value) override { ++starts; request = value; return true; }
-  bool take(Message& value) override {
+  bool take(Message& value, uint32_t& receivedAt) override {
     if (messages.empty()) return false;
+    receivedAt += dequeueAdvance; // Model time passing after caller sampled now.
     value = messages.front(); messages.erase(messages.begin()); return true;
   }
   void reply(uint32_t, bool value) override { acknowledgements.push_back(value); }
@@ -156,7 +158,48 @@ void coordinator() {
   pull.poll(830000 + kJobMs, true, 0, token); CHECK(pipe.cancels == 1 && pull.busy());
   CHECK(!pull.request(830001 + kJobMs)); // Timed-out worker must finish before another owns the writer.
 }
+void crossCoreMessageTime() {
+  using namespace bootstrap;
+  // Fresh chunk/header, wrap, idle expiry, job expiry, health loss, writer failure.
+  for (unsigned kind = 0; kind < 8; ++kind) {
+    const uint32_t base = kind == 2 || kind == 7 ? UINT32_MAX - 2 : 60000;
+    Store store; Pipe pipe;
+    uint8_t seed[32] = {9}, secret[64], pub[32]; crypto_ed25519_key_pair(secret, pub, seed);
+    fakeOta() = FakeOta{};
+    ota::Runtime runtime(store, pub); runtime.arm(0); runtime.begin(0);
+    Pull pull(pipe, runtime, false); pull.begin(0, 0);
+    CHECK(pull.request(base)); pull.poll(base, true, 0, token);
+    const std::string image(32, 'a');
+    ota::Manifest manifest; manifest.version = kOtaVersion + 1; manifest.imageSize = image.size(); manifest.minSchema = 1;
+    manifest.minUpdater = 2; strcpy(manifest.boardId, ota::kBoardId); strcpy(manifest.buildId, "host-next"); strcpy(manifest.channel, "stable");
+    mbedtls_sha256_ret(reinterpret_cast<const uint8_t*>(image.data()), image.size(), manifest.sha256, 0);
+    Message header; header.kind = MessageKind::Header; header.created = base; header.size = ota::kPackageHeaderBytes;
+    header.result.release.version = manifest.version; header.result.release.size = image.size() + ota::kPackageHeaderBytes;
+    ota::encodePackageManifest(manifest, header.bytes);
+    crypto_ed25519_sign(header.bytes + ota::kPackageManifestBytes, secret, header.bytes, ota::kPackageManifestBytes);
+    if (kind == 1 || kind == 7) { header.created = base + 2; pipe.dequeueAdvance = 2; }
+    pipe.messages.push_back(header); pull.poll(base + 1, true, 0, token);
+    CHECK(pipe.acknowledgements.back() && runtime.updater.phase() == ota::Phase::Receiving);
+    // The loop cachedbase+4; the other core enqueued atbase+5 before take().
+    Message chunk; chunk.kind = MessageKind::Chunk; chunk.created = base + 5; chunk.size = image.size();
+    memcpy(chunk.bytes, image.data(), chunk.size);
+    pipe.dequeueAdvance = kind == 3 ? ota::kIdleMs + 1 : kind == 4 ? kJobMs : 2;
+    if (kind == 6) fakeOta().writeError = ESP_FAIL;
+    pipe.messages.push_back(chunk); pull.poll(base + 4, kind != 5, 0, token);
+    const bool accepted = kind < 3 || kind == 7;
+    CHECK(pipe.acknowledgements.back() == accepted);
+    CHECK(fakeOta().selects == (accepted ? 1U : 0U));
+    Message done; done.result.code = accepted ? ResultCode::Updated : ResultCode::Rejected;
+    pipe.messages.push_back(done); pull.poll(base + 7, true, 0, token);
+    CHECK(!pull.busy() && pull.rebootReady() == accepted);
+    if (!accepted) {
+      CHECK(runtime.updater.phase() == ota::Phase::Failed);
+      CHECK(!strcmp(runtime.updater.reason(), kind == 6 ? "OTA_WRITE_FAILED" : "UPLOAD_INTERRUPTED"));
+      CHECK(runtime.attemptVersion() == manifest.version && store.values.count("otactx2"));
+    }
+  }
+}
 int main() {
-  metadata(); urlsAndHeaders(); bodies(); coordinator();
+  metadata(); urlsAndHeaders(); bodies(); coordinator(); crossCoreMessageTime();
   printf("%u GitHub parser/policy assertions passed\n", checks);
 }

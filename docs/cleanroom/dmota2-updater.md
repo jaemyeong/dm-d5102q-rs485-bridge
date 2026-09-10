@@ -180,6 +180,26 @@ checks elapsed time after a pending low-level step. DNS/SDK calls can overrun an
 cannot be interrupted by this budget alone. Target TLS result, heap/stack, web
 responsiveness and recovery must be measured before Release/automatic activation.
 
+### Cross-core receipt timestamp candidate (305)
+
+The 304 bench pull reached HTTP200 and RECEIVING, then UPDATE_REJECTED with
+UPLOAD_INTERRUPTED; installed303 stayed VALID. Host regression reproduces one
+concrete defect consistent with that symptom: the loop caches `now` before the
+worker enqueues a message on the other core. `now - message.created` can then
+underflow even when the message is only one millisecond newer, falsely rejecting
+fresh Header/Chunk messages as idle-expired.
+
+`Port::take` now returns a monotonic receipt timestamp sampled **after** dequeue;
+the coordinator uses it for message/job age, writer progress and scheduling.
+It does not substitute producer timestamps or relax timeout/health/signature
+checks. Deterministic tests cover fresh Header/Chunk across clock wrap, actual
+idle/job expiry, health failure, write failure, ACK absence and the real worker
+adapter's clock sampling order. Tests are not concurrent RTOS or real TLS proof.
+This establishes a host defect and fix, not the unique cause of the bench failure.
+Install a separately approved signed305 via manual OTA before a later version's
+GitHub-pull retest; preserve attempt304 and automaticOFF. No target validation of
+this candidate or automatic-activation/recovery approval is implied.
+
 - Authenticated status exposes result/HTTP code/next check and sampled minimum
   heap/largest block/stack headroom, not payload or secrets. IDF's stack watermark
   is already in **bytes**. Sampling and static RAM figures are not soak evidence.

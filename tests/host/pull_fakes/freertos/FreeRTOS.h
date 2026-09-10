@@ -5,6 +5,7 @@
 #include <functional>
 #include <string.h>
 extern uint32_t fakeNow;
+extern uint32_t queueReceiveAdvance;
 using BaseType_t = int;
 using StackType_t = uint32_t;
 using TaskHandle_t = void*;
@@ -32,5 +33,7 @@ inline int xQueueSend(QueueHandle_t queue, const void* value, uint32_t) {
 }
 inline int xQueueReceive(QueueHandle_t queue, void* value, uint32_t ticks) {
   if (queue->data.empty()) { fakeNow += ticks; return 0; }
-  memcpy(value, queue->data.front().data(), queue->item); queue->data.pop_front(); return pdTRUE;
+  memcpy(value, queue->data.front().data(), queue->item); queue->data.pop_front();
+  fakeNow += queueReceiveAdvance;
+  return pdTRUE;
 }

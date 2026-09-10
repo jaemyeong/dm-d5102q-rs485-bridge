@@ -5,7 +5,7 @@ namespace bootstrap { namespace github {
 class Worker final : public Port {
  public:
   bool start(const CheckRequest&) override { return false; }
-  bool take(Message&) override { return false; }
+  bool take(Message&, uint32_t&) override { return false; }
   void reply(uint32_t, bool) override {}
   void cancel() override {}
 };

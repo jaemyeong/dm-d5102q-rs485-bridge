@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 uint32_t fakeNow = 0;
+uint32_t queueReceiveAdvance = 0;
 FakeSerial Serial;
 FakeEsp ESP;
 TlsFake tlsFake;
@@ -14,6 +15,9 @@ extern "C" esp_err_t esp_crt_bundle_attach(void*) { return ESP_OK; }
 void esp_fill_random(void* bytes, size_t size) { memset(bytes, 7, size); }
 namespace bootstrap { namespace github {
 struct WorkerHarness {
+  static bool enqueue(Worker& worker, const Message& message) {
+    return xQueueSend(worker.messages_, &message, 0) == pdTRUE;
+  }
   static bool open(Worker& worker, uint32_t age, bool cancelled = false) {
     worker.jobAt_ = uint32_t(fakeNow) - age;
     worker.cancelled_.store(cancelled);
@@ -56,8 +60,10 @@ std::string response(const std::string& body, const char* type = "application/js
 }
 void token(char output[33]) { strcpy(output, "0123456789abcdef0123456789abcdef"); }
 int main() {
-  for (unsigned kind = 0; kind < 24; ++kind) {
+  for (unsigned kind = 0; kind < 27; ++kind) {
     fakeNow = 60000; testEpoch = 1780000000; fakeOta() = FakeOta{}; tlsFake = TlsFake{};
+    queueReceiveAdvance = kind >= 24 ? 2 : 0;
+    if (kind == 25) fakeNow = UINT32_MAX - 30;
     uint8_t seed[32] = {9}, secret[64], pub[32]; crypto_ed25519_key_pair(secret, pub, seed);
     std::string image(2300, 'x');
     ota::Manifest manifest; manifest.version = kOtaVersion + 1; manifest.imageSize = image.size(); manifest.minSchema = 1;
@@ -102,7 +108,9 @@ int main() {
     Store store; Worker worker; ota::Runtime runtime(store, pub); runtime.arm(fakeNow); runtime.begin(fakeNow);
     Pull pull(worker, runtime, false); pull.begin(fakeNow, 0);
     queueSent = [&](QueueHandle_t queue) {
-      if (WorkerHarness::messages(worker, queue)) pull.poll(fakeNow, true, 0, token);
+      // Producer can enqueue after loop cached now; dequeue itself can advance
+      // the clock. Exercise the real Worker's post-dequeue clock sampling.
+      if (kind != 26 && WorkerHarness::messages(worker, queue)) pull.poll(kind >= 24 ? fakeNow - 1 : fakeNow, true, 0, token);
     };
     CHECK(pull.request(fakeNow)); pull.poll(fakeNow, true, 0, token);
     const Result result = WorkerHarness::execute(worker, kind == 14, kind == 15);
@@ -123,7 +131,7 @@ int main() {
       CHECK(result.tls.tlsError == (error ? tlsFake.error.code : 0));
       CHECK(result.tls.verifyFlags == (error ? tlsFake.error.flags : 0));
     }
-    const bool updated = kind < 2 || kind == 12;
+    const bool updated = kind < 2 || kind == 12 || kind == 24 || kind == 25;
     CHECK(fakeOta().selects == (updated ? 1U : 0U));
     CHECK(pull.rebootReady() == updated);
     if (updated) { CHECK(result.code == ResultCode::Updated); CHECK(fakeOta().image == std::vector<uint8_t>(image.begin(), image.end())); }
@@ -143,8 +151,22 @@ int main() {
     if (kind == 5 || kind == 19 || kind == 20 || kind == 22 || kind == 23)
       CHECK(result.code == ResultCode::Network && !fakeOta().begins && !fakeOta().writes && !fakeOta().selects);
     if (kind == 21) CHECK(result.code == ResultCode::NoRelease && !fakeOta().begins);
+    if (kind == 26) CHECK(result.code == ResultCode::Rejected && fakeNow >= 60000 + ota::kIdleMs && !fakeOta().begins);
     for (const auto& request : tlsFake.requests) { CHECK(request.find("Authorization:") == std::string::npos); CHECK(request.find("Accept-Encoding: identity") != std::string::npos || request.empty()); }
     queueSent = {};
+  }
+  queueReceiveAdvance = 0;
+  {
+    Worker worker; Message incoming, outgoing; uint32_t receivedAt = 123;
+    CHECK(!worker.take(outgoing, receivedAt) && receivedAt == 123);
+    CHECK(worker.start(CheckRequest{}));
+    incoming.created = 100; incoming.sequence = 7;
+    CHECK(WorkerHarness::enqueue(worker, incoming));
+    fakeNow = 100; queueReceiveAdvance = 2;
+    CHECK(worker.take(outgoing, receivedAt));
+    CHECK(receivedAt == 102 && receivedAt == fakeNow && outgoing.sequence == 7);
+    CHECK(!worker.take(outgoing, receivedAt) && receivedAt == 102);
+    queueReceiveAdvance = 0;
   }
   // Exercise the real adapter's budget calculation, not SDK handshake timing.
   static_assert(kJobMs == 180000, "Keep the global job limit");

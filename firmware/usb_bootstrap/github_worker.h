@@ -28,7 +28,11 @@ class Worker final : public Port {
     cancelled_.store(false);
     return xQueueSend(requests_, &request, 0) == pdTRUE;
   }
-  bool take(Message& message) override { return messages_ && xQueueReceive(messages_, &message, 0) == pdTRUE; }
+  bool take(Message& message, uint32_t& receivedAt) override {
+    if (!messages_ || xQueueReceive(messages_, &message, 0) != pdTRUE) return false;
+    receivedAt = millis();
+    return true;
+  }
   void reply(uint32_t sequence, bool accepted) override {
     const Ack ack{sequence, accepted};
     // A single worker waits for exactly this response. Never block the loop.

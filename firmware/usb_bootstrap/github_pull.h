@@ -53,7 +53,9 @@ struct Message {
 struct Port {
   virtual ~Port() = default;
   virtual bool start(const CheckRequest&) = 0;
-  virtual bool take(Message&) = 0;
+  // On success sample the shared monotonic clock AFTER dequeue. A producer on
+  // the other core can enqueue after the caller cached its loop timestamp.
+  virtual bool take(Message&, uint32_t& receivedAt) = 0;
   virtual void reply(uint32_t sequence, bool accepted) = 0;
   virtual void cancel() = 0;
 };
@@ -79,7 +81,7 @@ class Pull {
         if (runtime_.updater.origin() == ota::Origin::GithubPull) runtime_.updater.interrupt();
       }
       Message message;
-      if (!port_.take(message)) return;
+      if (!port_.take(message, now)) return;
       if (message.kind == MessageKind::Done) {
         result_ = message.result; busy_ = false;
         reboot_ = runtime_.updater.origin() == ota::Origin::GithubPull && runtime_.updater.phase() == ota::Phase::RebootPending;
